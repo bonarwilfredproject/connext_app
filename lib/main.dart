@@ -1,6 +1,7 @@
-import 'package:connext_app/daftar_page.dart';
-import 'package:connext_app/landing_page.dart';
-import 'package:connext_app/login_page.dart';
+import 'package:connext_app/daftar_page/daftar_page.dart';
+import 'package:connext_app/home_page/home_page.dart';
+import 'package:connext_app/landing_page/landing_page.dart';
+import 'package:connext_app/login_page/login_page.dart';
 import 'package:connext_app/splash_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -15,6 +16,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Connext',
       theme: ThemeData(
         // This is the theme of your application.
@@ -34,7 +36,7 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: LoginPage(),
+      home: HomePage(),
     );
   }
 }

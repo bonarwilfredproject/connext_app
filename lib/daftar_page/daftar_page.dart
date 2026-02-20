@@ -1,3 +1,7 @@
+import 'package:connext_app/materials/custom_appbar.dart';
+import 'package:connext_app/materials/ellipse_background.dart';
+import 'package:connext_app/materials/positioning_inside.dart';
+import 'package:connext_app/materials/tombol_sementara.dart';
 import 'package:flutter/material.dart';
 
 class DaftarPage extends StatelessWidget {
@@ -6,29 +10,11 @@ class DaftarPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Color(0xFFF4EEFF),
-        leading: Icon(Icons.arrow_back, color: Color(0xFF424874)),
-      ),
+      appBar: CustomAppBar(onPressed: () {}),
       body: Stack(
         children: [
-          Positioned(
-            top: 140,
-            right: -244,
-            left: -244,
-            child: Container(
-              width: 1000,
-              height: 1000,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(1000),
-                color: Color(0xFFDCD6F7),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 96,
-            left: 0,
-            right: 0,
+          EllipseBackground(),
+          PositioningInside(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 36.0),
               child: Column(
@@ -226,26 +212,22 @@ class DaftarPage extends StatelessWidget {
                     ),
                   ),
 
-                  SizedBox(height: 12),
+                  SizedBox(height: 16),
                   //tombol daftar
-                  Container(
-                    width: 104,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Color(0xFF424874),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                  TombolSementara(
+                    width: 140,
+                    height: 54,
                     child: Center(
                       child: Text(
                         "Daftar",
                         style: TextStyle(
+                          fontSize: 16,
                           color: Color(0xFFF4EEFF),
-                          fontSize: 20,
                         ),
                       ),
                     ),
+                    onPressed: () {},
                   ),
-                  //tombol daftar
                 ],
               ),
             ),

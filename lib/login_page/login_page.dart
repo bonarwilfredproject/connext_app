@@ -1,3 +1,7 @@
+import 'package:connext_app/materials/custom_appbar.dart';
+import 'package:connext_app/materials/ellipse_background.dart';
+import 'package:connext_app/materials/positioning_inside.dart';
+import 'package:connext_app/materials/tombol_sementara.dart';
 import 'package:flutter/material.dart';
 
 class LoginPage extends StatelessWidget {
@@ -6,34 +10,13 @@ class LoginPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Color(0xFFF4EEFF),
-        leading: Icon(
-          Icons.arrow_back,
-          color: Color(0xFF424874),
-        ), //tombol panah ke belakang
-      ),
+      appBar: CustomAppBar(onPressed: () {}),
       body: Stack(
         children: [
           // ellipse di belakang layar (background)
-          Positioned(
-            top: 140,
-            right: -244,
-            left: -244,
-            child: Container(
-              width: 1000,
-              height: 1000,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(1000),
-                color: Color(0xFFDCD6F7),
-              ),
-            ),
-          ),
+          EllipseBackground(),
           //logo, dan field serta tombol
-          Positioned(
-            top: 96,
-            left: 0,
-            right: 0,
+          PositioningInside(
             //logo
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 36.0),
@@ -138,54 +121,54 @@ class LoginPage extends StatelessWidget {
                   ),
                   //tombol login as committee button
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      Container(
-                        width: 140,
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: Color(0xFF424874),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            Icon(Icons.group, color: Color(0xFFF4EEFF)),
-                            Text(
-                              "Committee",
-                              style: TextStyle(
-                                color: Color(0xFFF4EEFF),
-                                fontSize: 20,
+                      Expanded(
+                        child: TombolSementara(
+                          width: 140,
+                          height: 54,
+                          onPressed: () {},
+                          icon: Icons.group,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              Icon(Icons.group, color: Color(0xFFF4EEFF)),
+                              Text(
+                                "Committee",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFFF4EEFF),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                      Spacer(),
+                      SizedBox(width: 40),
                       //login as attendee button
-                      Container(
-                        width: 140,
-                        height: 54,
-                        decoration: BoxDecoration(
-                          color: Color(0xFF424874),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            Icon(Icons.chair_alt, color: Color(0xFFF4EEFF)),
-                            Text(
-                              "Attendee",
-                              style: TextStyle(
-                                color: Color(0xFFF4EEFF),
-                                fontSize: 20,
+                      Expanded(
+                        child: TombolSementara(
+                          width: 140,
+                          height: 54,
+                          onPressed: () {},
+                          icon: Icons.chair_alt,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              Icon(Icons.chair_alt, color: Color(0xFFF4EEFF)),
+                              Text(
+                                "Attendee",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Color(0xFFF4EEFF),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ],
                   ),
+
                   //tombol daftar
                 ],
               ),
