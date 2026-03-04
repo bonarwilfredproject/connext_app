@@ -5,20 +5,21 @@ class TombolSementara extends StatelessWidget {
     super.key,
     this.onPressed,
     this.icon,
-    this.child,
     required this.width,
     required this.height,
+    required this.text,
   });
   final void Function()? onPressed;
   final IconData? icon;
-  final Widget? child;
+  final String text;
   final double width;
   final double height;
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        fixedSize: Size(width, height),
+        minimumSize: Size(width, height),
+        padding: EdgeInsets.symmetric(horizontal: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadiusGeometry.circular(12),
         ),
@@ -26,7 +27,15 @@ class TombolSementara extends StatelessWidget {
         foregroundColor: Color(0xFFF4EEFF),
       ),
       onPressed: onPressed,
-      child: child,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          Icon(icon),
+          SizedBox(width: 8),
+          Text(text, style: TextStyle(fontSize: 20, color: Color(0xFFF4EEFF))),
+        ],
+      ),
     );
   }
 }

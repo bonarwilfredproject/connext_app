@@ -1,8 +1,8 @@
-import 'package:connext_app/daftar_page/daftar_page.dart';
-import 'package:connext_app/home_page/home_page.dart';
-import 'package:connext_app/landing_page/landing_page.dart';
-import 'package:connext_app/login_page/login_page.dart';
-import 'package:connext_app/splash_screen.dart';
+import 'package:connext_app/view/daftar_page/daftar_page.dart';
+import 'package:connext_app/view/home_page/home_page.dart';
+import 'package:connext_app/view/landing_page/landing_page.dart';
+import 'package:connext_app/view/log_in_page/log_in_page.dart';
+import 'package:connext_app/view/splash_screen.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -36,7 +36,7 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: HomePage(),
+      home: SplashScreen(),
     );
   }
 }

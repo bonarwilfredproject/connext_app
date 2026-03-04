@@ -1,9 +1,16 @@
+import 'package:connext_app/utils/style_text.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreenAppbar extends StatelessWidget implements PreferredSizeWidget {
-  const HomeScreenAppbar({super.key, required this.data, this.child});
+  const HomeScreenAppbar({
+    super.key,
+    required this.data,
+    this.child,
+    this.onTap,
+  });
   final String data;
   final Widget? child;
+  final Function()? onTap;
   @override
   Widget build(BuildContext context) {
     return AppBar(
@@ -14,11 +21,14 @@ class HomeScreenAppbar extends StatelessWidget implements PreferredSizeWidget {
           children: [
             Expanded(
               flex: 4,
-              child: Text(data, maxLines: 2, style: TextStyle(fontSize: 20)),
+              child: Text(data, maxLines: 2, style: styleText()),
             ),
             Spacer(),
             Expanded(
-              child: InkWell(child: CircleAvatar(minRadius: 24, child: child)),
+              child: InkWell(
+                onTap: onTap,
+                child: CircleAvatar(minRadius: 24, child: child),
+              ),
             ),
           ],
         ),

@@ -1,7 +1,8 @@
-import 'package:connext_app/materials/ellipse_background.dart';
-import 'package:connext_app/materials/positioning_inside.dart';
-import 'package:connext_app/materials/tombol_sementara.dart';
-import 'package:flutter/foundation.dart';
+import 'package:connext_app/view/daftar_page/daftar_page.dart';
+import 'package:connext_app/view/log_in_page/log_in_page.dart';
+import 'package:connext_app/utils/ellipse_background.dart';
+import 'package:connext_app/utils/positioning_inside.dart';
+import 'package:connext_app/utils/tombol_sementara.dart';
 import 'package:flutter/material.dart';
 
 class LandingPage extends StatefulWidget {
@@ -36,11 +37,20 @@ class _LandingPageState extends State<LandingPage> {
                 SizedBox(height: 36),
 
                 //tombol masuk
-                TombolSementara(
-                  onPressed: () {},
-                  width: 240,
-                  height: 56,
-                  child: Text("Masuk", style: TextStyle(fontSize: 20)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                  child: TombolSementara(
+                    icon: Icons.login,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => LogInPage()),
+                      );
+                    },
+                    width: 240,
+                    height: 56,
+                    text: "Masuk",
+                  ),
                 ),
                 SizedBox(height: 12),
 
@@ -74,11 +84,20 @@ class _LandingPageState extends State<LandingPage> {
                 SizedBox(height: 12),
 
                 //tombol daftar
-                TombolSementara(
-                  onPressed: () {},
-                  width: 240,
-                  height: 56,
-                  child: Text("Daftar", style: TextStyle(fontSize: 20)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                  child: TombolSementara(
+                    icon: Icons.app_registration,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => DaftarPage()),
+                      );
+                    },
+                    width: 240,
+                    height: 56,
+                    text: "Daftar",
+                  ),
                 ),
               ],
             ),
