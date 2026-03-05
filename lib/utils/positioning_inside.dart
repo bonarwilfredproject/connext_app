@@ -5,6 +5,6 @@ class PositioningInside extends StatelessWidget {
   final Widget child;
   @override
   Widget build(BuildContext context) {
-    return Positioned(top: 96, left: 0, right: 0, child: child);
+    return Positioned(top: 96, left: 0, right: 0, bottom: 0, child: child);
   }
 }

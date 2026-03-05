@@ -30,9 +30,9 @@ class _LogInPageState extends State<LogInPage> {
     );
 
     if (login == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Phone atau password salah")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Phone atau password belum terdaftar")),
+      );
       return;
     }
 

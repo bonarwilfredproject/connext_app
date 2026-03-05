@@ -33,6 +33,8 @@ dependencies:
     sdk: flutter
   shared_preferences: ^2.5.4
   sqflite: ^2.4.2
+  # mobile_scanner: ^3.5.5
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_lints: ^6.0.0
