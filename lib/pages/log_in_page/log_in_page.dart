@@ -1,11 +1,11 @@
-import 'package:connext_app/database/preferences.dart';
-import 'package:connext_app/database/user_controller.dart';
-import 'package:connext_app/model/user_model.dart';
-import 'package:connext_app/view/home_page/home_page.dart';
-import 'package:connext_app/utils/custom_appbar.dart';
-import 'package:connext_app/utils/ellipse_background.dart';
-import 'package:connext_app/utils/positioning_inside.dart';
-import 'package:connext_app/utils/tombol_sementara.dart';
+import 'package:connext_app/services/preferences_services.dart';
+import 'package:connext_app/services/user_controller.dart';
+import 'package:connext_app/models/user_model.dart';
+import 'package:connext_app/pages/home_page/home_page.dart';
+import 'package:connext_app/widgets/custom_appbar.dart';
+import 'package:connext_app/widgets/ellipse_background.dart';
+import 'package:connext_app/widgets/positioning_inside.dart';
+import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:flutter/material.dart';
 
 class LogInPage extends StatefulWidget {
@@ -40,7 +40,7 @@ class _LogInPageState extends State<LogInPage> {
     await pref.init();
 
     await pref.storingIsLogin(true);
-    await pref.saveUser(login.nama, role);
+    await pref.saveUser(login.id!, login.nama, role);
 
     Navigator.pushAndRemoveUntil(
       context,

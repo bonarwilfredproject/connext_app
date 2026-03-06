@@ -1,4 +1,4 @@
-import 'package:connext_app/utils/style_text.dart';
+import 'package:connext_app/constant/style_text.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreenAppbar extends StatelessWidget implements PreferredSizeWidget {
@@ -27,7 +27,11 @@ class HomeScreenAppbar extends StatelessWidget implements PreferredSizeWidget {
             Expanded(
               child: InkWell(
                 onTap: onTap,
-                child: CircleAvatar(minRadius: 24, child: child),
+                child: CircleAvatar(
+                  minRadius: 24,
+                  backgroundColor: Color(0xFFF4EEFF),
+                  child: child,
+                ),
               ),
             ),
           ],

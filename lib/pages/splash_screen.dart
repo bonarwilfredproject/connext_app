@@ -1,6 +1,6 @@
-import 'package:connext_app/database/preferences.dart';
-import 'package:connext_app/view/home_page/home_page.dart';
-import 'package:connext_app/view/landing_page/landing_page.dart';
+import 'package:connext_app/services/preferences_services.dart';
+import 'package:connext_app/pages/home_page/home_page.dart';
+import 'package:connext_app/pages/landing_page/landing_page.dart';
 import 'package:flutter/material.dart';
 
 class SplashScreen extends StatefulWidget {

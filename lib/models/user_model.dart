@@ -6,11 +6,13 @@ class UserModel {
   final String nama;
   final String phone;
   final String password;
+  final String? profileImage;
   UserModel({
     this.id,
     required this.nama,
     required this.phone,
     required this.password,
+    this.profileImage,
   });
 
   Map<String, dynamic> toMap() {
@@ -19,6 +21,7 @@ class UserModel {
       'nama': nama,
       'phone': phone,
       'password': password,
+      'profile_image': profileImage,
     };
   }
 
@@ -28,6 +31,9 @@ class UserModel {
       nama: map['nama'] as String,
       phone: map['phone'] as String,
       password: map['password'] as String,
+      profileImage: map['profileImage'] != null
+          ? map['profile_image'] as String
+          : null,
     );
   }
 

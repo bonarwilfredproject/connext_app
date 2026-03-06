@@ -1,19 +1,22 @@
-import 'package:connext_app/database/check_in_controller.dart';
-import 'package:connext_app/database/event_controller.dart';
-import 'package:connext_app/database/preferences.dart';
-import 'package:connext_app/database/sqflite.dart';
-import 'package:connext_app/database/user_controller.dart';
-import 'package:connext_app/model/checkin_model.dart';
-import 'package:connext_app/model/event_model.dart';
-import 'package:connext_app/model/user_model.dart';
-import 'package:connext_app/utils/style_text.dart';
-import 'package:connext_app/utils/tombol_sementara.dart';
-import 'package:connext_app/view/home_page/create_event.dart';
-import 'package:connext_app/view/home_page/detail_event_page.dart';
-import 'package:connext_app/view/landing_page/landing_page.dart';
-import 'package:connext_app/utils/ellipse_background.dart';
-import 'package:connext_app/utils/home_screen_appbar.dart';
-import 'package:connext_app/utils/positioning_inside.dart';
+import 'dart:io';
+
+import 'package:connext_app/pages/profile_page/profile_page.dart';
+import 'package:connext_app/services/check_in_controller.dart';
+import 'package:connext_app/services/event_controller.dart';
+import 'package:connext_app/services/preferences_services.dart';
+import 'package:connext_app/services/database_helper.dart';
+import 'package:connext_app/services/user_controller.dart';
+import 'package:connext_app/models/checkin_model.dart';
+import 'package:connext_app/models/event_model.dart';
+import 'package:connext_app/models/user_model.dart';
+import 'package:connext_app/constant/style_text.dart';
+import 'package:connext_app/widgets/tombol_sementara.dart';
+import 'package:connext_app/pages/home_page/create_event.dart';
+import 'package:connext_app/pages/home_page/detail_event_page.dart';
+import 'package:connext_app/pages/landing_page/landing_page.dart';
+import 'package:connext_app/widgets/ellipse_background.dart';
+import 'package:connext_app/widgets/home_screen_appbar.dart';
+import 'package:connext_app/widgets/positioning_inside.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'dart:convert';
@@ -28,6 +31,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  UserModel? currentUser;
   QrImageView? attendeeQr; // state untuk QR code
   List<EventModel> events = [];
   bool isLoading = true;
@@ -37,6 +41,22 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     getDataUser();
     loadEvents();
+    getCurrentUser();
+  }
+
+  Future<void> getCurrentUser() async {
+    final pref = PreferenceHandler();
+    await pref.init();
+
+    int? userId = pref.getUserId();
+
+    final user = await UserController.getUserById(userId);
+
+    if (!mounted) return;
+
+    setState(() {
+      currentUser = user;
+    });
   }
 
   Future<void> getDataUser() async {
@@ -59,38 +79,25 @@ class _HomePageState extends State<HomePage> {
       appBar: HomeScreenAppbar(
         data: "Selamat datang, ${widget.namaUser} as ${widget.role}.",
         onTap: () async {
-          final confirm = await showDialog(
-            context: context,
-            builder: (_) => AlertDialog(
-              title: Text("Logout"),
-              content: Text("Apakah kamu yakin ingin logout?"),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: Text("Batal"),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: Text("Ya"),
-                ),
-              ],
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProfilePage(userId: currentUser!.id!),
             ),
           );
 
-          if (confirm == true) {
-            final pref = PreferenceHandler();
-            await pref.init();
-            await pref.logout();
-
-            if (!mounted) return;
-
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (_) => LandingPage()),
-              (route) => false,
-            );
-          }
+          getCurrentUser(); // reload foto
         },
+        child: currentUser?.profileImage != null
+            ? ClipOval(
+                child: Image.file(
+                  File(currentUser!.profileImage!),
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.cover,
+                ),
+              )
+            : const Icon(Icons.person),
       ),
       backgroundColor: Color(0xFFF4EEFF),
       body: Stack(
@@ -317,47 +324,19 @@ class _HomePageState extends State<HomePage> {
                           Text("QR Code Anda", style: styleText()),
                           SizedBox(height: 20),
                           Center(
-                            child: QrImageView(
-                              data: jsonEncode({
-                                "userId": 1, // ganti sesuai ID user sebenarnya
-                                "eventId": 10, // ganti sesuai event
-                                "namaUser": widget.namaUser, // nama user
-                                "phone":
-                                    "08123456789", // ganti sesuai data user
-                              }),
-                              version: QrVersions.auto,
-                              size: 200,
-                              backgroundColor: Colors.white,
-                            ),
+                            child: currentUser == null
+                                ? CircularProgressIndicator()
+                                : QrImageView(
+                                    data: jsonEncode({
+                                      "userId": currentUser!.id,
+                                      "namaUser": currentUser!.nama,
+                                      "phone": currentUser!.phone,
+                                    }),
+                                    version: QrVersions.auto,
+                                    size: 200,
+                                    backgroundColor: Colors.white,
+                                  ),
                           ),
-                          // TombolSementara(
-                          //   width: 54,
-                          //   height: 164,
-                          //   text: "Test Checkin",
-                          //   onPressed: () async {
-                          //     int userId = 1;
-                          //     int eventId = 10;
-
-                          //     bool already =
-                          //         await CheckinController.isAlreadyCheckin(
-                          //           userId,
-                          //           eventId,
-                          //         );
-
-                          //     if (already) {
-                          //       print("Sudah check-in!");
-                          //     } else {
-                          //       await CheckinController.insertCheckin(
-                          //         CheckinModel(
-                          //           userId: userId,
-                          //           eventId: eventId,
-                          //           waktu: DateTime.now().toString(),
-                          //         ),
-                          //       );
-                          //       print("Check-in berhasil!");
-                          //     }
-                          //   },
-                          // ),
                         ],
                       ),
                     ),

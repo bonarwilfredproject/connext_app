@@ -1,9 +1,9 @@
-import 'package:connext_app/database/event_controller.dart';
-import 'package:connext_app/model/event_model.dart';
-import 'package:connext_app/utils/decoration_constant.dart';
-import 'package:connext_app/utils/ellipse_background.dart';
-import 'package:connext_app/utils/positioning_inside.dart';
-import 'package:connext_app/utils/style_text.dart';
+import 'package:connext_app/services/event_controller.dart';
+import 'package:connext_app/models/event_model.dart';
+import 'package:connext_app/constant/decoration_constant.dart';
+import 'package:connext_app/widgets/ellipse_background.dart';
+import 'package:connext_app/widgets/positioning_inside.dart';
+import 'package:connext_app/constant/style_text.dart';
 import 'package:flutter/material.dart';
 
 class CreateEvent extends StatefulWidget {

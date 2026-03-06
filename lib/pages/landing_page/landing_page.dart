@@ -1,8 +1,8 @@
-import 'package:connext_app/view/daftar_page/daftar_page.dart';
-import 'package:connext_app/view/log_in_page/log_in_page.dart';
-import 'package:connext_app/utils/ellipse_background.dart';
-import 'package:connext_app/utils/positioning_inside.dart';
-import 'package:connext_app/utils/tombol_sementara.dart';
+import 'package:connext_app/pages/daftar_page/daftar_page.dart';
+import 'package:connext_app/pages/log_in_page/log_in_page.dart';
+import 'package:connext_app/widgets/ellipse_background.dart';
+import 'package:connext_app/widgets/positioning_inside.dart';
+import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:flutter/material.dart';
 
 class LandingPage extends StatefulWidget {

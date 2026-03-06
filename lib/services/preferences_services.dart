@@ -16,14 +16,19 @@ class PreferenceHandler {
   static const String _isCommittee = "isCommittee";
   static const String _namaUser = "namaUser";
   static const String _role = "role";
-
+  static const String _userId = "userId";
   Future<void> logout() async {
     await _preferences.clear();
   }
 
-  Future<void> saveUser(String nama, String role) async {
+  Future<void> saveUser(int userId, String nama, String role) async {
+    await _preferences.setInt(_userId, userId);
     await _preferences.setString(_namaUser, nama);
     await _preferences.setString(_role, role);
+  }
+
+  int getUserId() {
+    return _preferences.getInt(_userId) ?? 0;
   }
 
   Future<String?> getNamaUser() async {

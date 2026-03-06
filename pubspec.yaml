@@ -37,6 +37,9 @@ dependencies:
   qr_flutter: ^4.1.0
   # qr_code_scanner: ^1.2.0
   mobile_scanner: ^3.4.0
+  vibration: ^3.1.8
+  intl: ^0.20.2
+  image_picker: ^1.0.7
 
 dev_dependencies:
   flutter_lints: ^6.0.0
