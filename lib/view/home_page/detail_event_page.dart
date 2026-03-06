@@ -1,7 +1,7 @@
 import 'package:connext_app/utils/ellipse_background.dart';
 import 'package:connext_app/utils/positioning_inside.dart';
 import 'package:connext_app/utils/tombol_sementara.dart';
-import 'package:connext_app/view/scanner/scan_android.dart';
+import 'package:connext_app/view/scanner/scan_peserta_page.dart';
 import 'package:flutter/material.dart';
 import 'package:connext_app/database/event_controller.dart';
 import 'package:connext_app/model/event_model.dart';
@@ -18,6 +18,7 @@ class DetailEventPage extends StatefulWidget {
 
 class _DetailEventPageState extends State<DetailEventPage> {
   EventModel? event;
+  List<Map<String, String>> scannedPeserta = []; // <- state untuk list peserta
 
   @override
   void initState() {
@@ -55,9 +56,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                       Text("${event!.id}", style: styleText()),
                     ],
                   ),
-
                   SizedBox(height: 16),
-
                   Row(
                     children: [
                       Icon(Icons.location_pin),
@@ -67,9 +66,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                       ),
                     ],
                   ),
-
                   SizedBox(height: 16),
-
                   Row(
                     children: [
                       Icon(Icons.people),
@@ -80,21 +77,68 @@ class _DetailEventPageState extends State<DetailEventPage> {
                       ),
                     ],
                   ),
-
                   SizedBox(height: 40),
+                  // Tombol Scan Peserta
                   TombolSementara(
-                    onPressed: () {
-                      Navigator.push(
+                    onPressed: () async {
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => ScanPesertaPage(eventId: event!.id!),
                         ),
                       );
+
+                      // Ambil data scannedPeserta dari ScanPesertaPage
+                      if (result != null &&
+                          result is List<Map<String, String>>) {
+                        setState(() {
+                          scannedPeserta = result;
+                        });
+                      }
                     },
                     text: "Scan Peserta",
                     height: 54,
                     width: double.infinity,
                     icon: Icons.qr_code_scanner,
+                  ),
+
+                  SizedBox(height: 20),
+                  // Tampilkan list peserta yang sudah discan
+                  Expanded(
+                    flex: 5,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Peserta yang sudah discan:",
+                            style: styleText(),
+                          ),
+                          SizedBox(height: 10),
+                          Expanded(
+                            child: scannedPeserta.isEmpty
+                                ? Center(
+                                    child: Text("Belum ada peserta discan"),
+                                  )
+                                : ListView.builder(
+                                    itemCount: scannedPeserta.length,
+                                    itemBuilder: (context, index) {
+                                      final p = scannedPeserta[index];
+                                      return Card(
+                                        child: ListTile(
+                                          title: Text(p['namaUser'] ?? ""),
+                                          subtitle: Text(
+                                            "Phone: ${p['phone'] ?? ""}\nWaktu: ${p['waktu'] ?? ""}",
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),

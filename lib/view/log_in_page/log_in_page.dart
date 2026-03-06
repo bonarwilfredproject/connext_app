@@ -66,180 +66,191 @@ class _LogInPageState extends State<LogInPage> {
           //logo, dan field serta tombol
           PositioningInside(
             //logo
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 36.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    Image.asset(
-                      "lib/assets/images/logo.png",
-                      width: 79,
-                      height: 79,
-                    ),
-                    SizedBox(height: 32),
-                    //phone field
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Icon(Icons.phone, color: Color(0XFF424874)),
-                        ),
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 36.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      Image.asset(
+                        "lib/assets/images/logo.png",
+                        width: 79,
+                        height: 79,
+                      ),
+                      SizedBox(height: 32),
+                      //phone field
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Icon(Icons.phone, color: Color(0XFF424874)),
+                          ),
 
-                        Expanded(
-                          flex: 8,
-                          child: Text(
-                            "Phone",
-                            style: TextStyle(
-                              color: Color(0XFF424874),
-                              fontSize: 20,
+                          Expanded(
+                            flex: 8,
+                            child: Text(
+                              "Phone",
+                              style: TextStyle(
+                                color: Color(0XFF424874),
+                                fontSize: 20,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    TextFormField(
-                      validator: (value) {
-                        final phone = (value ?? '').trim();
-
-                        if (phone.isEmpty) {
-                          return "Nomor telepon tidak boleh kosong";
-                        }
-
-                        if (!RegExp(r'^\d+$').hasMatch(phone)) {
-                          return "Nomor telepon hanya boleh angka";
-                        }
-
-                        if (phone.length < 9) {
-                          return "Minimal 9 digit";
-                        }
-
-                        return null;
-                      },
-                      controller: phoneController,
-                      style: TextStyle(color: Color(0xFFF4EEFF), fontSize: 12),
-                      decoration: InputDecoration(
-                        contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                        hint: Text(
-                          "08123456789",
-                          style: TextStyle(
-                            color: Color(0xFFF4EEFF),
-                            fontSize: 12,
-                          ),
-                        ),
-                        fillColor: Color(0xFFA6B1E1),
-                        filled: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
+                        ],
                       ),
-                    ),
-                    //password field
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Icon(Icons.password, color: Color(0XFF424874)),
-                        ),
+                      TextFormField(
+                        validator: (value) {
+                          final phone = (value ?? '').trim();
 
-                        Expanded(
-                          flex: 8,
-                          child: Text(
-                            "Password",
+                          if (phone.isEmpty) {
+                            return "Nomor telepon tidak boleh kosong";
+                          }
+
+                          if (!RegExp(r'^\d+$').hasMatch(phone)) {
+                            return "Nomor telepon hanya boleh angka";
+                          }
+
+                          if (phone.length < 9) {
+                            return "Minimal 9 digit";
+                          }
+
+                          return null;
+                        },
+                        controller: phoneController,
+                        style: TextStyle(
+                          color: Color(0xFFF4EEFF),
+                          fontSize: 12,
+                        ),
+                        decoration: InputDecoration(
+                          contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                          hint: Text(
+                            "08123456789",
                             style: TextStyle(
-                              color: Color(0XFF424874),
-                              fontSize: 20,
+                              color: Color(0xFFF4EEFF),
+                              fontSize: 12,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    TextFormField(
-                      validator: (value) {
-                        final password = value ?? '';
-                        final hasUppercase = RegExp(
-                          r'[A-Z]',
-                        ).hasMatch(password);
-                        final hasLowercase = RegExp(
-                          r'[a-z]',
-                        ).hasMatch(password);
-                        final hasNumber = RegExp(r'\d').hasMatch(password);
-                        final hasSpecialChar = RegExp(
-                          r'[!@#$%^&*(),.?":{}|<>_\-\\/\[\];\`~+=]',
-                        ).hasMatch(password);
-                        if (password.isEmpty) {
-                          return "Password tidak boleh kosong";
-                        }
-
-                        if (password.length < 8 ||
-                            !hasUppercase ||
-                            !hasLowercase ||
-                            !hasNumber ||
-                            !hasSpecialChar) {
-                          return "Password harus terdiri dari minimal 8 karakter, memiliki huruf besar, huruf kecil, nomor, dan special character";
-                        }
-
-                        return null;
-                      },
-                      controller: passwordController,
-                      obscureText: true,
-                      obscuringCharacter: "*",
-                      style: TextStyle(color: Color(0xFFF4EEFF), fontSize: 12),
-                      decoration: InputDecoration(
-                        contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                        hint: Text(
-                          "********",
-                          style: TextStyle(
-                            color: Color(0xFFF4EEFF),
-                            fontSize: 12,
+                          fillColor: Color(0xFFA6B1E1),
+                          filled: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
                           ),
-                        ),
-                        fillColor: Color(0xFFA6B1E1),
-                        filled: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
                         ),
                       ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16.0),
-                      child: Text(
-                        "Login sebagai",
-                        style: TextStyle(fontSize: 20),
-                      ),
-                    ),
-                    //tombol login as committee button
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TombolSementara(
-                            width: double.infinity,
-                            height: 54,
-                            onPressed: () async {
-                              await loginAs("Committee");
-                            },
-                            icon: Icons.group,
-                            text: "Committee",
+                      //password field
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Icon(
+                              Icons.password,
+                              color: Color(0XFF424874),
+                            ),
                           ),
-                        ),
-                        SizedBox(width: 12),
-                        //login as attendee button
-                        Expanded(
-                          child: TombolSementara(
-                            width: double.infinity,
-                            height: 54,
-                            onPressed: () async {
-                              await loginAs("Attendee");
-                            },
-                            icon: Icons.chair_alt,
-                            text: "Attendee",
-                          ),
-                        ),
-                      ],
-                    ),
 
-                    //tombol daftar
-                  ],
+                          Expanded(
+                            flex: 8,
+                            child: Text(
+                              "Password",
+                              style: TextStyle(
+                                color: Color(0XFF424874),
+                                fontSize: 20,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      TextFormField(
+                        validator: (value) {
+                          final password = value ?? '';
+                          final hasUppercase = RegExp(
+                            r'[A-Z]',
+                          ).hasMatch(password);
+                          final hasLowercase = RegExp(
+                            r'[a-z]',
+                          ).hasMatch(password);
+                          final hasNumber = RegExp(r'\d').hasMatch(password);
+                          final hasSpecialChar = RegExp(
+                            r'[!@#$%^&*(),.?":{}|<>_\-\\/\[\];\`~+=]',
+                          ).hasMatch(password);
+                          if (password.isEmpty) {
+                            return "Password tidak boleh kosong";
+                          }
+
+                          if (password.length < 8 ||
+                              !hasUppercase ||
+                              !hasLowercase ||
+                              !hasNumber ||
+                              !hasSpecialChar) {
+                            return "Password harus terdiri dari minimal 8 karakter, memiliki huruf besar, huruf kecil, nomor, dan special character";
+                          }
+
+                          return null;
+                        },
+                        controller: passwordController,
+                        obscureText: true,
+                        obscuringCharacter: "*",
+                        style: TextStyle(
+                          color: Color(0xFFF4EEFF),
+                          fontSize: 12,
+                        ),
+                        decoration: InputDecoration(
+                          contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                          hint: Text(
+                            "********",
+                            style: TextStyle(
+                              color: Color(0xFFF4EEFF),
+                              fontSize: 12,
+                            ),
+                          ),
+                          fillColor: Color(0xFFA6B1E1),
+                          filled: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        child: Text(
+                          "Login sebagai",
+                          style: TextStyle(fontSize: 20),
+                        ),
+                      ),
+                      //tombol login as committee button
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TombolSementara(
+                              width: double.infinity,
+                              height: 54,
+                              onPressed: () async {
+                                await loginAs("Committee");
+                              },
+                              icon: Icons.group,
+                              text: "Committee",
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          //login as attendee button
+                          Expanded(
+                            child: TombolSementara(
+                              width: double.infinity,
+                              height: 54,
+                              onPressed: () async {
+                                await loginAs("Attendee");
+                              },
+                              icon: Icons.chair_alt,
+                              text: "Attendee",
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      //tombol daftar
+                    ],
+                  ),
                 ),
               ),
             ),

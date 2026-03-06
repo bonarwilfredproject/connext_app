@@ -1,7 +1,9 @@
+import 'package:connext_app/database/check_in_controller.dart';
 import 'package:connext_app/database/event_controller.dart';
 import 'package:connext_app/database/preferences.dart';
 import 'package:connext_app/database/sqflite.dart';
 import 'package:connext_app/database/user_controller.dart';
+import 'package:connext_app/model/checkin_model.dart';
 import 'package:connext_app/model/event_model.dart';
 import 'package:connext_app/model/user_model.dart';
 import 'package:connext_app/utils/style_text.dart';
@@ -13,6 +15,8 @@ import 'package:connext_app/utils/ellipse_background.dart';
 import 'package:connext_app/utils/home_screen_appbar.dart';
 import 'package:connext_app/utils/positioning_inside.dart';
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'dart:convert';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.namaUser, required this.role});
@@ -24,6 +28,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  QrImageView? attendeeQr; // state untuk QR code
   List<EventModel> events = [];
   bool isLoading = true;
   late List<UserModel> dataUser = [];
@@ -97,7 +102,7 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (widget.role == "Committee")
+                  if (widget.role == "Committee") ...[
                     TombolSementara(
                       onPressed: () async {
                         final result = await Navigator.push(
@@ -114,189 +119,249 @@ class _HomePageState extends State<HomePage> {
                       icon: Icons.edit,
                       text: "Buat Event",
                     ),
-                  SizedBox(height: 40),
-                  Text("Events:", style: styleText()),
-                  SizedBox(height: 20),
+                    SizedBox(height: 40),
+                    Text("Events:", style: styleText()),
+                    SizedBox(height: 20),
 
-                  Expanded(
-                    child: isLoading
-                        ? Center(child: CircularProgressIndicator())
-                        : events.isEmpty
-                        ? Center(
-                            child: Text("Belum ada event", style: styleText()),
-                          )
-                        : ListView.separated(
-                            separatorBuilder: (context, index) =>
-                                SizedBox(height: 20),
-                            itemCount: events.length,
-                            itemBuilder: (context, index) {
-                              final event = events[index];
+                    Expanded(
+                      child: isLoading
+                          ? Center(child: CircularProgressIndicator())
+                          : events.isEmpty
+                          ? Center(
+                              child: Text(
+                                "Belum ada event",
+                                style: styleText(),
+                              ),
+                            )
+                          : ListView.separated(
+                              separatorBuilder: (context, index) =>
+                                  SizedBox(height: 20),
+                              itemCount: events.length,
+                              itemBuilder: (context, index) {
+                                final event = events[index];
 
-                              return Dismissible(
-                                key: Key(event.id.toString()),
-                                direction: DismissDirection
-                                    .endToStart, // swipe dari kanan ke kiri
-                                background: Container(
-                                  margin: const EdgeInsets.only(bottom: 16),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                  ),
-                                  alignment: Alignment.centerRight,
-                                  decoration: BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    Icons.delete,
-                                    color: Colors.white,
-                                    size: 28,
-                                  ),
-                                ), // 🔥 wajib unik
-                                confirmDismiss: (direction) async {
-                                  return await showDialog(
-                                    context: context,
-                                    builder: (_) => AlertDialog(
-                                      title: const Text("Hapus Event"),
-                                      content: const Text(
-                                        "Yakin ingin menghapus event ini?",
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context, false),
-                                          child: const Text("Batal"),
-                                        ),
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context, true),
-                                          child: const Text("Hapus"),
-                                        ),
-                                      ],
+                                return Dismissible(
+                                  key: Key(event.id.toString()),
+                                  direction: DismissDirection
+                                      .endToStart, // swipe dari kanan ke kiri
+                                  background: Container(
+                                    margin: const EdgeInsets.only(bottom: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
                                     ),
-                                  );
-                                },
-
-                                onDismissed: (direction) async {
-                                  await EventController.deleteEvent(event.id!);
-
-                                  setState(() {
-                                    events.removeAt(index);
-                                  });
-
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text("Event berhasil dihapus"),
+                                    alignment: Alignment.centerRight,
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
-                                  );
-                                },
-                                child: InkWell(
-                                  onTap: () async {
-                                    final result = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            DetailEventPage(eventId: event.id!),
-                                      ),
-                                    );
-
-                                    if (result == true) {
-                                      loadEvents(); // reload setelah delete
-                                    }
-                                  },
-                                  child: Material(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: Container(
-                                      margin: EdgeInsets.only(bottom: 16),
-                                      padding: EdgeInsets.all(20),
-                                      decoration: BoxDecoration(
-                                        color: Color(0xffF4EEFF),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Column(
-                                        children: [
-                                          // 🔥 HEADER + ICON INFO
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Icon(Icons.event),
-                                                  SizedBox(width: 8),
-                                                  Text(
-                                                    event.title,
-                                                    style: styleText(),
-                                                  ),
-                                                ],
-                                              ),
-
-                                              IconButton(
-                                                icon: Icon(Icons.info_outline),
-                                                onPressed: () async {
-                                                  final result =
-                                                      await Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                          builder: (_) =>
-                                                              DetailEventPage(
-                                                                eventId:
-                                                                    event.id!,
-                                                              ),
-                                                        ),
-                                                      );
-
-                                                  if (result == true) {
-                                                    loadEvents();
-                                                  }
-                                                },
-                                              ),
-                                            ],
+                                    child: const Icon(
+                                      Icons.delete,
+                                      color: Colors.white,
+                                      size: 28,
+                                    ),
+                                  ), // 🔥 wajib unik
+                                  confirmDismiss: (direction) async {
+                                    return await showDialog(
+                                      context: context,
+                                      builder: (_) => AlertDialog(
+                                        title: const Text("Hapus Event"),
+                                        content: const Text(
+                                          "Yakin ingin menghapus event ini?",
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: const Text("Batal"),
                                           ),
-                                          Row(
-                                            children: [
-                                              Icon(Icons.location_pin),
-                                              SizedBox(width: 8),
-                                              Expanded(
-                                                child: Text(
-                                                  event.location,
-                                                  style: styleText(),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          Row(
-                                            children: [
-                                              Icon(Icons.people),
-                                              SizedBox(width: 8),
-                                              Text(
-                                                "${event.totalPeserta} Peserta",
-                                                style: styleText(),
-                                              ),
-                                            ],
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            child: const Text("Hapus"),
                                           ),
                                         ],
                                       ),
+                                    );
+                                  },
+
+                                  onDismissed: (direction) async {
+                                    await EventController.deleteEvent(
+                                      event.id!,
+                                    );
+
+                                    setState(() {
+                                      events.removeAt(index);
+                                    });
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text("Event berhasil dihapus"),
+                                      ),
+                                    );
+                                  },
+                                  child: InkWell(
+                                    onTap: () async {
+                                      final result = await Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => DetailEventPage(
+                                            eventId: event.id!,
+                                          ),
+                                        ),
+                                      );
+
+                                      if (result == true) {
+                                        loadEvents(); // reload setelah delete
+                                      }
+                                    },
+                                    child: Material(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Container(
+                                        margin: EdgeInsets.only(bottom: 16),
+                                        padding: EdgeInsets.all(20),
+                                        decoration: BoxDecoration(
+                                          color: Color(0xffF4EEFF),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            // 🔥 HEADER + ICON INFO
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Icon(Icons.event),
+                                                    SizedBox(width: 8),
+                                                    Text(
+                                                      event.title,
+                                                      style: styleText(),
+                                                    ),
+                                                  ],
+                                                ),
+
+                                                IconButton(
+                                                  icon: Icon(
+                                                    Icons.info_outline,
+                                                  ),
+                                                  onPressed: () async {
+                                                    final result =
+                                                        await Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (_) =>
+                                                                DetailEventPage(
+                                                                  eventId:
+                                                                      event.id!,
+                                                                ),
+                                                          ),
+                                                        );
+
+                                                    if (result == true) {
+                                                      loadEvents();
+                                                    }
+                                                  },
+                                                ),
+                                              ],
+                                            ),
+                                            Row(
+                                              children: [
+                                                Icon(Icons.location_pin),
+                                                SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    event.location,
+                                                    style: styleText(),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            Row(
+                                              children: [
+                                                Icon(Icons.people),
+                                                SizedBox(width: 8),
+                                                Text(
+                                                  "${event.totalPeserta} Peserta",
+                                                  style: styleText(),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-
-                  if (widget.role == "Attendee")
+                                );
+                              },
+                            ),
+                    ),
+                  ] else if (widget.role == "Attendee") ...[
                     Padding(
                       padding: const EdgeInsets.only(bottom: 20),
-                      child: TombolSementara(
-                        onPressed: () {},
-                        text: "Lihat Event",
-                        height: 54,
-                        width: 164,
-                        icon: Icons.event,
+                      child: Column(
+                        children: [
+                          TombolSementara(
+                            onPressed: () {},
+                            text: "Lihat Event",
+                            height: 54,
+                            width: 164,
+                            icon: Icons.event,
+                          ),
+                          SizedBox(height: 20),
+                          Text("QR Code Anda", style: styleText()),
+                          SizedBox(height: 20),
+                          Center(
+                            child: QrImageView(
+                              data: jsonEncode({
+                                "userId": 1, // ganti sesuai ID user sebenarnya
+                                "eventId": 10, // ganti sesuai event
+                                "namaUser": widget.namaUser, // nama user
+                                "phone":
+                                    "08123456789", // ganti sesuai data user
+                              }),
+                              version: QrVersions.auto,
+                              size: 200,
+                              backgroundColor: Colors.white,
+                            ),
+                          ),
+                          // TombolSementara(
+                          //   width: 54,
+                          //   height: 164,
+                          //   text: "Test Checkin",
+                          //   onPressed: () async {
+                          //     int userId = 1;
+                          //     int eventId = 10;
+
+                          //     bool already =
+                          //         await CheckinController.isAlreadyCheckin(
+                          //           userId,
+                          //           eventId,
+                          //         );
+
+                          //     if (already) {
+                          //       print("Sudah check-in!");
+                          //     } else {
+                          //       await CheckinController.insertCheckin(
+                          //         CheckinModel(
+                          //           userId: userId,
+                          //           eventId: eventId,
+                          //           waktu: DateTime.now().toString(),
+                          //         ),
+                          //       );
+                          //       print("Check-in berhasil!");
+                          //     }
+                          //   },
+                          // ),
+                        ],
                       ),
                     ),
+                  ],
                 ],
               ),
             ),
