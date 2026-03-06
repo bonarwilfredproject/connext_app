@@ -82,7 +82,8 @@ class _HomePageState extends State<HomePage> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => ProfilePage(userId: currentUser!.id!),
+              builder: (context) =>
+                  ProfilePage(userId: currentUser!.id!, role: widget.role),
             ),
           );
 

@@ -12,8 +12,8 @@ import 'package:image_picker/image_picker.dart';
 
 class ProfilePage extends StatefulWidget {
   final int userId;
-
-  const ProfilePage({super.key, required this.userId});
+  final String role;
+  const ProfilePage({super.key, required this.userId, required this.role});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -91,8 +91,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
                       Text(user.phone, style: styleText()),
 
+                      const SizedBox(height: 10),
+                      Text(widget.role, style: styleText()),
                       const SizedBox(height: 40),
-
                       TombolSementara(
                         icon: Icons.logout,
                         height: 54,
