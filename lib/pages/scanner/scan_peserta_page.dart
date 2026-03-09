@@ -1,12 +1,15 @@
 import 'dart:convert';
+import 'package:connext_app/services/attendee_controller.dart';
+import 'package:connext_app/services/database_helper.dart';
 import 'package:connext_app/services/event_controller.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
-import 'package:connext_app/constant/style_text.dart';
+import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/models/checkin_model.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:vibration/vibration.dart';
 import 'package:vibration/vibration_presets.dart';
 
@@ -22,6 +25,14 @@ class ScanPesertaPage extends StatefulWidget {
 class _ScanPesertaPageState extends State<ScanPesertaPage> {
   bool isProcessing = false;
   List<Map<String, String>> scannedPeserta = [];
+  Future<void> addAttendee(int userId, int eventId) async {
+    final db = await DBHelper.db();
+
+    await db.insert("attendee", {
+      "user_id": userId,
+      "event_id": eventId,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +105,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage> {
         CheckinModel(userId: userId, eventId: eventId, waktu: waktuScan),
       );
       await EventController.incrementPeserta(eventId);
-
+      await AttendeeController.addAttendee(userId, eventId);
       setState(() {
         scannedPeserta.insert(0, {
           'namaUser': namaUser,

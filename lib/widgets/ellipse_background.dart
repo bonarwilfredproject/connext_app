@@ -6,7 +6,7 @@ class EllipseBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: 140,
+      top: 320,
       right: -244,
       left: -244,
       child: Container(

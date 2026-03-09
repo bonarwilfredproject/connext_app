@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
 import 'package:connext_app/pages/profile_page/profile_page.dart';
 import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/services/event_controller.dart';
@@ -9,7 +10,7 @@ import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/models/checkin_model.dart';
 import 'package:connext_app/models/event_model.dart';
 import 'package:connext_app/models/user_model.dart';
-import 'package:connext_app/constant/style_text.dart';
+import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:connext_app/pages/home_page/create_event.dart';
 import 'package:connext_app/pages/home_page/detail_event_page.dart';
@@ -67,7 +68,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> loadEvents() async {
-    events = await EventController.getAllEvent();
+    final pref = PreferenceHandler();
+    await pref.init();
+
+    int? userId = pref.getUserId();
+
+    events = await EventController.getEventByUser(userId);
     setState(() {
       isLoading = false;
     });
@@ -315,7 +321,16 @@ class _HomePageState extends State<HomePage> {
                       child: Column(
                         children: [
                           TombolSementara(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => AttendeeEventPage(
+                                    userId: currentUser!.id!,
+                                  ),
+                                ),
+                              );
+                            },
                             text: "Lihat Event",
                             height: 54,
                             width: 164,

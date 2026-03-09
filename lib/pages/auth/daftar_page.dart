@@ -1,7 +1,8 @@
+import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/models/user_model.dart';
-import 'package:connext_app/constant/decoration_constant.dart';
-import 'package:connext_app/pages/log_in_page/log_in_page.dart';
+import 'package:connext_app/constants/decoration_constant.dart';
+import 'package:connext_app/pages/auth/log_in_page.dart';
 import 'package:connext_app/widgets/custom_appbar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/positioning_inside.dart';
@@ -16,6 +17,7 @@ class DaftarPage extends StatefulWidget {
 }
 
 class _DaftarPageState extends State<DaftarPage> {
+  bool isVisible = false;
   final GlobalKey<FormState> _formKey = GlobalKey();
   TextEditingController namaController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
@@ -35,13 +37,13 @@ class _DaftarPageState extends State<DaftarPage> {
           PositioningInside(
             child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 36.0),
+                padding: const EdgeInsets.symmetric(horizontal: 40.0),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     children: [
                       Image.asset(
-                        "lib/assets/images/logo.png",
+                        "assets/images/logo.png",
                         width: 79,
                         height: 79,
                       ),
@@ -59,7 +61,7 @@ class _DaftarPageState extends State<DaftarPage> {
                               "Nama",
                               style: TextStyle(
                                 color: Color(0XFF424874),
-                                fontSize: 20,
+                                fontSize: 16,
                               ),
                             ),
                           ),
@@ -77,8 +79,9 @@ class _DaftarPageState extends State<DaftarPage> {
                           color: Color(0xFFF4EEFF),
                           fontSize: 12,
                         ),
-                        decoration: decorationConstant(hintText: "******"),
+                        decoration: decorationConstant(hintText: "e.x: Budi"),
                       ),
+                      SizedBox(height: 12),
                       //phone field
                       Row(
                         children: [
@@ -92,7 +95,7 @@ class _DaftarPageState extends State<DaftarPage> {
                               "Phone",
                               style: TextStyle(
                                 color: Color(0XFF424874),
-                                fontSize: 20,
+                                fontSize: 16,
                               ),
                             ),
                           ),
@@ -120,9 +123,9 @@ class _DaftarPageState extends State<DaftarPage> {
                           color: Color(0xFFF4EEFF),
                           fontSize: 12,
                         ),
-                        decoration: decorationConstant(hintText: "******"),
+                        decoration: decorationConstant(hintText: "0812345678"),
                       ),
-
+                      SizedBox(height: 12),
                       //password field
                       Row(
                         children: [
@@ -139,7 +142,7 @@ class _DaftarPageState extends State<DaftarPage> {
                               "Password",
                               style: TextStyle(
                                 color: Color(0XFF424874),
-                                fontSize: 20,
+                                fontSize: 16,
                               ),
                             ),
                           ),
@@ -171,14 +174,45 @@ class _DaftarPageState extends State<DaftarPage> {
                           return null;
                         },
                         controller: passwordController,
-                        obscureText: true,
+                        obscureText: isVisible ? true : false,
                         obscuringCharacter: "*",
                         style: TextStyle(
                           color: Color(0xFFF4EEFF),
                           fontSize: 12,
                         ),
-                        decoration: decorationConstant(hintText: "******"),
+                        decoration: InputDecoration(
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              isVisible = !isVisible;
+                              setState(() {});
+                            },
+                            icon: isVisible
+                                ? Icon(
+                                    Icons.visibility_off,
+                                    color: AppTheme.primary,
+                                  )
+                                : Icon(
+                                    Icons.visibility,
+                                    color: AppTheme.primary,
+                                  ),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                          hint: Text(
+                            "********",
+                            style: TextStyle(
+                              color: Color(0xFFF4EEFF),
+                              fontSize: 12,
+                            ),
+                          ),
+                          fillColor: Color(0xFFA6B1E1),
+                          filled: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
                       ),
+                      SizedBox(height: 12),
                       //confirm password field
                       Row(
                         children: [
@@ -194,7 +228,7 @@ class _DaftarPageState extends State<DaftarPage> {
                               "Confirm password",
                               style: TextStyle(
                                 color: Color(0XFF424874),
-                                fontSize: 20,
+                                fontSize: 16,
                               ),
                             ),
                           ),
@@ -215,19 +249,49 @@ class _DaftarPageState extends State<DaftarPage> {
                           return null;
                         },
                         controller: confirmPasswordController,
-                        obscureText: true,
+                        obscureText: isVisible ? true : false,
                         obscuringCharacter: "*",
                         style: TextStyle(
                           color: Color(0xFFF4EEFF),
                           fontSize: 12,
                         ),
-                        decoration: decorationConstant(hintText: "******"),
+                        decoration: InputDecoration(
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              isVisible = !isVisible;
+                              setState(() {});
+                            },
+                            icon: isVisible
+                                ? Icon(
+                                    Icons.visibility_off,
+                                    color: AppTheme.primary,
+                                  )
+                                : Icon(
+                                    Icons.visibility,
+                                    color: AppTheme.primary,
+                                  ),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                          hint: Text(
+                            "********",
+                            style: TextStyle(
+                              color: Color(0xFFF4EEFF),
+                              fontSize: 12,
+                            ),
+                          ),
+                          fillColor: Color(0xFFA6B1E1),
+                          filled: true,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
                       ),
                       SizedBox(height: 20),
                       //tombol daftar
                       TombolSementara(
                         icon: Icons.app_registration,
-                        width: 140,
+                        width: double.infinity,
                         height: 54,
                         text: "Daftar",
                         onPressed: () {

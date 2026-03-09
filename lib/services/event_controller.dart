@@ -45,6 +45,45 @@ class EventController {
     }
   }
 
+  static Future<List<EventModel>> getEventByUser(int userId) async {
+    final db = await DBHelper.db();
+
+    final data = await db.query(
+      'event',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+
+    return data.map((e) => EventModel.fromMap(e)).toList();
+  }
+
+  static Future<List<EventModel>> getEventByAttendee(int userId) async {
+    final db = await DBHelper.db();
+
+    // ambil semua event_id dari tabel attendee
+    final attendeeData = await db.query(
+      "attendee",
+      where: "user_id = ?",
+      whereArgs: [userId],
+    );
+
+    List<EventModel> events = [];
+
+    for (var a in attendeeData) {
+      final eventData = await db.query(
+        "event",
+        where: "id = ?",
+        whereArgs: [a["event_id"]],
+      );
+
+      if (eventData.isNotEmpty) {
+        events.add(EventModel.fromMap(eventData.first));
+      }
+    }
+
+    return events;
+  }
+
   static Future<void> updateEvent(EventModel event) async {
     final db = await DBHelper.db();
 

@@ -1,3 +1,4 @@
+import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/models/user_model.dart';
@@ -16,10 +17,10 @@ class LogInPage extends StatefulWidget {
 }
 
 class _LogInPageState extends State<LogInPage> {
+  bool isVisible = true;
   GlobalKey<FormState> _formKey = GlobalKey();
   TextEditingController phoneController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
-  String selectedRole = "Attendee";
   Future<void> loginAs(String role) async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -39,7 +40,6 @@ class _LogInPageState extends State<LogInPage> {
     final pref = PreferenceHandler();
     await pref.init();
 
-    await pref.storingIsLogin(true);
     await pref.saveUser(login.id!, login.nama, role);
 
     Navigator.pushAndRemoveUntil(
@@ -65,16 +65,15 @@ class _LogInPageState extends State<LogInPage> {
           EllipseBackground(),
           //logo, dan field serta tombol
           PositioningInside(
-            //logo
             child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 36.0),
+                padding: const EdgeInsets.symmetric(horizontal: 40.0),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     children: [
                       Image.asset(
-                        "lib/assets/images/logo.png",
+                        "assets/images/logo.png",
                         width: 79,
                         height: 79,
                       ),
@@ -92,7 +91,7 @@ class _LogInPageState extends State<LogInPage> {
                               "Phone",
                               style: TextStyle(
                                 color: Color(0XFF424874),
-                                fontSize: 20,
+                                fontSize: 16,
                               ),
                             ),
                           ),
@@ -138,6 +137,7 @@ class _LogInPageState extends State<LogInPage> {
                           ),
                         ),
                       ),
+                      SizedBox(height: 12),
                       //password field
                       Row(
                         children: [
@@ -154,7 +154,7 @@ class _LogInPageState extends State<LogInPage> {
                               "Password",
                               style: TextStyle(
                                 color: Color(0XFF424874),
-                                fontSize: 20,
+                                fontSize: 16,
                               ),
                             ),
                           ),
@@ -188,13 +188,28 @@ class _LogInPageState extends State<LogInPage> {
                           return null;
                         },
                         controller: passwordController,
-                        obscureText: true,
+                        obscureText: isVisible ? true : false,
                         obscuringCharacter: "*",
                         style: TextStyle(
                           color: Color(0xFFF4EEFF),
                           fontSize: 12,
                         ),
                         decoration: InputDecoration(
+                          suffixIcon: IconButton(
+                            onPressed: () {
+                              isVisible = !isVisible;
+                              setState(() {});
+                            },
+                            icon: isVisible
+                                ? Icon(
+                                    Icons.visibility_off,
+                                    color: AppTheme.primary,
+                                  )
+                                : Icon(
+                                    Icons.visibility,
+                                    color: AppTheme.primary,
+                                  ),
+                          ),
                           contentPadding: EdgeInsets.symmetric(horizontal: 8),
                           hint: Text(
                             "********",
@@ -211,13 +226,15 @@ class _LogInPageState extends State<LogInPage> {
                           ),
                         ),
                       ),
+                      SizedBox(height: 24),
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 16.0),
                         child: Text(
                           "Login sebagai",
-                          style: TextStyle(fontSize: 20),
+                          style: TextStyle(fontSize: 16),
                         ),
                       ),
+                      SizedBox(height: 24),
                       //tombol login as committee button
                       Row(
                         children: [

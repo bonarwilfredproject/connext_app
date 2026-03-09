@@ -22,7 +22,8 @@ class DBHelper {
           title TEXT,
           location TEXT,
           total_peserta INTEGER,
-          created_by INTEGER
+          created_by TEXT,
+          user_id INTEGER
         )
         ''');
         await db.execute('''
@@ -61,7 +62,8 @@ class DBHelper {
           title TEXT,
           location TEXT,
           total_peserta INTEGER,
-          created_by TEXT
+          created_by TEXT,
+          user_id INTEGER
         )
       ''');
         }

@@ -1,5 +1,6 @@
-import 'package:connext_app/pages/daftar_page/daftar_page.dart';
-import 'package:connext_app/pages/log_in_page/log_in_page.dart';
+import 'package:connext_app/constants/style_text.dart';
+import 'package:connext_app/pages/auth/daftar_page.dart';
+import 'package:connext_app/pages/auth/log_in_page.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/positioning_inside.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
@@ -16,95 +17,77 @@ class _LandingPageState extends State<LandingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: Color(0xFFF4EEFF)),
+      backgroundColor: const Color(0xFFF4EEFF),
       body: Stack(
         children: [
           EllipseBackground(),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset("assets/images/logo.png", width: 79, height: 79),
 
-          PositioningInside(
-            child: Column(
-              children: [
-                Image.asset(
-                  "lib/assets/images/logo.png",
-                  width: 79,
-                  height: 79,
-                ),
-                SizedBox(height: 36),
-                Text(
-                  "Selamat Datang!",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 36),
+              SizedBox(height: 24),
 
-                //tombol masuk
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                  child: TombolSementara(
-                    icon: Icons.login,
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => LogInPage()),
-                      );
-                    },
-                    width: 240,
-                    height: 56,
-                    text: "Masuk",
-                  ),
-                ),
-                SizedBox(height: 12),
+              Text(
+                "Selamat Datang!",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
 
-                //atau divider
-                Row(
+              SizedBox(height: 32),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: TombolSementara(
+                  icon: Icons.login,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => LogInPage()),
+                    );
+                  },
+                  width: 240,
+                  height: 56,
+                  text: "Masuk",
+                ),
+              ),
+
+              SizedBox(height: 16),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                child: Row(
                   children: [
-                    Expanded(
-                      child: Divider(
-                        indent: 100,
-                        endIndent: 12,
-                        color: Color(0xFF424874),
-                      ),
+                    Expanded(child: Divider(color: Color(0xFF424874))),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Text("atau", style: styleText()),
                     ),
-                    Text(
-                      "atau",
-                      style: TextStyle(
-                        fontSize: 20,
-                        color: Color(0xFF424874),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Expanded(
-                      child: Divider(
-                        indent: 12,
-                        endIndent: 100,
-                        color: Color(0xFF424874),
-                      ),
-                    ),
+                    Expanded(child: Divider(color: Color(0xFF424874))),
                   ],
                 ),
-                SizedBox(height: 12),
+              ),
 
-                //tombol daftar
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                  child: TombolSementara(
-                    icon: Icons.app_registration,
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => DaftarPage()),
-                      );
-                    },
-                    width: 240,
-                    height: 56,
-                    text: "Daftar",
-                  ),
+              SizedBox(height: 16),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: TombolSementara(
+                  icon: Icons.app_registration,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => DaftarPage()),
+                    );
+                  },
+                  width: 240,
+                  height: 56,
+                  text: "Daftar",
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
-      backgroundColor: const Color(0xFFF4EEFF),
     );
   }
 }

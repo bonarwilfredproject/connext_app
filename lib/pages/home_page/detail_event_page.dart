@@ -7,7 +7,7 @@ import 'package:connext_app/pages/scanner/scan_peserta_page.dart';
 import 'package:flutter/material.dart';
 import 'package:connext_app/services/event_controller.dart';
 import 'package:connext_app/models/event_model.dart';
-import 'package:connext_app/constant/style_text.dart';
+import 'package:connext_app/constants/style_text.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -66,6 +66,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
             ElevatedButton(
               onPressed: () async {
                 final updatedEvent = EventModel(
+                  userId: event!.userId,
                   createdBy: event!.createdBy,
                   id: event!.id,
                   title: titleController.text,

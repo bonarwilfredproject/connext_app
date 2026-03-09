@@ -1,7 +1,7 @@
-import 'package:connext_app/pages/daftar_page/daftar_page.dart';
+import 'package:connext_app/pages/auth/daftar_page.dart';
 import 'package:connext_app/pages/home_page/home_page.dart';
 import 'package:connext_app/pages/landing_page/landing_page.dart';
-import 'package:connext_app/pages/log_in_page/log_in_page.dart';
+import 'package:connext_app/pages/auth/log_in_page.dart';
 import 'package:connext_app/pages/splash_screen.dart';
 import 'package:flutter/material.dart';
 

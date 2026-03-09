@@ -1,6 +1,7 @@
 import 'dart:io';
 
-import 'package:connext_app/constant/style_text.dart';
+import 'package:connext_app/constants/app_theme.dart';
+import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/pages/landing_page/landing_page.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/services/user_controller.dart';
@@ -22,11 +23,21 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   late Future<UserModel?> userFuture;
   final ImagePicker picker = ImagePicker();
-
+  String? role;
   @override
   void initState() {
     super.initState();
     userFuture = UserController.getUserById(widget.userId);
+    loadRole();
+  }
+
+  Future<void> loadRole() async {
+    final pref = PreferenceHandler();
+    await pref.init();
+
+    role = pref.getRole();
+
+    setState(() {});
   }
 
   Future<void> pickImage() async {
@@ -92,7 +103,14 @@ class _ProfilePageState extends State<ProfilePage> {
                       Text(user.phone, style: styleText()),
 
                       const SizedBox(height: 10),
-                      Text(widget.role, style: styleText()),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.badge, color: AppTheme.secondary),
+                          SizedBox(width: 8),
+                          Text(role ?? "Unknown", style: styleText()),
+                        ],
+                      ),
                       const SizedBox(height: 40),
                       TombolSementara(
                         icon: Icons.logout,

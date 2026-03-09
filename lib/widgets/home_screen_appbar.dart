@@ -1,4 +1,4 @@
-import 'package:connext_app/constant/style_text.dart';
+import 'package:connext_app/constants/style_text.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreenAppbar extends StatelessWidget implements PreferredSizeWidget {

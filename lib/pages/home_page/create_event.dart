@@ -1,9 +1,10 @@
 import 'package:connext_app/services/event_controller.dart';
 import 'package:connext_app/models/event_model.dart';
-import 'package:connext_app/constant/decoration_constant.dart';
+import 'package:connext_app/constants/decoration_constant.dart';
+import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/positioning_inside.dart';
-import 'package:connext_app/constant/style_text.dart';
+import 'package:connext_app/constants/style_text.dart';
 import 'package:flutter/material.dart';
 
 class CreateEvent extends StatefulWidget {
@@ -17,6 +18,22 @@ class _CreateEventState extends State<CreateEvent> {
   GlobalKey<FormState> _formKey = GlobalKey();
   TextEditingController namaEventController = TextEditingController();
   TextEditingController lokasiController = TextEditingController();
+  int? userId;
+  String? namaUser;
+
+  @override
+  void initState() {
+    super.initState();
+    loadUser();
+  }
+
+  Future<void> loadUser() async {
+    final pref = PreferenceHandler();
+    await pref.init();
+    userId = pref.getUserId();
+    namaUser = pref.getNamaUser();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -73,11 +90,13 @@ class _CreateEventState extends State<CreateEvent> {
                           if (_formKey.currentState!.validate()) {
                             await EventController.insertEvent(
                               EventModel(
+                                userId: userId!,
                                 title: namaEventController.text.trim(),
                                 location: lokasiController.text.trim(),
                                 totalPeserta: 0,
                                 createdBy:
-                                    "Admin", // sementara, nanti bisa pakai nama user login
+                                    namaUser ??
+                                    "Unknown", // sementara, nanti bisa pakai nama user login
                               ),
                             );
 
