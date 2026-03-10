@@ -31,7 +31,7 @@ class UserModel {
       nama: map['nama'] as String,
       phone: map['phone'] as String,
       password: map['password'] as String,
-      profileImage: map['profileImage'] != null
+      profileImage: map['profile_image'] != null
           ? map['profile_image'] as String
           : null,
     );

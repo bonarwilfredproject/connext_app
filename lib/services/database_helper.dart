@@ -49,6 +49,8 @@ class DBHelper {
           user_id INTEGER,
           event_id INTEGER,
           waktu TEXT,
+          nama_user TEXT,
+          phone TEXT,
           UNIQUE(user_id,event_id)
         )
         ''');

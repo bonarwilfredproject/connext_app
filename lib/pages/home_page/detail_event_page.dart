@@ -94,15 +94,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
     List<Map<String, String>> peserta = [];
 
     for (var c in checkins) {
-      final user = await UserController.getUserById(c.userId);
-
-      if (user != null) {
-        peserta.add({
-          "namaUser": user.nama,
-          "phone": user.phone,
-          "waktu": c.waktu,
-        });
-      }
+      peserta.add({"namaUser": c.namaUser, "phone": c.phone, "waktu": c.waktu});
     }
 
     setState(() {
@@ -111,7 +103,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
   }
 
   String formatTanggal(String waktu) {
-    DateTime date = DateTime.parse(waktu);
+    DateTime date = DateTime.tryParse(waktu) ?? DateTime.now();
 
     return DateFormat("EEEE, dd MMM yyyy, HH.mm", "id").format(date);
   }
@@ -191,7 +183,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
 
                     if (result != null) {
                       await loadEvent(); // update jumlah peserta
-                      await loadPeserta(); // reload list peserta dari database
+                      await loadPeserta();
                     }
                   },
                   text: "Scan Peserta",
@@ -209,13 +201,13 @@ class _DetailEventPageState extends State<DetailEventPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("Peserta yang sudah discan: ", style: styleText()),
+                        Text("Peserta yang hadir: ", style: styleText()),
                         SizedBox(height: 10),
                         Expanded(
                           child: scannedPeserta.isEmpty
                               ? Center(
                                   child: Text(
-                                    "Belum ada peserta discan",
+                                    "Belum ada yang hadir",
                                     style: styleText(),
                                   ),
                                 )
@@ -233,6 +225,8 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                         borderRadius: BorderRadius.circular(16),
                                       ),
                                       child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.start,
                                         children: [
                                           Text(
                                             p['namaUser'] ?? "",

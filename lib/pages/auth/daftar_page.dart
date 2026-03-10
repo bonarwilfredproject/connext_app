@@ -17,7 +17,7 @@ class DaftarPage extends StatefulWidget {
 }
 
 class _DaftarPageState extends State<DaftarPage> {
-  bool isVisible = false;
+  bool isVisible = true;
   final GlobalKey<FormState> _formKey = GlobalKey();
   TextEditingController namaController = TextEditingController();
   TextEditingController phoneController = TextEditingController();

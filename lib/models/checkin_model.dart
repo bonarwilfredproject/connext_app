@@ -6,11 +6,15 @@ class CheckinModel {
   final int userId;
   final int eventId;
   final String waktu;
+  final String namaUser;
+  final String phone;
   CheckinModel({
     this.id,
     required this.userId,
     required this.eventId,
     required this.waktu,
+    required this.namaUser,
+    required this.phone,
   });
 
   Map<String, dynamic> toMap() {
@@ -18,6 +22,8 @@ class CheckinModel {
       'id': id,
       'user_id': userId,
       'event_id': eventId,
+      'nama_user': namaUser,
+      'phone': phone,
       'waktu': waktu,
     };
   }
@@ -27,6 +33,8 @@ class CheckinModel {
       id: map['id'] != null ? map['id'] as int : null,
       userId: map['user_id'] as int,
       eventId: map['event_id'] as int,
+      namaUser: map['nama_user'] as String,
+      phone: map['phone'] as String,
       waktu: map['waktu'] as String,
     );
   }
