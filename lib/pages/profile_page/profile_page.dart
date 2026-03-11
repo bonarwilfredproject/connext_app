@@ -55,9 +55,11 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.primary,
       appBar: AppBar(
         title: Text("Profile", style: styleText()),
         centerTitle: true,
+        backgroundColor: AppTheme.primary,
       ),
       body: FutureBuilder<UserModel?>(
         future: userFuture,

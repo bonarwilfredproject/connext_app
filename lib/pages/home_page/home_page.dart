@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
 import 'package:connext_app/pages/profile_page/profile_page.dart';
 import 'package:connext_app/services/check_in_controller.dart';
@@ -106,7 +107,7 @@ class _HomePageState extends State<HomePage> {
               )
             : const Icon(Icons.person),
       ),
-      backgroundColor: Color(0xFFF4EEFF),
+      backgroundColor: AppTheme.primary,
       body: Stack(
         children: [
           EllipseBackground(),
@@ -232,7 +233,7 @@ class _HomePageState extends State<HomePage> {
                                       borderRadius: BorderRadius.circular(12),
                                       child: Container(
                                         margin: EdgeInsets.only(bottom: 16),
-                                        padding: EdgeInsets.all(20),
+                                        padding: EdgeInsets.all(12),
                                         decoration: BoxDecoration(
                                           color: Color(0xffF4EEFF),
                                           borderRadius: BorderRadius.circular(

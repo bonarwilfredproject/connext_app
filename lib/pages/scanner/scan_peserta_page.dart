@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/services/attendee_controller.dart';
 import 'package:connext_app/services/event_controller.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
@@ -32,7 +33,11 @@ class _ScanPesertaPageState extends State<ScanPesertaPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Scan Peserta", style: styleText())),
+      backgroundColor: AppTheme.primary,
+      appBar: AppBar(
+        title: Text("Scan Peserta", style: styleText()),
+        backgroundColor: AppTheme.primary,
+      ),
       body: Stack(
         children: [
           EllipseBackground(),

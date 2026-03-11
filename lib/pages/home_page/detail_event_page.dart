@@ -1,3 +1,4 @@
+import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
@@ -121,7 +122,9 @@ class _DetailEventPageState extends State<DetailEventPage> {
     }
 
     return Scaffold(
+      backgroundColor: AppTheme.primary,
       appBar: AppBar(
+        backgroundColor: AppTheme.primary,
         title: Text(event!.title, style: styleText()),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
