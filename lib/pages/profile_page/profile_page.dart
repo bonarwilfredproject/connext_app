@@ -122,17 +122,21 @@ class _ProfilePageState extends State<ProfilePage> {
                           final confirm = await showDialog(
                             context: context,
                             builder: (_) => AlertDialog(
-                              title: Text("Logout"),
-                              content: Text("Apakah kamu yakin ingin logout?"),
+                              backgroundColor: AppTheme.third,
+                              title: Text("Logout", style: styleText()),
+                              content: Text(
+                                "Apakah kamu yakin ingin logout?",
+                                style: styleText(),
+                              ),
                               actions: [
                                 TextButton(
                                   onPressed: () =>
                                       Navigator.pop(context, false),
-                                  child: Text("Batal"),
+                                  child: Text("Batal", style: styleText()),
                                 ),
                                 TextButton(
                                   onPressed: () => Navigator.pop(context, true),
-                                  child: Text("Ya"),
+                                  child: Text("Ya", style: styleText()),
                                 ),
                               ],
                             ),
