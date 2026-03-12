@@ -41,4 +41,14 @@ class CheckinController {
 
     return result.map((e) => CheckinModel.fromMap(e)).toList();
   }
+
+  static Future<void> deleteCheckin(int userId, int eventId) async {
+    final db = await DBHelper.db();
+
+    await db.delete(
+      'checkin',
+      where: 'user_id = ? AND event_id = ?',
+      whereArgs: [userId, eventId],
+    );
+  }
 }

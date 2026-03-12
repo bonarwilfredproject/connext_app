@@ -20,6 +20,7 @@ import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/home_screen_appbar.dart';
 import 'package:connext_app/widgets/positioning_inside.dart';
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'dart:convert';
 
@@ -142,11 +143,16 @@ class _HomePageState extends State<HomePage> {
                       child: isLoading
                           ? Center(child: CircularProgressIndicator())
                           : events.isEmpty
-                          ? Center(
-                              child: Text(
-                                "Belum ada event",
-                                style: styleText(),
-                              ),
+                          ? Column(
+                              children: [
+                                Lottie.asset(
+                                  "assets/lottie/no_result_calendar.json",
+                                ),
+
+                                SizedBox(height: 12),
+
+                                Text("Belum ada event", style: styleText()),
+                              ],
                             )
                           : ListView.separated(
                               separatorBuilder: (context, index) =>
@@ -179,20 +185,31 @@ class _HomePageState extends State<HomePage> {
                                     return await showDialog(
                                       context: context,
                                       builder: (_) => AlertDialog(
-                                        title: const Text("Hapus Event"),
-                                        content: const Text(
+                                        backgroundColor: AppTheme.third,
+                                        title: Text(
+                                          "Hapus Event",
+                                          style: styleText(),
+                                        ),
+                                        content: Text(
                                           "Yakin ingin menghapus event ini?",
+                                          style: styleText(),
                                         ),
                                         actions: [
                                           TextButton(
                                             onPressed: () =>
                                                 Navigator.pop(context, false),
-                                            child: const Text("Batal"),
+                                            child: Text(
+                                              "Batal",
+                                              style: styleText(),
+                                            ),
                                           ),
                                           TextButton(
                                             onPressed: () =>
                                                 Navigator.pop(context, true),
-                                            child: const Text("Hapus"),
+                                            child: Text(
+                                              "Hapus",
+                                              style: styleText(),
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -230,12 +247,13 @@ class _HomePageState extends State<HomePage> {
                                       }
                                     },
                                     child: Material(
+                                      color: AppTheme.third,
                                       borderRadius: BorderRadius.circular(12),
                                       child: Container(
                                         margin: EdgeInsets.only(bottom: 16),
                                         padding: EdgeInsets.all(12),
                                         decoration: BoxDecoration(
-                                          color: Color(0xffF4EEFF),
+                                          color: AppTheme.primary,
                                           borderRadius: BorderRadius.circular(
                                             12,
                                           ),
@@ -337,8 +355,7 @@ class _HomePageState extends State<HomePage> {
                             width: 164,
                             icon: Icons.event,
                           ),
-                          SizedBox(height: 20),
-                          Text("QR Code Anda", style: styleText()),
+
                           SizedBox(height: 20),
                           Center(
                             child: currentUser == null
@@ -353,6 +370,12 @@ class _HomePageState extends State<HomePage> {
                                     size: 200,
                                     backgroundColor: Colors.white,
                                   ),
+                          ),
+                          SizedBox(height: 20),
+                          Text(
+                            textAlign: TextAlign.center,
+                            "Berikan QR ini ke panitia saat datang ke acara",
+                            style: styleText(),
                           ),
                         ],
                       ),

@@ -45,6 +45,29 @@ class EventController {
     }
   }
 
+  static Future<void> decrementPeserta(int eventId) async {
+    final db = await DBHelper.db();
+
+    // ambil data event dulu
+    final result = await db.query(
+      "event",
+      where: "id = ?",
+      whereArgs: [eventId],
+    );
+
+    if (result.isNotEmpty) {
+      int total = result.first["total_peserta"] as int;
+
+      // tambah 1 peserta
+      await db.update(
+        "event",
+        {"total_peserta": total - 1},
+        where: "id = ?",
+        whereArgs: [eventId],
+      );
+    }
+  }
+
   static Future<List<EventModel>> getEventByUser(int userId) async {
     final db = await DBHelper.db();
 

@@ -80,7 +80,7 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               EllipseBackground(),
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 40),
                 child: Center(
                   child: Column(
                     children: [

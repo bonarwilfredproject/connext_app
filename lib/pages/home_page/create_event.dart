@@ -1,3 +1,4 @@
+import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/services/event_controller.dart';
 import 'package:connext_app/models/event_model.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
@@ -55,6 +56,7 @@ class _CreateEventState extends State<CreateEvent> {
                   children: [
                     Text("Nama Event", style: styleText()),
                     TextFormField(
+                      style: TextStyle(color: AppTheme.primary, fontSize: 12),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return "Nama event tidak boleh kosong";
@@ -69,6 +71,7 @@ class _CreateEventState extends State<CreateEvent> {
                     SizedBox(height: 20),
                     Text("Lokasi", style: styleText()),
                     TextFormField(
+                      style: TextStyle(color: AppTheme.primary, fontSize: 12),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return "Lokasi tidak boleh kosong";

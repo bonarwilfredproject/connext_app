@@ -33,7 +33,7 @@ class TombolSementara extends StatelessWidget {
         children: [
           Icon(icon),
           SizedBox(width: 8),
-          Text(text, style: TextStyle(fontSize: 20, color: Color(0xFFF4EEFF))),
+          Text(text, style: TextStyle(fontSize: 16, color: Color(0xFFF4EEFF))),
         ],
       ),
     );

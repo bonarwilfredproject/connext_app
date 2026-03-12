@@ -1,4 +1,5 @@
 import 'package:connext_app/constants/app_theme.dart';
+import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
@@ -11,6 +12,7 @@ import 'package:connext_app/models/event_model.dart';
 import 'package:connext_app/constants/style_text.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:lottie/lottie.dart';
 
 class DetailEventPage extends StatefulWidget {
   final int eventId;
@@ -42,18 +44,21 @@ class _DetailEventPageState extends State<DetailEventPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text("Edit Event"),
+          backgroundColor: AppTheme.third,
+          title: Text("Edit Event", style: styleText()),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
+                style: TextStyle(color: AppTheme.primary, fontSize: 12),
                 controller: titleController,
-                decoration: InputDecoration(labelText: "Nama Event"),
+                decoration: decorationConstant(hintText: "Nama Event"),
               ),
               SizedBox(height: 10),
               TextField(
+                style: TextStyle(color: AppTheme.primary, fontSize: 12),
                 controller: locationController,
-                decoration: InputDecoration(labelText: "Lokasi Event"),
+                decoration: decorationConstant(hintText: "Lokasi"),
               ),
             ],
           ),
@@ -62,7 +67,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
               onPressed: () {
                 Navigator.pop(context);
               },
-              child: Text("Batal"),
+              child: Text("Batal", style: styleText()),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -81,7 +86,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
 
                 await loadEvent(); // refresh data
               },
-              child: Text("Simpan"),
+              child: Text("Simpan", style: styleText()),
             ),
           ],
         );
@@ -95,7 +100,12 @@ class _DetailEventPageState extends State<DetailEventPage> {
     List<Map<String, String>> peserta = [];
 
     for (var c in checkins) {
-      peserta.add({"namaUser": c.namaUser, "phone": c.phone, "waktu": c.waktu});
+      peserta.add({
+        "userId": c.userId.toString(),
+        "namaUser": c.namaUser,
+        "phone": c.phone,
+        "waktu": c.waktu,
+      });
     }
 
     setState(() {
@@ -209,61 +219,161 @@ class _DetailEventPageState extends State<DetailEventPage> {
                         Expanded(
                           child: scannedPeserta.isEmpty
                               ? Center(
-                                  child: Text(
-                                    "Belum ada yang hadir",
-                                    style: styleText(),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Lottie.asset(
+                                        "assets/lottie/yawn_emoji_animation.json",
+                                        height: 200,
+                                      ),
+
+                                      SizedBox(height: 12),
+
+                                      Text(
+                                        "Belum ada peserta yang hadir",
+                                        style: styleText(),
+                                      ),
+                                    ],
                                   ),
                                 )
                               : ListView.builder(
                                   itemCount: scannedPeserta.length,
                                   itemBuilder: (context, index) {
                                     final p = scannedPeserta[index];
-                                    return Container(
-                                      margin: EdgeInsets.only(bottom: 12),
-                                      padding: EdgeInsets.symmetric(
-                                        vertical: 16,
+                                    return Dismissible(
+                                      key: Key(p['userId']! + index.toString()),
+                                      direction: DismissDirection.endToStart,
+
+                                      background: Container(
+                                        margin: const EdgeInsets.only(
+                                          bottom: 12,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 20,
+                                        ),
+                                        alignment: Alignment.centerRight,
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.delete,
+                                          color: Colors.white,
+                                          size: 28,
+                                        ),
                                       ),
-                                      decoration: BoxDecoration(
-                                        color: Color(0xffE9E3F4),
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            p['namaUser'] ?? "",
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                              fontStyle: FontStyle.italic,
-                                              color: Color(0xff3F3D6B),
+
+                                      confirmDismiss: (direction) async {
+                                        return await showDialog(
+                                          context: context,
+                                          builder: (_) => AlertDialog(
+                                            backgroundColor: AppTheme.third,
+                                            title: Text(
+                                              "Hapus Peserta",
+                                              style: styleText(),
+                                            ),
+                                            content: Text(
+                                              "Yakin ingin menghapus peserta ini?",
+                                              style: styleText(),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  false,
+                                                ),
+                                                child: Text(
+                                                  "Batal",
+                                                  style: styleText(),
+                                                ),
+                                              ),
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  true,
+                                                ),
+                                                child: Text(
+                                                  "Hapus",
+                                                  style: styleText(),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+
+                                      onDismissed: (direction) async {
+                                        await CheckinController.deleteCheckin(
+                                          int.parse(p['userId']!),
+                                          widget.eventId,
+                                        );
+
+                                        setState(() {
+                                          scannedPeserta.removeAt(index);
+                                        });
+                                        await EventController.decrementPeserta(
+                                          widget.eventId,
+                                        );
+                                        await loadEvent();
+
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              "Peserta berhasil dihapus",
                                             ),
                                           ),
-                                          SizedBox(height: 4),
+                                        );
+                                      },
 
-                                          Text(
-                                            p['phone'] ?? "",
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.bold,
-                                              fontStyle: FontStyle.italic,
-                                              color: Color(0xff3F3D6B),
+                                      child: SizedBox(
+                                        width: double.infinity,
+                                        child: Material(
+                                          color: AppTheme.third,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          child: Container(
+                                            margin: EdgeInsets.only(bottom: 12),
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: 16,
+                                              horizontal: 16,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.primary,
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              children: [
+                                                Text(
+                                                  p['namaUser'] ?? "",
+                                                  style: styleText(),
+                                                ),
+                                                SizedBox(height: 4),
+
+                                                Text(
+                                                  p['phone'] ?? "",
+                                                  style: styleText(),
+                                                ),
+
+                                                SizedBox(height: 4),
+
+                                                Text(
+                                                  formatTanggal(
+                                                    p['waktu'] ?? "",
+                                                  ),
+                                                  style: styleText(),
+                                                ),
+                                              ],
                                             ),
                                           ),
-
-                                          SizedBox(height: 4),
-
-                                          Text(
-                                            formatTanggal(p['waktu'] ?? ""),
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              fontStyle: FontStyle.italic,
-                                              color: Color(0xff3F3D6B),
-                                            ),
-                                          ),
-                                        ],
+                                        ),
                                       ),
                                     );
                                   },

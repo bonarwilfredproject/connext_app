@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:animate_do/animate_do.dart';
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/services/attendee_controller.dart';
 import 'package:connext_app/services/event_controller.dart';
@@ -70,6 +71,72 @@ class _ScanPesertaPageState extends State<ScanPesertaPage> {
     );
   }
 
+  void showErrorDialog(String pesan) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ShakeX(child: Icon(Icons.cancel, color: Colors.red, size: 80)),
+
+            SizedBox(height: 16),
+
+            Text(
+              "Scan Gagal",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+
+            SizedBox(height: 8),
+
+            Text(
+              pesan,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.stop();
+    Future.delayed(Duration(seconds: 1), () {
+      Navigator.pop(context, true);
+    });
+  }
+
+  void showSuccessDialog(String nama) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Tada(
+              child: Icon(Icons.check_circle, color: Colors.green, size: 80),
+            ),
+
+            SizedBox(height: 16),
+
+            Text(
+              "Check-in Berhasil!",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+
+            SizedBox(height: 8),
+
+            Text(nama, style: TextStyle(fontSize: 16)),
+          ],
+        ),
+      ),
+    );
+    controller.stop();
+    Future.delayed(Duration(seconds: 1), () {
+      Navigator.pop(context, true);
+    });
+  }
+
   Future<void> _handleQrScan(String code) async {
     if (isProcessing) return;
 
@@ -77,6 +144,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage> {
 
     try {
       Map<String, dynamic> data = jsonDecode(code);
+
       int userId = data['userId'];
       String namaUser = data['namaUser'];
       String phone = data['phone'];
@@ -86,15 +154,13 @@ class _ScanPesertaPageState extends State<ScanPesertaPage> {
       bool already = await CheckinController.isAlreadyCheckin(userId, eventId);
 
       if (already) {
+        showErrorDialog("Peserta sudah melakukan check-in");
+
         if (await Vibration.hasVibrator()) {
           Vibration.vibrate();
         }
 
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("$namaUser sudah check-in")));
-
-        await Future.delayed(Duration(milliseconds: 500));
+        await Future.delayed(Duration(seconds: 1));
         controller.stop();
         Navigator.pop(context, true); // kembali ke Detail Event
         return;
@@ -116,24 +182,14 @@ class _ScanPesertaPageState extends State<ScanPesertaPage> {
       if (await Vibration.hasVibrator()) {
         Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Peserta $namaUser berhasil check-in")),
-      );
-
-      await Future.delayed(Duration(milliseconds: 800));
+      showSuccessDialog(data["namaUser"]);
+      await Future.delayed(Duration(seconds: 1));
       controller.stop();
-      Navigator.pop(context, {
-        "namaUser": namaUser,
-        "phone": phone,
-        "waktu": waktuScan,
-      });
+      Navigator.pop(context, true);
     } catch (e) {
       isProcessing = false;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("QR Code tidak valid")));
+      controller.stop();
+      showErrorDialog("QR Code tidak valid");
     }
   }
 }
