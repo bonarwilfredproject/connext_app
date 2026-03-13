@@ -57,6 +57,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       backgroundColor: AppTheme.primary,
       appBar: AppBar(
+        elevation: 0,
         title: Text("Profile", style: styleText()),
         centerTitle: true,
         backgroundColor: AppTheme.primary,
@@ -84,36 +85,138 @@ class _ProfilePageState extends State<ProfilePage> {
                 child: Center(
                   child: Column(
                     children: [
+                      /// FOTO PROFILE
                       GestureDetector(
                         onTap: pickImage,
-                        child: user.profileImage == null
-                            ? Icon(Icons.account_circle, size: 100)
-                            : CircleAvatar(
-                                radius: 50,
-                                backgroundImage: FileImage(
-                                  File(user.profileImage!),
-                                ),
+                        child: Stack(
+                          alignment: Alignment.bottomRight,
+                          children: [
+                            CircleAvatar(
+                              radius: 50,
+                              backgroundColor: AppTheme.third,
+                              backgroundImage: user.profileImage != null
+                                  ? FileImage(File(user.profileImage!))
+                                  : null,
+                              child: user.profileImage == null
+                                  ? Icon(Icons.person, size: 50)
+                                  : null,
+                            ),
+
+                            Container(
+                              padding: EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppTheme.secondary,
+                                shape: BoxShape.circle,
                               ),
+                              child: Icon(
+                                Icons.edit,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
 
                       const SizedBox(height: 20),
 
-                      Text(user.nama, style: styleText()),
-
-                      const SizedBox(height: 10),
-
-                      Text(user.phone, style: styleText()),
-
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.badge, color: AppTheme.secondary),
-                          SizedBox(width: 8),
-                          Text(role ?? "Unknown", style: styleText()),
-                        ],
+                      Text(
+                        user.nama,
+                        style: styleText().copyWith(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
+
+                      const SizedBox(height: 24),
+
+                      /// CARD IDENTITAS
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+
+                        decoration: BoxDecoration(
+                          color: AppTheme.third,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 10,
+                              offset: Offset(0, 5),
+                            ),
+                          ],
+                        ),
+
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            /// NAMA
+                            Row(
+                              children: [
+                                Icon(Icons.person, color: AppTheme.secondary),
+                                SizedBox(width: 10),
+
+                                Text(
+                                  "Nama",
+                                  style: styleText().copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+
+                                Spacer(),
+
+                                Text(user.nama, style: styleText()),
+                              ],
+                            ),
+
+                            Divider(height: 20),
+
+                            /// PHONE
+                            Row(
+                              children: [
+                                Icon(Icons.phone, color: AppTheme.secondary),
+                                SizedBox(width: 10),
+
+                                Text(
+                                  "No HP",
+                                  style: styleText().copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+
+                                Spacer(),
+
+                                Text(user.phone, style: styleText()),
+                              ],
+                            ),
+
+                            Divider(height: 20),
+
+                            /// ROLE
+                            Row(
+                              children: [
+                                Icon(Icons.badge, color: AppTheme.secondary),
+                                SizedBox(width: 10),
+
+                                Text(
+                                  "Role",
+                                  style: styleText().copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+
+                                Spacer(),
+
+                                Text(role ?? "Unknown", style: styleText()),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
                       const SizedBox(height: 40),
+
+                      /// LOGOUT BUTTON
                       TombolSementara(
                         icon: Icons.logout,
                         height: 54,

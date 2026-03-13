@@ -1,4 +1,5 @@
 import 'package:connext_app/constants/app_theme.dart';
+import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/models/user_model.dart';
@@ -67,206 +68,197 @@ class _LogInPageState extends State<LogInPage> {
           PositioningInside(
             child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      Image.asset(
-                        "assets/images/logo.png",
-                        width: 79,
-                        height: 79,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 40.0,
+                  vertical: 20,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 20,
+                        offset: Offset(0, 10),
                       ),
-                      SizedBox(height: 32),
-                      //phone field
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Icon(Icons.phone, color: Color(0XFF424874)),
-                          ),
-
-                          Expanded(
-                            flex: 8,
-                            child: Text(
-                              "Phone",
-                              style: TextStyle(
-                                color: Color(0XFF424874),
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      TextFormField(
-                        validator: (value) {
-                          final phone = (value ?? '').trim();
-
-                          if (phone.isEmpty) {
-                            return "Nomor telepon tidak boleh kosong";
-                          }
-
-                          if (!RegExp(r'^\d+$').hasMatch(phone)) {
-                            return "Nomor telepon hanya boleh angka";
-                          }
-
-                          if (phone.length < 9) {
-                            return "Minimal 9 digit";
-                          }
-
-                          return null;
-                        },
-                        controller: phoneController,
-                        style: TextStyle(
-                          color: Color(0xFFF4EEFF),
-                          fontSize: 12,
-                        ),
-                        decoration: InputDecoration(
-                          contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                          hint: Text(
-                            "08123456789",
-                            style: TextStyle(
-                              color: Color(0xFFF4EEFF),
-                              fontSize: 12,
-                            ),
-                          ),
-                          fillColor: Color(0xFFA6B1E1),
-                          filled: true,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      //password field
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Icon(
-                              Icons.password,
-                              color: Color(0XFF424874),
-                            ),
-                          ),
-
-                          Expanded(
-                            flex: 8,
-                            child: Text(
-                              "Password",
-                              style: TextStyle(
-                                color: Color(0XFF424874),
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      TextFormField(
-                        validator: (value) {
-                          final password = value ?? '';
-                          final hasUppercase = RegExp(
-                            r'[A-Z]',
-                          ).hasMatch(password);
-                          final hasLowercase = RegExp(
-                            r'[a-z]',
-                          ).hasMatch(password);
-                          final hasNumber = RegExp(r'\d').hasMatch(password);
-                          final hasSpecialChar = RegExp(
-                            r'[!@#$%^&*(),.?":{}|<>_\-\\/\[\];\`~+=]',
-                          ).hasMatch(password);
-                          if (password.isEmpty) {
-                            return "Password tidak boleh kosong";
-                          }
-
-                          if (password.length < 8 ||
-                              !hasUppercase ||
-                              !hasLowercase ||
-                              !hasNumber ||
-                              !hasSpecialChar) {
-                            return "Password harus terdiri dari minimal 8 karakter, memiliki huruf besar, huruf kecil, nomor, dan special character";
-                          }
-
-                          return null;
-                        },
-                        controller: passwordController,
-                        obscureText: isVisible ? true : false,
-                        obscuringCharacter: "*",
-                        style: TextStyle(
-                          color: Color(0xFFF4EEFF),
-                          fontSize: 12,
-                        ),
-                        decoration: InputDecoration(
-                          suffixIcon: IconButton(
-                            onPressed: () {
-                              isVisible = !isVisible;
-                              setState(() {});
-                            },
-                            icon: isVisible
-                                ? Icon(
-                                    Icons.visibility_off,
-                                    color: AppTheme.primary,
-                                  )
-                                : Icon(
-                                    Icons.visibility,
-                                    color: AppTheme.primary,
-                                  ),
-                          ),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                          hint: Text(
-                            "********",
-                            style: TextStyle(
-                              color: Color(0xFFF4EEFF),
-                              fontSize: 12,
-                            ),
-                          ),
-                          fillColor: Color(0xFFA6B1E1),
-                          filled: true,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 24),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16.0),
-                        child: Text(
-                          "Login sebagai",
-                          style: TextStyle(fontSize: 16),
-                        ),
-                      ),
-                      SizedBox(height: 24),
-                      //tombol login as committee button
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TombolSementara(
-                              width: double.infinity,
-                              height: 54,
-                              onPressed: () async {
-                                await loginAs("Committee");
-                              },
-                              icon: Icons.group,
-                              text: "Committee",
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          //login as attendee button
-                          Expanded(
-                            child: TombolSementara(
-                              width: double.infinity,
-                              height: 54,
-                              onPressed: () async {
-                                await loginAs("Attendee");
-                              },
-                              icon: Icons.chair_alt,
-                              text: "Attendee",
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      //tombol daftar
                     ],
+                  ),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        Center(
+                          child: Image.asset(
+                            "assets/images/logo.png",
+                            width: 80,
+                            height: 80,
+                          ),
+                        ),
+                        SizedBox(height: 24),
+                        //phone field
+                        Row(
+                          children: [
+                            Icon(Icons.phone, color: Color(0XFF424874)),
+                            const SizedBox(width: 8),
+                            Text("Phone", style: styleText()),
+                          ],
+                        ),
+                        TextFormField(
+                          validator: (value) {
+                            final phone = (value ?? '').trim();
+
+                            if (phone.isEmpty) {
+                              return "Nomor telepon tidak boleh kosong";
+                            }
+
+                            if (!RegExp(r'^\d+$').hasMatch(phone)) {
+                              return "Nomor telepon hanya boleh angka";
+                            }
+
+                            if (phone.length < 9) {
+                              return "Minimal 9 digit";
+                            }
+
+                            return null;
+                          },
+                          controller: phoneController,
+                          style: TextStyle(
+                            color: Color(0xFFF4EEFF),
+                            fontSize: 12,
+                          ),
+                          decoration: InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                            hint: Text(
+                              "Masukkan nomor telepon",
+                              style: TextStyle(
+                                color: Color(0xFFF4EEFF),
+                                fontSize: 12,
+                              ),
+                            ),
+                            fillColor: Color(0xFFA6B1E1),
+                            filled: true,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        //password field
+                        Row(
+                          children: [
+                            Icon(Icons.password, color: Color(0XFF424874)),
+                            const SizedBox(width: 8),
+                            Text("Password", style: styleText()),
+                          ],
+                        ),
+                        TextFormField(
+                          validator: (value) {
+                            final password = value ?? '';
+                            final hasUppercase = RegExp(
+                              r'[A-Z]',
+                            ).hasMatch(password);
+                            final hasLowercase = RegExp(
+                              r'[a-z]',
+                            ).hasMatch(password);
+                            final hasNumber = RegExp(r'\d').hasMatch(password);
+                            final hasSpecialChar = RegExp(
+                              r'[!@#$%^&*(),.?":{}|<>_\-\\/\[\];\`~+=]',
+                            ).hasMatch(password);
+                            if (password.isEmpty) {
+                              return "Password tidak boleh kosong";
+                            }
+
+                            if (password.length < 8 ||
+                                !hasUppercase ||
+                                !hasLowercase ||
+                                !hasNumber ||
+                                !hasSpecialChar) {
+                              return "Password harus terdiri dari minimal 8 karakter, memiliki huruf besar, huruf kecil, nomor, dan special character";
+                            }
+
+                            return null;
+                          },
+                          controller: passwordController,
+                          obscureText: isVisible ? true : false,
+                          obscuringCharacter: "*",
+                          style: TextStyle(
+                            color: Color(0xFFF4EEFF),
+                            fontSize: 12,
+                          ),
+                          decoration: InputDecoration(
+                            suffixIcon: IconButton(
+                              onPressed: () {
+                                isVisible = !isVisible;
+                                setState(() {});
+                              },
+                              icon: isVisible
+                                  ? Icon(
+                                      Icons.visibility_off,
+                                      color: AppTheme.primary,
+                                    )
+                                  : Icon(
+                                      Icons.visibility,
+                                      color: AppTheme.primary,
+                                    ),
+                            ),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                            hint: Text(
+                              "Masukkan password",
+                              style: TextStyle(
+                                color: Color(0xFFF4EEFF),
+                                fontSize: 12,
+                              ),
+                            ),
+                            fillColor: Color(0xFFA6B1E1),
+                            filled: true,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16.0),
+                          child: Text("Login sebagai", style: styleText()),
+                        ),
+                        SizedBox(height: 16),
+                        //tombol login as committee button
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TombolSementara(
+                                width: double.infinity,
+                                height: 54,
+                                onPressed: () async {
+                                  await loginAs("Committee");
+                                },
+                                icon: Icons.group,
+                                text: "Committee",
+                              ),
+                            ),
+                            SizedBox(width: 4),
+                            //login as attendee button
+                            Expanded(
+                              child: TombolSementara(
+                                width: double.infinity,
+                                height: 54,
+                                onPressed: () async {
+                                  await loginAs("Attendee");
+                                },
+                                icon: Icons.chair_alt,
+                                text: "Attendee",
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        //tombol daftar
+                      ],
+                    ),
                   ),
                 ),
               ),

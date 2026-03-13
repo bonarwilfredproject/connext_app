@@ -1,3 +1,4 @@
+import 'package:connext_app/constants/app_theme.dart';
 import 'package:flutter/material.dart';
 
 InputDecoration decorationConstant({required String hintText}) {
@@ -6,9 +7,9 @@ InputDecoration decorationConstant({required String hintText}) {
     contentPadding: EdgeInsets.symmetric(horizontal: 8),
     hint: Text(
       hintText,
-      style: TextStyle(color: Color(0xFFF4EEFF), fontSize: 12),
+      style: TextStyle(color: AppTheme.primary, fontSize: 12),
     ),
-    fillColor: Color(0xFFA6B1E1),
+    fillColor: AppTheme.fourth,
     filled: true,
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),

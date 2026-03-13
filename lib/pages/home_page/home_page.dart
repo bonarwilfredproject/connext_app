@@ -146,7 +146,7 @@ class _HomePageState extends State<HomePage> {
                           ? Column(
                               children: [
                                 Lottie.asset(
-                                  "assets/lottie/no_result_calendar.json",
+                                  "assets/lottie/empty_bookings.json",
                                 ),
 
                                 SizedBox(height: 12),
@@ -163,24 +163,39 @@ class _HomePageState extends State<HomePage> {
 
                                 return Dismissible(
                                   key: Key(event.id.toString()),
-                                  direction: DismissDirection
-                                      .endToStart, // swipe dari kanan ke kiri
+                                  direction: DismissDirection.endToStart,
+
+                                  movementDuration: Duration(milliseconds: 250),
+                                  resizeDuration: Duration(milliseconds: 200),
+
                                   background: Container(
-                                    margin: const EdgeInsets.only(bottom: 16),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                    ),
                                     alignment: Alignment.centerRight,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: Colors.red,
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
-                                    child: const Icon(
-                                      Icons.delete,
-                                      color: Colors.white,
-                                      size: 28,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: const [
+                                        Icon(
+                                          Icons.delete_outline,
+                                          color: Colors.white,
+                                        ),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          "Hapus",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ), // 🔥 wajib unik
+                                  ),
+
                                   confirmDismiss: (direction) async {
                                     return await showDialog(
                                       context: context,
@@ -228,9 +243,11 @@ class _HomePageState extends State<HomePage> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text("Event berhasil dihapus"),
+                                        behavior: SnackBarBehavior.floating,
                                       ),
                                     );
                                   },
+
                                   child: InkWell(
                                     onTap: () async {
                                       final result = await Navigator.push(
@@ -243,90 +260,100 @@ class _HomePageState extends State<HomePage> {
                                       );
 
                                       if (result == true) {
-                                        loadEvents(); // reload setelah delete
+                                        loadEvents();
                                       }
                                     },
-                                    child: Material(
-                                      color: AppTheme.third,
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Container(
-                                        margin: EdgeInsets.only(bottom: 16),
-                                        padding: EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.primary,
-                                          borderRadius: BorderRadius.circular(
-                                            12,
+
+                                    child: Container(
+                                      padding: const EdgeInsets.all(16),
+
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.third,
+                                        borderRadius: BorderRadius.circular(20),
+                                        boxShadow: const [
+                                          BoxShadow(
+                                            color: Colors.black12,
+                                            blurRadius: 8,
+                                            offset: Offset(0, 4),
                                           ),
-                                        ),
-                                        child: Column(
-                                          children: [
-                                            // 🔥 HEADER + ICON INFO
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Icon(Icons.event),
-                                                    SizedBox(width: 8),
-                                                    Text(
-                                                      event.title,
-                                                      style: styleText(),
+                                        ],
+                                      ),
+
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          /// HEADER EVENT
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.event,
+                                                    color: AppTheme.secondary,
+                                                  ),
+                                                  const SizedBox(width: 8),
+
+                                                  Text(
+                                                    event.title,
+                                                    style: styleText().copyWith(
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                     ),
-                                                  ],
-                                                ),
-
-                                                IconButton(
-                                                  icon: Icon(
-                                                    Icons.info_outline,
                                                   ),
-                                                  onPressed: () async {
-                                                    final result =
-                                                        await Navigator.push(
-                                                          context,
-                                                          MaterialPageRoute(
-                                                            builder: (_) =>
-                                                                DetailEventPage(
-                                                                  eventId:
-                                                                      event.id!,
-                                                                ),
-                                                          ),
-                                                        );
+                                                ],
+                                              ),
+                                              Icon(
+                                                Icons.info_outline,
+                                                color: AppTheme.secondary,
+                                              ),
+                                            ],
+                                          ),
 
-                                                    if (result == true) {
-                                                      loadEvents();
-                                                    }
-                                                  },
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              children: [
-                                                Icon(Icons.location_pin),
-                                                SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    event.location,
-                                                    style: styleText(),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            Row(
-                                              children: [
-                                                Icon(Icons.people),
-                                                SizedBox(width: 8),
-                                                Text(
-                                                  "${event.totalPeserta} Peserta",
+                                          const SizedBox(height: 6),
+
+                                          /// LOKASI
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.location_pin,
+                                                color: AppTheme.secondary,
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 8),
+
+                                              Expanded(
+                                                child: Text(
+                                                  event.location,
                                                   style: styleText(),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
+                                              ),
+                                            ],
+                                          ),
+
+                                          const SizedBox(height: 6),
+
+                                          /// JUMLAH PESERTA
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.people,
+                                                color: AppTheme.secondary,
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 8),
+
+                                              Text(
+                                                "${event.totalPeserta} Peserta",
+                                                style: styleText(),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),

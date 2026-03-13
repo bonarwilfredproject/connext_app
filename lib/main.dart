@@ -1,3 +1,4 @@
+import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/pages/auth/daftar_page.dart';
 import 'package:connext_app/pages/home_page/home_page.dart';
 import 'package:connext_app/pages/landing_page/landing_page.dart';
@@ -34,7 +35,7 @@ class MyApp extends StatelessWidget {
         //
         // This works for code too, not just values: Most code changes can be
         // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: .fromSeed(seedColor: AppTheme.primary),
         fontFamily: 'RacingSansOne',
       ),
       home: SplashScreen(),

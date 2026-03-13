@@ -45,31 +45,86 @@ class _DetailEventPageState extends State<DetailEventPage> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: AppTheme.third,
-          title: Text("Edit Event", style: styleText()),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+
+          title: Text(
+            "Edit Event",
+            style: styleText().copyWith(fontWeight: FontWeight.bold),
+          ),
+
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              /// NAMA EVENT
               TextField(
-                style: TextStyle(color: AppTheme.primary, fontSize: 12),
+                autofocus: true,
                 controller: titleController,
-                decoration: decorationConstant(hintText: "Nama Event"),
+                style: TextStyle(color: AppTheme.primary, fontSize: 14),
+                decoration: InputDecoration(
+                  labelText: "Nama Event",
+                  labelStyle: styleText(),
+                  filled: true,
+                  fillColor: AppTheme.fourth,
+
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 14,
+                  ),
+
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
               ),
-              SizedBox(height: 10),
+
+              SizedBox(height: 16),
+
+              /// LOKASI EVENT
               TextField(
-                style: TextStyle(color: AppTheme.primary, fontSize: 12),
                 controller: locationController,
-                decoration: decorationConstant(hintText: "Lokasi"),
+                style: TextStyle(color: AppTheme.primary, fontSize: 14),
+                decoration: InputDecoration(
+                  labelText: "Lokasi",
+                  labelStyle: styleText(),
+                  filled: true,
+                  fillColor: AppTheme.fourth,
+
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 14,
+                  ),
+
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
               ),
             ],
           ),
+
+          actionsPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+
           actions: [
+            /// BATAL
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
               },
               child: Text("Batal", style: styleText()),
             ),
+
+            /// SIMPAN
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.fourth,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
               onPressed: () async {
                 final updatedEvent = EventModel(
                   userId: event!.userId,
@@ -84,8 +139,9 @@ class _DetailEventPageState extends State<DetailEventPage> {
 
                 Navigator.pop(context, true);
 
-                await loadEvent(); // refresh data
+                await loadEvent();
               },
+
               child: Text("Simpan", style: styleText()),
             ),
           ],
@@ -244,24 +300,45 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                       key: Key(p['userId']! + index.toString()),
                                       direction: DismissDirection.endToStart,
 
+                                      movementDuration: Duration(
+                                        milliseconds: 250,
+                                      ),
+                                      resizeDuration: Duration(
+                                        milliseconds: 200,
+                                      ),
+
                                       background: Container(
                                         margin: const EdgeInsets.only(
                                           bottom: 12,
                                         ),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 20,
-                                        ),
                                         alignment: Alignment.centerRight,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: Colors.red,
                                           borderRadius: BorderRadius.circular(
                                             16,
                                           ),
                                         ),
-                                        child: const Icon(
-                                          Icons.delete,
-                                          color: Colors.white,
-                                          size: 28,
+
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: const [
+                                            Icon(
+                                              Icons.delete_outline,
+                                              color: Colors.white,
+                                            ),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              "Hapus",
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
 
@@ -313,6 +390,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                         setState(() {
                                           scannedPeserta.removeAt(index);
                                         });
+
                                         await EventController.decrementPeserta(
                                           widget.eventId,
                                         );
@@ -325,6 +403,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                             content: Text(
                                               "Peserta berhasil dihapus",
                                             ),
+                                            behavior: SnackBarBehavior.floating,
                                           ),
                                         );
                                       },
