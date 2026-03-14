@@ -106,6 +106,7 @@ class _DaftarPageState extends State<DaftarPage> {
                           ],
                         ),
                         TextFormField(
+                          keyboardType: TextInputType.numberWithOptions(),
                           controller: phoneController,
                           validator: (value) {
                             final phone = (value ?? '').trim();

@@ -124,8 +124,6 @@ class _HomePageState extends State<HomePage> {
 
     int? userId = pref.getUserId();
 
-    if (userId == null) return;
-
     /// ambil semua event
     final events = await EventController.getAllEvent(userId);
 
@@ -461,90 +459,34 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ],
                             )
-                          : ListView.separated(
-                              shrinkWrap: true,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 16),
-                              itemCount: attendeeEvents.length,
-                              itemBuilder: (context, index) {
-                                final event = attendeeEvents[index];
-                                final creator = eventCreators[event.createdBy];
-                                bool joined = joinedEventIds.contains(event.id);
+                          : Expanded(
+                              child: ListView.separated(
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 16),
+                                itemCount: attendeeEvents.length,
+                                itemBuilder: (context, index) {
+                                  final event = attendeeEvents[index];
+                                  final creator =
+                                      eventCreators[event.createdBy];
+                                  bool joined = joinedEventIds.contains(
+                                    event.id,
+                                  );
 
-                                return AppListCard(
-                                  child: InkWell(
-                                    onTap: () async {
-                                      /// cek ulang status join dari database
-                                      final joinedEvents =
-                                          await EventController.getEventByParticipant(
-                                            currentUser!.id!,
-                                          );
+                                  return AppListCard(
+                                    child: InkWell(
+                                      onTap: () async {
+                                        /// cek ulang status join dari database
+                                        final joinedEvents =
+                                            await EventController.getEventByParticipant(
+                                              currentUser!.id!,
+                                            );
 
-                                      bool isJoined = joinedEvents.any(
-                                        (e) => e.id == event.id,
-                                      );
-
-                                      if (isJoined) {
-                                        /// jika masih join → buka detail
-                                        final result = await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => AttendeeEventPage(
-                                              userId: currentUser!.id!,
-                                              eventId: event.id!,
-                                            ),
-                                          ),
+                                        bool isJoined = joinedEvents.any(
+                                          (e) => e.id == event.id,
                                         );
 
-                                        if (result == true) {
-                                          await loadAttendeeEvents();
-                                        }
-                                      } else {
-                                        /// jika tidak join → dialog join
-                                        final confirm = await showDialog(
-                                          context: context,
-                                          builder: (_) => AlertDialog(
-                                            backgroundColor: AppTheme.third,
-                                            title: Text(
-                                              "Join Event",
-                                              style: styleText(),
-                                            ),
-                                            content: Text(
-                                              "Bergabung ke event ${event.title}?",
-                                              style: styleText(),
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  false,
-                                                ),
-                                                child: Text(
-                                                  "Batal",
-                                                  style: styleText(),
-                                                ),
-                                              ),
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  true,
-                                                ),
-                                                child: Text(
-                                                  "Join",
-                                                  style: styleText(),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-
-                                        if (confirm == true) {
-                                          await EventParticipantController.joinEvent(
-                                            currentUser!.id!,
-                                            event.id!,
-                                          );
-
-                                          /// langsung buka halaman QR event
+                                        if (isJoined) {
+                                          /// jika masih join → buka detail
                                           final result = await Navigator.push(
                                             context,
                                             MaterialPageRoute(
@@ -555,139 +497,145 @@ class _HomePageState extends State<HomePage> {
                                             ),
                                           );
 
-                                          /// setelah kembali ke homepage baru refresh
-                                          await loadAttendeeEvents();
-                                        }
-                                      }
-                                    },
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        /// TITLE
-                                        Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Icon(
-                                              Icons.event,
-                                              color: AppTheme.secondary,
-                                              size: 20,
-                                            ),
-
-                                            const SizedBox(width: 8),
-
-                                            /// TITLE EVENT
-                                            Expanded(
-                                              child: Text(
-                                                event.title,
-                                                style: styleText().copyWith(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                                maxLines: 2,
+                                          if (result == true) {
+                                            await loadAttendeeEvents();
+                                          }
+                                        } else {
+                                          /// jika tidak join → dialog join
+                                          final confirm = await showDialog(
+                                            context: context,
+                                            builder: (_) => AlertDialog(
+                                              backgroundColor: AppTheme.third,
+                                              title: Text(
+                                                "Join Event",
+                                                style: styleText(),
                                               ),
-                                            ),
-
-                                            /// STATUS JOIN
-                                            if (joined) ...[
-                                              const SizedBox(width: 8),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 4,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.green,
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                                child: const Text(
-                                                  "JOINED",
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 12,
+                                              content: Text(
+                                                "Bergabung ke event ${event.title}?",
+                                                style: styleText(),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                        context,
+                                                        false,
+                                                      ),
+                                                  child: Text(
+                                                    "Batal",
+                                                    style: styleText(),
                                                   ),
                                                 ),
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                        context,
+                                                        true,
+                                                      ),
+                                                  child: Text(
+                                                    "Join",
+                                                    style: styleText(),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+
+                                          if (confirm == true) {
+                                            await EventParticipantController.joinEvent(
+                                              currentUser!.id!,
+                                              event.id!,
+                                            );
+
+                                            /// langsung buka halaman QR event
+                                            final result = await Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    AttendeeEventPage(
+                                                      userId: currentUser!.id!,
+                                                      eventId: event.id!,
+                                                    ),
                                               ),
-                                            ],
-                                          ],
-                                        ),
+                                            );
 
-                                        const SizedBox(height: 8),
-
-                                        /// LOCATION
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.location_pin,
-                                              color: AppTheme.secondary,
-                                              size: 20,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                event.location,
-                                                style: styleText(),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-
-                                        const SizedBox(height: 8),
-
-                                        /// TOTAL PESERTA
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.people,
-                                              color: AppTheme.secondary,
-                                              size: 20,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(
-                                              "${eventParticipantCount[event.id] ?? 0} Peserta",
-                                              style: styleText(),
-                                            ),
-                                          ],
-                                        ),
-
-                                        const SizedBox(height: 8),
-
-                                        /// PANITIA PEMBUAT EVENT
-                                        if (creator != null)
+                                            /// setelah kembali ke homepage baru refresh
+                                            await loadAttendeeEvents();
+                                          }
+                                        }
+                                      },
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          /// TITLE
                                           Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
-                                              /// FOTO PANITIA
-                                              CircleAvatar(
-                                                radius: 12,
-                                                backgroundColor:
-                                                    Colors.grey.shade300,
-                                                backgroundImage:
-                                                    creator.profileImage !=
-                                                            null &&
-                                                        creator
-                                                            .profileImage!
-                                                            .isNotEmpty &&
-                                                        File(
-                                                          creator.profileImage!,
-                                                        ).existsSync()
-                                                    ? FileImage(
-                                                        File(
-                                                          creator.profileImage!,
-                                                        ),
-                                                      )
-                                                    : null,
+                                              Icon(
+                                                Icons.event,
+                                                color: AppTheme.secondary,
+                                                size: 20,
                                               ),
 
                                               const SizedBox(width: 8),
 
-                                              /// NAMA PANITIA
+                                              /// TITLE EVENT
                                               Expanded(
                                                 child: Text(
-                                                  "by ${creator.nama}",
+                                                  event.title,
+                                                  style: styleText().copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  maxLines: 2,
+                                                ),
+                                              ),
+
+                                              /// STATUS JOIN
+                                              if (joined) ...[
+                                                const SizedBox(width: 8),
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 4,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.green,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                  ),
+                                                  child: const Text(
+                                                    "JOINED",
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+
+                                          const SizedBox(height: 8),
+
+                                          /// LOCATION
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.location_pin,
+                                                color: AppTheme.secondary,
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  event.location,
                                                   style: styleText(),
                                                   overflow:
                                                       TextOverflow.ellipsis,
@@ -695,11 +643,74 @@ class _HomePageState extends State<HomePage> {
                                               ),
                                             ],
                                           ),
-                                      ],
+
+                                          const SizedBox(height: 8),
+
+                                          /// TOTAL PESERTA
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.people,
+                                                color: AppTheme.secondary,
+                                                size: 20,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                "${eventParticipantCount[event.id] ?? 0} Peserta",
+                                                style: styleText(),
+                                              ),
+                                            ],
+                                          ),
+
+                                          const SizedBox(height: 8),
+
+                                          /// PANITIA PEMBUAT EVENT
+                                          if (creator != null)
+                                            Row(
+                                              children: [
+                                                /// FOTO PANITIA
+                                                CircleAvatar(
+                                                  radius: 12,
+                                                  backgroundColor:
+                                                      Colors.grey.shade300,
+                                                  backgroundImage:
+                                                      creator.profileImage !=
+                                                              null &&
+                                                          creator
+                                                              .profileImage!
+                                                              .isNotEmpty &&
+                                                          File(
+                                                            creator
+                                                                .profileImage!,
+                                                          ).existsSync()
+                                                      ? FileImage(
+                                                          File(
+                                                            creator
+                                                                .profileImage!,
+                                                          ),
+                                                        )
+                                                      : null,
+                                                ),
+
+                                                const SizedBox(width: 8),
+
+                                                /// NAMA PANITIA
+                                                Expanded(
+                                                  child: Text(
+                                                    "by ${creator.nama}",
+                                                    style: styleText(),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                );
-                              },
+                                  );
+                                },
+                              ),
                             ),
                     ),
                   ),

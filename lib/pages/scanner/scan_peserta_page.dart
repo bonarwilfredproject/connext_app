@@ -5,10 +5,13 @@ import 'package:connext_app/pages/scanner/corner_painter.dart';
 import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/constants/style_text.dart';
+import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:vibration/vibration.dart';
 import 'package:vibration/vibration_presets.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class ScanPesertaPage extends StatefulWidget {
   final int eventId;
@@ -65,6 +68,45 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
 
     isProcessing = false;
     controller.start();
+  }
+
+  Future<void> scanFromGallery() async {
+    final ImagePicker picker = ImagePicker();
+
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+    if (image == null) return;
+
+    /// hentikan kamera supaya tidak bentrok
+    controller.stop();
+
+    try {
+      bool success = await controller.analyzeImage(image.path);
+
+      /// jika tidak ada QR di gambar
+      if (!success) {
+        showErrorDialog("QR Code tidak ditemukan di gambar");
+        restartScanner();
+        if (await Vibration.hasVibrator()) {
+          Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
+        }
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.pop(context, "error");
+        });
+      }
+
+      /// jika success → onDetect() akan terpanggil otomatis
+      /// dan _handleQrScan() akan berjalan
+    } catch (e) {
+      showErrorDialog("QR Code tidak bisa dibaca");
+      restartScanner();
+      if (await Vibration.hasVibrator()) {
+        Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
+      }
+      Future.delayed(const Duration(seconds: 1), () {
+        Navigator.pop(context, "error");
+      });
+    }
   }
 
   @override
@@ -197,6 +239,16 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
 
                 const SizedBox(height: 20),
                 Text("QR akan terbaca otomatis", style: styleText()),
+
+                const SizedBox(height: 12),
+
+                TombolSementara(
+                  onPressed: scanFromGallery,
+                  icon: Icons.photo_library,
+                  text: "Upload dari Gallery",
+                  width: 220,
+                  height: 45,
+                ),
               ],
             ),
           ),

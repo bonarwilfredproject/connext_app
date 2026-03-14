@@ -1,4 +1,5 @@
 import 'package:connext_app/constants/app_theme.dart';
+import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/services/user_controller.dart';
@@ -91,6 +92,7 @@ class _LogInPageState extends State<LogInPage> {
                           ],
                         ),
                         TextFormField(
+                          keyboardType: TextInputType.numberWithOptions(),
                           validator: (value) {
                             final phone = (value ?? '').trim();
 
@@ -113,21 +115,8 @@ class _LogInPageState extends State<LogInPage> {
                             color: Color(0xFFF4EEFF),
                             fontSize: 12,
                           ),
-                          decoration: InputDecoration(
-                            contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                            hint: Text(
-                              "Masukkan nomor telepon",
-                              style: TextStyle(
-                                color: Color(0xFFF4EEFF),
-                                fontSize: 12,
-                              ),
-                            ),
-                            fillColor: Color(0xFFA6B1E1),
-                            filled: true,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
+                          decoration: decorationConstant(
+                            hintText: "Masukkan nomor telepon",
                           ),
                         ),
                         SizedBox(height: 12),
@@ -173,7 +162,8 @@ class _LogInPageState extends State<LogInPage> {
                             color: Color(0xFFF4EEFF),
                             fontSize: 12,
                           ),
-                          decoration: InputDecoration(
+                          decoration: decorationConstant(
+                            hintText: "Masukkan password",
                             suffixIcon: IconButton(
                               onPressed: () {
                                 isVisible = !isVisible;
@@ -188,20 +178,6 @@ class _LogInPageState extends State<LogInPage> {
                                       Icons.visibility,
                                       color: AppTheme.primary,
                                     ),
-                            ),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                            hint: Text(
-                              "Masukkan password",
-                              style: TextStyle(
-                                color: Color(0xFFF4EEFF),
-                                fontSize: 12,
-                              ),
-                            ),
-                            fillColor: Color(0xFFA6B1E1),
-                            filled: true,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
                             ),
                           ),
                         ),
