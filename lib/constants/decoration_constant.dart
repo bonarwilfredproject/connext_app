@@ -1,8 +1,12 @@
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:flutter/material.dart';
 
-InputDecoration decorationConstant({required String hintText}) {
+InputDecoration decorationConstant({
+  required String hintText,
+  Widget? suffixIcon,
+}) {
   return InputDecoration(
+    suffixIcon: suffixIcon,
     errorMaxLines: 2,
     contentPadding: EdgeInsets.symmetric(horizontal: 8),
     hint: Text(

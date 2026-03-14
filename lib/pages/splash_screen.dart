@@ -29,21 +29,22 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void autoLogin() async {
     await Future.delayed(Duration(seconds: 3));
+
     final pref = PreferenceHandler();
     await pref.init();
+
     bool? data = await pref.getIsLogin();
-    if (data == true) {
-      String? nama = await pref.getNamaUser();
-      String? role = await pref.getRole();
+    String? nama = await pref.getNamaUser();
+    String? role = await pref.getRole();
+
+    if (data == true && nama != null && role != null) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) =>
-              HomePage(namaUser: nama ?? "", role: role ?? ""),
-        ),
+        MaterialPageRoute(builder: (context) => const HomePage()),
         (route) => false,
       );
       return;
     }
+
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (context) => LandingPage()),
       (route) => false,

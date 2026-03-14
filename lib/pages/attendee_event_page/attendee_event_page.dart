@@ -1,32 +1,79 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:connext_app/models/user_model.dart';
+import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/models/event_model.dart';
+import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/services/event_controller.dart';
+import 'package:connext_app/services/event_participant_controller.dart';
+import 'package:connext_app/widgets/app_list_card.dart';
+import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/positioning_inside.dart';
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class AttendeeEventPage extends StatefulWidget {
   final int userId;
+  final int eventId;
 
-  const AttendeeEventPage({super.key, required this.userId});
+  const AttendeeEventPage({
+    super.key,
+    required this.userId,
+    required this.eventId,
+  });
 
   @override
   State<AttendeeEventPage> createState() => _AttendeeEventPageState();
 }
 
 class _AttendeeEventPageState extends State<AttendeeEventPage> {
-  List<EventModel> events = [];
+  UserModel? creator;
+  EventModel? event;
+  String? qrToken;
+  bool isCheckedIn = false;
+  bool isLoading = true;
+  int totalPeserta = 0;
 
   @override
   void initState() {
     super.initState();
-    loadEvents();
+    loadEvent();
   }
 
-  void loadEvents() async {
-    events = await EventController.getEventByAttendee(widget.userId);
-    setState(() {});
+  Future<void> loadEvent() async {
+    /// ambil detail event
+    event = await EventController.getEventById(widget.eventId);
+
+    /// ambil data panitia
+    if (event != null) {
+      creator = await UserController.getUserById(event!.createdBy);
+    }
+
+    totalPeserta = await EventParticipantController.getTotalParticipants(
+      widget.eventId,
+    );
+
+    /// ambil token QR
+    qrToken = await EventParticipantController.getQrToken(
+      widget.userId,
+      widget.eventId,
+    );
+
+    final participant = await CheckinController.getParticipant(
+      widget.userId,
+      widget.eventId,
+    );
+
+    if (participant != null) {
+      isCheckedIn = await CheckinController.isAlreadyCheckin(participant["id"]);
+    }
+
+    setState(() {
+      isLoading = false;
+    });
   }
 
   @override
@@ -34,32 +81,235 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
     return Scaffold(
       backgroundColor: AppTheme.primary,
       appBar: AppBar(
-        title: Text("Event Saya", style: styleText()),
         backgroundColor: AppTheme.primary,
+        title: Text("Detail Event", style: styleText()),
       ),
       body: Stack(
         children: [
           EllipseBackground(),
-          PositioningInside(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0),
-              child: ListView.builder(
-                itemCount: events.length,
-                itemBuilder: (context, index) {
-                  final e = events[index];
+          isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      /// =====================
+                      /// SECTION INFO EVENT
+                      /// =====================
+                      AppSectionCard(
+                        title: "Event",
+                        icon: Icons.event,
+                        child: AppListCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                event!.title,
+                                style: styleText().copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
 
-                  return ListTile(
-                    title: Text(e.title, style: styleText()),
-                    subtitle: Text(e.location, style: styleText()),
-                    trailing: Text(
-                      "${e.totalPeserta} Peserta",
-                      style: styleText(),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
+                              const SizedBox(height: 8),
+
+                              /// LOCATION
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.location_pin,
+                                    size: 18,
+                                    color: AppTheme.secondary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      event!.location,
+                                      style: styleText(),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 8),
+
+                              /// TOTAL PESERTA
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.people,
+                                    size: 18,
+                                    color: AppTheme.secondary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    "$totalPeserta Peserta",
+                                    style: styleText(),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 8),
+
+                              /// PANITIA PEMBUAT EVENT
+                              if (creator != null)
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 12,
+                                      backgroundColor: Colors.grey.shade300,
+                                      backgroundImage:
+                                          creator!.profileImage != null &&
+                                              creator!
+                                                  .profileImage!
+                                                  .isNotEmpty &&
+                                              File(
+                                                creator!.profileImage!,
+                                              ).existsSync()
+                                          ? FileImage(
+                                              File(creator!.profileImage!),
+                                            )
+                                          : null,
+                                    ),
+
+                                    const SizedBox(width: 8),
+
+                                    Expanded(
+                                      child: Text(
+                                        "by ${creator!.nama}",
+                                        style: styleText(),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      /// =====================
+                      /// SECTION QR CHECKIN
+                      /// =====================
+                      AppSectionCard(
+                        title: "QR Check-in",
+                        icon: Icons.qr_code,
+                        child: Column(
+                          children: [
+                            if (isCheckedIn)
+                              /// SUDAH CHECKIN
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  "Anda sudah check-in",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              )
+                            else if (qrToken != null)
+                              /// QR CODE
+                              QrImageView(
+                                data: '{"token":"$qrToken"}',
+                                version: QrVersions.auto,
+                                size: 200,
+                                backgroundColor: Colors.white,
+                              ),
+
+                            const SizedBox(height: 12),
+
+                            Text(
+                              isCheckedIn
+                                  ? "Terima kasih sudah menghadiri event ini"
+                                  : "Tunjukkan QR ini ke panitia saat datang",
+                              textAlign: TextAlign.center,
+                              style: styleText(),
+                            ),
+                            const SizedBox(height: 24),
+
+                            /// CANCEL JOIN BUTTON
+                            if (!isCheckedIn) ...[
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.exit_to_app,
+                                    color: AppTheme.white,
+                                  ),
+                                  label: const Text(
+                                    "Cancel Join",
+                                    style: TextStyle(color: AppTheme.white),
+                                  ),
+                                  onPressed: () async {
+                                    final confirm = await showDialog(
+                                      context: context,
+                                      builder: (_) => AlertDialog(
+                                        backgroundColor: AppTheme.third,
+                                        title: Text(
+                                          "Cancel Join",
+                                          style: styleText(),
+                                        ),
+                                        content: Text(
+                                          "Yakin ingin keluar dari event ini?",
+                                          style: styleText(),
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: Text(
+                                              "Batal",
+                                              style: styleText(),
+                                            ),
+                                          ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            child: Text(
+                                              "Keluar",
+                                              style: styleText(),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    if (confirm == true) {
+                                      await EventParticipantController.cancelJoin(
+                                        widget.userId,
+                                        widget.eventId,
+                                      );
+
+                                      Navigator.pop(context, true);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
         ],
       ),
     );

@@ -6,12 +6,15 @@ class UserModel {
   final String nama;
   final String phone;
   final String password;
+  final String role;
   final String? profileImage;
+
   UserModel({
     this.id,
     required this.nama,
     required this.phone,
     required this.password,
+    required this.role,
     this.profileImage,
   });
 
@@ -21,6 +24,7 @@ class UserModel {
       'nama': nama,
       'phone': phone,
       'password': password,
+      'role': role,
       'profile_image': profileImage,
     };
   }
@@ -31,6 +35,7 @@ class UserModel {
       nama: map['nama'] as String,
       phone: map['phone'] as String,
       password: map['password'] as String,
+      role: map['role'] as String,
       profileImage: map['profile_image'] != null
           ? map['profile_image'] as String
           : null,

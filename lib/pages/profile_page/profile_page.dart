@@ -41,6 +41,29 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() {});
   }
 
+  Future<void> changeRole() async {
+    final pref = PreferenceHandler();
+    await pref.init();
+
+    String currentRole = role ?? "Attendee";
+    String newRole = currentRole == "Committee" ? "Attendee" : "Committee";
+
+    /// update database
+    await UserController.updateRole(widget.userId, newRole);
+
+    /// update preference
+    await pref.saveRole(newRole);
+
+    setState(() {
+      role = newRole;
+    });
+
+    if (!mounted) return;
+
+    /// kembali ke homepage dan refresh role
+    Navigator.pop(context, true);
+  }
+
   Future<void> pickImage() async {
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
@@ -182,7 +205,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           Row(
                             children: [
                               Icon(Icons.badge, color: AppTheme.secondary),
-                              SizedBox(width: 10),
+                              const SizedBox(width: 10),
 
                               Text(
                                 "Role",
@@ -191,9 +214,27 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                               ),
 
-                              Spacer(),
+                              const Spacer(),
 
                               Text(role ?? "Unknown", style: styleText()),
+
+                              const SizedBox(width: 10),
+
+                              GestureDetector(
+                                onTap: changeRole,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.secondary,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Icon(
+                                    Icons.swap_horiz,
+                                    size: 18,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ],

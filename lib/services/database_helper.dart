@@ -4,81 +4,59 @@ import 'package:path/path.dart';
 class DBHelper {
   static Future<Database> db() async {
     final dbpath = await getDatabasesPath();
+
     return openDatabase(
       join(dbpath, "connext.db"),
+      version: 1,
       onCreate: (db, version) async {
+        /// USERS
         await db.execute('''
-        CREATE TABLE user(
+        CREATE TABLE users(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           nama TEXT,
           phone TEXT UNIQUE,
           password TEXT,
+          role TEXT,
           profile_image TEXT
         )
         ''');
+
+        /// EVENTS
         await db.execute('''
-        CREATE TABLE event(
+        CREATE TABLE events(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           title TEXT,
           location TEXT,
-          total_peserta INTEGER,
-          created_by TEXT,
-          user_id INTEGER
+          description TEXT,
+          created_by INTEGER,
+          created_at TEXT
         )
         ''');
+
+        /// EVENT PARTICIPANTS (JOIN EVENT + QR + CHECKIN)
         await db.execute('''
-        CREATE TABLE attendee(
+        CREATE TABLE event_participants(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER,
           event_id INTEGER,
-          UNIQUE(user_id,event_id)
+          user_id INTEGER,
+          qr_token TEXT,
+          checkin_time TEXT,
+          UNIQUE(event_id,user_id)
         )
         ''');
+
+        /// EVENT UPDATES (future feature)
         await db.execute('''
-        CREATE TABLE committee(
+        CREATE TABLE event_updates(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER,
           event_id INTEGER,
-          role TEXT,
-          UNIQUE(user_id,event_id)
-        )
-        ''');
-        await db.execute('''
-        CREATE TABLE checkin(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER,
-          event_id INTEGER,
-          waktu TEXT,
-          nama_user TEXT,
-          phone TEXT,
-          UNIQUE(user_id,event_id)
-        )
-        ''');
-      },
-      version: 5,
-      onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          await db.execute('''
-        CREATE TABLE event (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
           title TEXT,
-          location TEXT,
-          total_peserta INTEGER,
-          created_by TEXT,
-          user_id INTEGER
+          content TEXT,
+          image TEXT,
+          created_by INTEGER,
+          created_at TEXT
         )
-      ''');
-        }
-        if (oldVersion < 4) {
-          await db.execute('''
-  CREATE TABLE checkin (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    event_id INTEGER,
-    waktu TEXT
-  )
-  ''');
-        }
+        ''');
       },
     );
   }

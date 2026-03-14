@@ -23,6 +23,10 @@ class PreferenceHandler {
     await _preferences.setBool(_isLogin, true);
   }
 
+  Future<void> saveRole(String role) async {
+    await _preferences.setString(_role, role);
+  }
+
   int getUserId() {
     return _preferences.getInt(_userId) ?? 0;
   }

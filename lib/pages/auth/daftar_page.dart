@@ -8,6 +8,7 @@ import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/custom_appbar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/positioning_inside.dart';
+import 'package:connext_app/widgets/role_selector.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:flutter/material.dart';
 
@@ -19,6 +20,7 @@ class DaftarPage extends StatefulWidget {
 }
 
 class _DaftarPageState extends State<DaftarPage> {
+  String role = "Committee";
   bool isVisible = true;
   final GlobalKey<FormState> _formKey = GlobalKey();
   TextEditingController namaController = TextEditingController();
@@ -281,6 +283,23 @@ class _DaftarPageState extends State<DaftarPage> {
                             ),
                           ),
                         ),
+                        SizedBox(height: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Daftar sebagai", style: styleText()),
+                            const SizedBox(height: 10),
+
+                            RoleSelector(
+                              role: role,
+                              onChanged: (value) {
+                                setState(() {
+                                  role = value;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
                         SizedBox(height: 28),
                         //tombol daftar
                         TombolSementara(
@@ -310,6 +329,7 @@ class _DaftarPageState extends State<DaftarPage> {
                                     nama: namaController.text,
                                     phone: phoneController.text,
                                     password: passwordController.text,
+                                    role: role,
                                   ),
                                 );
                                 Navigator.pushReplacement(

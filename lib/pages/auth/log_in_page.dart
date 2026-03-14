@@ -23,32 +23,31 @@ class _LogInPageState extends State<LogInPage> {
   GlobalKey<FormState> _formKey = GlobalKey();
   TextEditingController phoneController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
-  Future<void> loginAs(String role) async {
+  Future<void> login() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+
     final UserModel? login = await UserController.loginUser(
       phone: phoneController.text,
       password: passwordController.text,
     );
 
     if (login == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Phone atau password belum terdaftar")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Phone atau password salah")));
       return;
     }
 
     final pref = PreferenceHandler();
     await pref.init();
 
-    await pref.saveUser(login.id!, login.nama, role);
+    await pref.saveUser(login.id!, login.nama, login.role);
 
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(
-        builder: (context) => HomePage(namaUser: login.nama, role: role),
-      ),
+      MaterialPageRoute(builder: (context) => const HomePage()),
       (route) => false,
     );
   }
@@ -207,42 +206,15 @@ class _LogInPageState extends State<LogInPage> {
                           ),
                         ),
                         SizedBox(height: 16),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          child: Text("Login sebagai", style: styleText()),
-                        ),
-                        SizedBox(height: 16),
-                        //tombol login as committee button
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TombolSementara(
-                                width: double.infinity,
-                                height: 54,
-                                onPressed: () async {
-                                  await loginAs("Committee");
-                                },
-                                icon: Icons.group,
-                                text: "Committee",
-                              ),
-                            ),
-                            SizedBox(width: 16),
-                            //login as attendee button
-                            Expanded(
-                              child: TombolSementara(
-                                width: double.infinity,
-                                height: 54,
-                                onPressed: () async {
-                                  await loginAs("Attendee");
-                                },
-                                icon: Icons.chair_alt,
-                                text: "Attendee",
-                              ),
-                            ),
-                          ],
-                        ),
 
-                        //tombol daftar
+                        //tombol login as committee button
+                        TombolSementara(
+                          width: double.infinity,
+                          height: 54,
+                          onPressed: login,
+                          icon: Icons.login,
+                          text: "Login",
+                        ),
                       ],
                     ),
                   ),

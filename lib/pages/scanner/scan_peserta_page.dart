@@ -2,13 +2,11 @@ import 'dart:convert';
 import 'package:animate_do/animate_do.dart';
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/pages/scanner/corner_painter.dart';
-import 'package:connext_app/services/event_controller.dart';
+import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/constants/style_text.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:connext_app/services/check_in_controller.dart';
-import 'package:connext_app/models/checkin_model.dart';
 import 'package:vibration/vibration.dart';
 import 'package:vibration/vibration_presets.dart';
 
@@ -23,12 +21,13 @@ class ScanPesertaPage extends StatefulWidget {
 
 class _ScanPesertaPageState extends State<ScanPesertaPage>
     with SingleTickerProviderStateMixin {
-  MobileScannerController controller = MobileScannerController();
+  final MobileScannerController controller = MobileScannerController();
 
   late AnimationController scanAnimation;
   late Animation<double> scanPosition;
 
   bool isProcessing = false;
+
   Widget buildCorner() {
     return SizedBox(
       width: 40,
@@ -43,13 +42,14 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
 
     scanAnimation = AnimationController(
       vsync: this,
-      duration: Duration(seconds: 2),
+      duration: const Duration(seconds: 2),
     );
 
     scanPosition = Tween<double>(
       begin: -120,
       end: 120,
     ).animate(CurvedAnimation(parent: scanAnimation, curve: Curves.easeInOut));
+
     scanAnimation.repeat(reverse: true);
   }
 
@@ -61,6 +61,8 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
   }
 
   void restartScanner() {
+    if (!mounted) return;
+
     isProcessing = false;
     controller.start();
   }
@@ -77,26 +79,22 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
       body: Stack(
         children: [
           EllipseBackground(),
-
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             child: Column(
               children: [
-                /// TITLE
                 Text(
                   "Arahkan QR Code peserta\nke dalam kotak",
                   textAlign: TextAlign.center,
                   style: styleText(),
                 ),
-
                 const SizedBox(height: 20),
 
-                /// SCANNER AREA
+                /// SCANNER
                 Center(
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      /// CAMERA
                       Container(
                         height: 270,
                         width: 270,
@@ -122,7 +120,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
                         ),
                       ),
 
-                      /// DARK OVERLAY
+                      /// FRAME
                       Container(
                         height: 270,
                         width: 270,
@@ -135,14 +133,13 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
                         ),
                       ),
 
-                      /// CORNER FRAME
+                      /// CORNERS
                       SizedBox(
                         height: 270,
                         width: 270,
                         child: Stack(
                           children: [
                             Positioned(top: 0, left: 0, child: buildCorner()),
-
                             Positioned(
                               top: 0,
                               right: 0,
@@ -151,7 +148,6 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
                                 child: buildCorner(),
                               ),
                             ),
-
                             Positioned(
                               bottom: 0,
                               left: 0,
@@ -160,7 +156,6 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
                                 child: buildCorner(),
                               ),
                             ),
-
                             Positioned(
                               bottom: 0,
                               right: 0,
@@ -201,8 +196,6 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
                 ),
 
                 const SizedBox(height: 20),
-
-                /// HINT TEXT
                 Text("QR akan terbaca otomatis", style: styleText()),
               ],
             ),
@@ -212,6 +205,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
     );
   }
 
+  /// ERROR
   void showErrorDialog(String pesan) {
     showDialog(
       context: context,
@@ -227,11 +221,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Text(
-              pesan,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
-            ),
+            Text(pesan, textAlign: TextAlign.center),
           ],
         ),
       ),
@@ -240,11 +230,12 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
     controller.stop();
 
     Future.delayed(const Duration(seconds: 1), () {
-      Navigator.pop(context, true);
+      if (mounted) Navigator.pop(context);
       restartScanner();
     });
   }
 
+  /// SUCCESS
   void showSuccessDialog(String nama) {
     showDialog(
       context: context,
@@ -262,7 +253,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Text(nama, style: const TextStyle(fontSize: 16)),
+            Text(nama),
           ],
         ),
       ),
@@ -271,78 +262,79 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
     controller.stop();
 
     Future.delayed(const Duration(seconds: 1), () {
-      Navigator.pop(context, true);
+      if (mounted) Navigator.pop(context);
       restartScanner();
     });
   }
 
+  /// HANDLE SCAN
   Future<void> _handleQrScan(String code) async {
     if (isProcessing) return;
 
     isProcessing = true;
+    controller.stop();
 
     try {
-      Map<String, dynamic> data = jsonDecode(code);
+      final data = jsonDecode(code.trim());
 
-      int userId = data['userId'];
-      String namaUser = data['namaUser'];
-      String phone = data['phone'];
+      /// ✅ ambil token dari QR
+      String token = data["token"];
 
       int eventId = widget.eventId;
-      final event = await EventController.getEventById(eventId);
-      bool already = await CheckinController.isAlreadyCheckin(userId, eventId);
-      if (userId == event!.userId) {
-        showErrorDialog("Panitia tidak dapat menjadi peserta di event ini");
 
-        if (await Vibration.hasVibrator()) {
-          Vibration.vibrate();
-        }
-
-        await Future.delayed(const Duration(seconds: 1));
-        controller.stop();
-        Navigator.pop(context, true);
-        return;
-      }
-      if (already) {
-        showErrorDialog("Peserta sudah melakukan check-in");
-
-        if (await Vibration.hasVibrator()) {
-          Vibration.vibrate();
-        }
-
-        await Future.delayed(const Duration(seconds: 1));
-        controller.stop();
-        Navigator.pop(context, true);
-        return;
-      }
-
-      String waktuScan = DateTime.now().toString();
-
-      await CheckinController.insertCheckin(
-        CheckinModel(
-          userId: userId,
-          eventId: eventId,
-          namaUser: namaUser,
-          phone: phone,
-          waktu: waktuScan,
-        ),
+      /// cari participant berdasarkan token
+      final participant = await CheckinController.getParticipantByToken(
+        token,
+        eventId,
       );
 
-      await EventController.incrementPeserta(eventId);
+      if (participant == null) {
+        showErrorDialog("Peserta tidak terdaftar di event ini");
+        if (await Vibration.hasVibrator()) {
+          Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
+        }
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.pop(context, "error");
+        });
+        return;
+      }
+
+      int participantId = participant["id"];
+      String nama = participant["nama"];
+
+      /// cek sudah checkin
+      bool already = await CheckinController.isAlreadyCheckin(participantId);
+
+      if (already) {
+        showErrorDialog("Peserta sudah melakukan check-in");
+        if (await Vibration.hasVibrator()) {
+          Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
+        }
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.pop(context, "sudah check-in");
+        });
+        return;
+      }
+
+      /// update checkin
+      await CheckinController.checkinParticipant(participantId);
 
       if (await Vibration.hasVibrator()) {
         Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
       }
 
-      showSuccessDialog(data["namaUser"]);
-
-      await Future.delayed(const Duration(seconds: 1));
-      controller.stop();
-      Navigator.pop(context, true);
+      showSuccessDialog(nama);
+      Future.delayed(const Duration(seconds: 1), () {
+        Navigator.pop(context, "success");
+      });
     } catch (e) {
-      isProcessing = false;
-      controller.stop();
       showErrorDialog("QR Code tidak valid");
+      if (await Vibration.hasVibrator()) {
+        Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
+      }
+      Future.delayed(const Duration(seconds: 1), () {
+        Navigator.pop(context, "tidak valid");
+      });
     }
   }
 }

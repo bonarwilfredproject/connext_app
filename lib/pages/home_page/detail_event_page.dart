@@ -1,6 +1,7 @@
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/services/check_in_controller.dart';
+import 'package:connext_app/services/event_participant_controller.dart';
 import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/widgets/app_list_card.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
@@ -15,6 +16,8 @@ import 'package:connext_app/constants/style_text.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:lottie/lottie.dart';
+import 'dart:convert';
+import 'dart:io';
 
 class DetailEventPage extends StatefulWidget {
   final int eventId;
@@ -26,21 +29,38 @@ class DetailEventPage extends StatefulWidget {
 }
 
 class _DetailEventPageState extends State<DetailEventPage> {
+  int totalHadir = 0;
+  String createdByName = "";
+  int totalPeserta = 0;
   EventModel? event;
-  List<Map<String, String>> scannedPeserta = []; // <- state untuk list peserta
+  List<Map<String, dynamic>> scannedPeserta = []; // <- state untuk list peserta
   final TextEditingController titleController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
+  final TextEditingController descriptionController = TextEditingController();
   @override
   void initState() {
     super.initState();
     initializeDateFormatting('id');
-    loadEvent();
-    loadPeserta();
+    initializeData();
+  }
+
+  Future<void> initializeData() async {
+    await loadEvent();
+    await loadPeserta();
+  }
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    locationController.dispose();
+    descriptionController.dispose();
+    super.dispose();
   }
 
   void showEditEventDialog() {
     titleController.text = event!.title;
     locationController.text = event!.location;
+    descriptionController.text = event!.description;
 
     showDialog(
       context: context,
@@ -50,68 +70,71 @@ class _DetailEventPageState extends State<DetailEventPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-
           title: Text(
             "Edit Event",
             style: styleText().copyWith(fontWeight: FontWeight.bold),
           ),
-
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              /// NAMA EVENT
-              TextField(
-                autofocus: true,
-                controller: titleController,
-                style: TextStyle(color: AppTheme.primary, fontSize: 14),
-                decoration: InputDecoration(
-                  labelText: "Nama Event",
-                  labelStyle: styleText(),
-                  filled: true,
-                  fillColor: AppTheme.fourth,
-
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 14,
-                  ),
-
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                /// NAMA EVENT
+                TextField(
+                  controller: titleController,
+                  style: TextStyle(color: AppTheme.primary, fontSize: 14),
+                  decoration: InputDecoration(
+                    labelText: "Nama Event",
+                    labelStyle: styleText(),
+                    filled: true,
+                    fillColor: AppTheme.fourth,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
-              ),
 
-              SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              /// LOKASI EVENT
-              TextField(
-                controller: locationController,
-                style: TextStyle(color: AppTheme.primary, fontSize: 14),
-                decoration: InputDecoration(
-                  labelText: "Lokasi",
-                  labelStyle: styleText(),
-                  filled: true,
-                  fillColor: AppTheme.fourth,
-
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 14,
-                  ),
-
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                /// LOKASI
+                TextField(
+                  controller: locationController,
+                  style: TextStyle(color: AppTheme.primary, fontSize: 14),
+                  decoration: InputDecoration(
+                    labelText: "Lokasi",
+                    labelStyle: styleText(),
+                    filled: true,
+                    fillColor: AppTheme.fourth,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 16),
+
+                /// DESKRIPSI EVENT
+                TextField(
+                  controller: descriptionController,
+                  maxLines: 3,
+                  style: TextStyle(color: AppTheme.primary, fontSize: 14),
+                  decoration: InputDecoration(
+                    labelText: "Deskripsi",
+                    labelStyle: styleText(),
+                    filled: true,
+                    fillColor: AppTheme.fourth,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
 
-          actionsPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-
           actions: [
-            /// BATAL
             TextButton(
               onPressed: () {
                 Navigator.pop(context);
@@ -119,7 +142,6 @@ class _DetailEventPageState extends State<DetailEventPage> {
               child: Text("Batal", style: styleText()),
             ),
 
-            /// SIMPAN
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.fourth,
@@ -129,21 +151,20 @@ class _DetailEventPageState extends State<DetailEventPage> {
               ),
               onPressed: () async {
                 final updatedEvent = EventModel(
-                  userId: event!.userId,
-                  createdBy: event!.createdBy,
                   id: event!.id,
                   title: titleController.text,
                   location: locationController.text,
-                  totalPeserta: event!.totalPeserta,
+                  description: descriptionController.text,
+                  createdBy: event!.createdBy,
+                  createdAt: event!.createdAt,
                 );
 
                 await EventController.updateEvent(updatedEvent);
 
-                Navigator.pop(context, true);
+                Navigator.pop(context);
 
                 await loadEvent();
               },
-
               child: Text("Simpan", style: styleText()),
             ),
           ],
@@ -153,21 +174,11 @@ class _DetailEventPageState extends State<DetailEventPage> {
   }
 
   Future<void> loadPeserta() async {
-    final checkins = await CheckinController.getCheckinsByEvent(widget.eventId);
-
-    List<Map<String, String>> peserta = [];
-
-    for (var c in checkins) {
-      peserta.add({
-        "userId": c.userId.toString(),
-        "namaUser": c.namaUser,
-        "phone": c.phone,
-        "waktu": c.waktu,
-      });
-    }
+    final data = await CheckinController.getCheckinByEvent(event!.id!);
 
     setState(() {
-      scannedPeserta = peserta;
+      scannedPeserta = data;
+      totalHadir = data.length; // jumlah peserta yang check-in
     });
   }
 
@@ -177,10 +188,169 @@ class _DetailEventPageState extends State<DetailEventPage> {
     return DateFormat("EEEE, dd MMM yyyy, HH.mm", "id").format(date);
   }
 
+  String formatCreatedAt(String waktu) {
+    DateTime date = DateTime.tryParse(waktu) ?? DateTime.now();
+    return DateFormat("dd MMM yyyy, HH:mm", "id").format(date);
+  }
+
   Future<void> loadEvent() async {
-    final allEvents = await EventController.getAllEvent();
-    event = allEvents.firstWhere((e) => e.id == widget.eventId);
+    event = await EventController.getEventById(widget.eventId);
+
+    totalPeserta = await EventParticipantController.getTotalParticipants(
+      widget.eventId,
+    );
+
+    final user = await UserController.getUserById(event!.createdBy);
+    createdByName = user!.nama;
+
     setState(() {});
+  }
+
+  Future<void> showParticipants() async {
+    final participants = await EventParticipantController.getParticipants(
+      widget.eventId,
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.primary,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) {
+        /// =====================
+        /// JIKA BELUM ADA PESERTA
+        /// =====================
+        if (participants.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Lottie.asset(
+                  "assets/lottie/yawn_emoji_animation.json",
+                  height: 130,
+                  width: double.infinity,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 8),
+
+                /// TEXT UTAMA
+                Text(
+                  "Belum ada peserta",
+                  style: styleText().copyWith(fontWeight: FontWeight.bold),
+                ),
+
+                const SizedBox(height: 6),
+
+                /// SUBTEXT
+                Text(
+                  "Bagikan event ini agar orang lain bisa bergabung",
+                  textAlign: TextAlign.center,
+                  style: styleText().copyWith(
+                    fontSize: 13,
+                    color: AppTheme.secondary,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+              ],
+            ),
+          );
+        }
+
+        /// =====================
+        /// JIKA ADA PESERTA
+        /// =====================
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: participants.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (_, i) {
+              final p = participants[i];
+              bool hadir = p["isCheckedIn"];
+
+              return AppListCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    /// NAMA + BADGE
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 20,
+                          backgroundImage:
+                              p["profileImage"] != null &&
+                                  p["profileImage"].toString().isNotEmpty
+                              ? FileImage(File(p["profileImage"]))
+                              : null,
+                          child:
+                              p["profileImage"] == null ||
+                                  p["profileImage"].toString().isEmpty
+                              ? const Icon(Icons.person)
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  p["name"],
+                                  style: styleText().copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: hadir ? Colors.green : Colors.red,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  hadir ? "Hadir" : "Belum Hadir",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    /// PHONE
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.phone,
+                          size: 18,
+                          color: AppTheme.secondary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(p["phone"], style: styleText()),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -221,6 +391,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      /// ID EVENT
                       Row(
                         children: [
                           Icon(Icons.numbers, color: AppTheme.secondary),
@@ -231,6 +402,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
 
                       SizedBox(height: 16),
 
+                      /// LOKASI
                       Row(
                         children: [
                           Icon(Icons.location_pin, color: AppTheme.secondary),
@@ -243,12 +415,73 @@ class _DetailEventPageState extends State<DetailEventPage> {
 
                       SizedBox(height: 16),
 
+                      /// DESKRIPSI
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.description, color: AppTheme.secondary),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              event!.description.isEmpty
+                                  ? "Tidak ada deskripsi"
+                                  : event!.description,
+                              style: styleText(),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 16),
+
+                      /// PESERTA TERDAFTAR
+                      InkWell(
+                        onTap: () {
+                          showParticipants();
+                        },
+                        child: Row(
+                          children: [
+                            Icon(Icons.people, color: AppTheme.secondary),
+                            SizedBox(width: 10),
+                            Text("$totalPeserta Terdaftar", style: styleText()),
+                            SizedBox(width: 6),
+                            Icon(Icons.chevron_right, size: 18),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(height: 16),
+
+                      /// PESERTA HADIR
                       Row(
                         children: [
-                          Icon(Icons.people, color: AppTheme.secondary),
+                          Icon(Icons.verified, color: AppTheme.secondary),
+                          SizedBox(width: 10),
+                          Text("$totalHadir Hadir", style: styleText()),
+                        ],
+                      ),
+                      SizedBox(height: 16),
+
+                      /// DIBUAT OLEH
+                      Row(
+                        children: [
+                          Icon(Icons.person, color: AppTheme.secondary),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(createdByName, style: styleText()),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 16),
+
+                      /// TANGGAL DIBUAT
+                      Row(
+                        children: [
+                          Icon(Icons.schedule, color: AppTheme.secondary),
                           SizedBox(width: 10),
                           Text(
-                            "${event!.totalPeserta} Peserta",
+                            formatCreatedAt(event!.createdAt),
                             style: styleText(),
                           ),
                         ],
@@ -315,7 +548,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                 final p = scannedPeserta[index];
 
                                 return Dismissible(
-                                  key: Key(p['userId']! + index.toString()),
+                                  key: Key("${p['id']}"),
                                   direction: DismissDirection.endToStart,
                                   movementDuration: const Duration(
                                     milliseconds: 250,
@@ -389,19 +622,13 @@ class _DetailEventPageState extends State<DetailEventPage> {
 
                                   onDismissed: (direction) async {
                                     await CheckinController.deleteCheckin(
-                                      int.parse(p['userId']!),
-                                      widget.eventId,
+                                      int.parse(p['id']!),
                                     );
 
                                     setState(() {
                                       scannedPeserta.removeAt(index);
+                                      totalHadir--;
                                     });
-
-                                    await EventController.decrementPeserta(
-                                      widget.eventId,
-                                    );
-
-                                    await loadEvent();
 
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
@@ -416,27 +643,106 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                   child: SizedBox(
                                     width: double.infinity,
                                     child: AppListCard(
-                                      child: Column(
+                                      child: Row(
                                         crossAxisAlignment:
-                                            CrossAxisAlignment.center,
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Text(
-                                            p['namaUser'] ?? "",
-                                            style: styleText(),
+                                          /// FOTO USER
+                                          CircleAvatar(
+                                            radius: 22,
+                                            backgroundImage:
+                                                p['profileImage'] != null &&
+                                                    p['profileImage']
+                                                        .toString()
+                                                        .isNotEmpty &&
+                                                    File(
+                                                      p['profileImage'],
+                                                    ).existsSync()
+                                                ? FileImage(
+                                                    File(p['profileImage']),
+                                                  )
+                                                : null,
+                                            child:
+                                                p['profileImage'] == null ||
+                                                    p['profileImage']
+                                                        .toString()
+                                                        .isEmpty
+                                                ? const Icon(Icons.person)
+                                                : null,
                                           ),
 
-                                          const SizedBox(height: 4),
+                                          const SizedBox(width: 12),
 
-                                          Text(
-                                            p['phone'] ?? "",
-                                            style: styleText(),
-                                          ),
+                                          /// INFO PESERTA
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                /// NAMA + BADGE
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: Text(
+                                                        p['namaUser'] ?? "",
+                                                        style: styleText()
+                                                            .copyWith(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                      ),
+                                                    ),
 
-                                          const SizedBox(height: 4),
+                                                    /// BADGE CHECK-IN
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 8,
+                                                            vertical: 3,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.green,
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                      ),
+                                                      child: const Text(
+                                                        "Hadir",
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 11,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
 
-                                          Text(
-                                            formatTanggal(p['waktu'] ?? ""),
-                                            style: styleText(),
+                                                const SizedBox(height: 4),
+
+                                                /// PHONE
+                                                Text(
+                                                  p['phone'] ?? "",
+                                                  style: styleText(),
+                                                ),
+
+                                                const SizedBox(height: 4),
+
+                                                /// WAKTU CHECKIN
+                                                Text(
+                                                  formatTanggal(
+                                                    p['waktu'] ?? "",
+                                                  ),
+                                                  style: styleText().copyWith(
+                                                    fontSize: 12,
+                                                    color: AppTheme.secondary,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ],
                                       ),

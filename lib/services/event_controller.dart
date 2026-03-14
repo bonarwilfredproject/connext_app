@@ -2,89 +2,52 @@ import 'package:connext_app/services/database_helper.dart';
 import 'package:connext_app/models/event_model.dart';
 
 class EventController {
-  // CREATE
+  /// CREATE EVENT
   static Future<void> insertEvent(EventModel event) async {
     final db = await DBHelper.db();
-    await db.insert('event', event.toMap());
+
+    await db.insert('events', event.toMap());
   }
 
-  // READ
-  static Future<List<EventModel>> getAllEvent() async {
-    final db = await DBHelper.db();
-    final data = await db.query('event');
-
-    return data.map((e) => EventModel.fromMap(e)).toList();
-  }
-
-  // DELETE
-  static Future<void> deleteEvent(int id) async {
-    final db = await DBHelper.db();
-    await db.delete('event', where: 'id = ?', whereArgs: [id]);
-  }
-
-  static Future<void> incrementPeserta(int eventId) async {
-    final db = await DBHelper.db();
-
-    // ambil data event dulu
-    final result = await db.query(
-      "event",
-      where: "id = ?",
-      whereArgs: [eventId],
-    );
-
-    if (result.isNotEmpty) {
-      int total = result.first["total_peserta"] as int;
-
-      // tambah 1 peserta
-      await db.update(
-        "event",
-        {"total_peserta": total + 1},
-        where: "id = ?",
-        whereArgs: [eventId],
-      );
-    }
-  }
-
-  static Future<void> decrementPeserta(int eventId) async {
-    final db = await DBHelper.db();
-
-    // ambil data event dulu
-    final result = await db.query(
-      "event",
-      where: "id = ?",
-      whereArgs: [eventId],
-    );
-
-    if (result.isNotEmpty) {
-      int total = result.first["total_peserta"] as int;
-
-      // tambah 1 peserta
-      await db.update(
-        "event",
-        {"total_peserta": total - 1},
-        where: "id = ?",
-        whereArgs: [eventId],
-      );
-    }
-  }
-
-  static Future<List<EventModel>> getEventByUser(int userId) async {
+  /// GET ALL EVENTS
+  static Future<List<EventModel>> getAllEvent(int userId) async {
     final db = await DBHelper.db();
 
     final data = await db.query(
-      'event',
-      where: 'user_id = ?',
+      'events',
+      where: 'created_by != ?',
       whereArgs: [userId],
     );
 
     return data.map((e) => EventModel.fromMap(e)).toList();
   }
 
+  /// DELETE EVENT
+  static Future<void> deleteEvent(int id) async {
+    final db = await DBHelper.db();
+
+    await db.delete('events', where: 'id = ?', whereArgs: [id]);
+  }
+
+  /// GET EVENT BY CREATOR
+  static Future<List<EventModel>> getEventByUser(int userId) async {
+    final db = await DBHelper.db();
+
+    final data = await db.query(
+      'events',
+      where: 'created_by = ?',
+      whereArgs: [userId],
+    );
+
+    return data.map((e) => EventModel.fromMap(e)).toList();
+  }
+
+  /// GET EVENT BY ID
   static Future<EventModel?> getEventById(int id) async {
     final db = await DBHelper.db();
 
     final result = await db.query(
-      "event",
+      "events",
       where: "id = ?",
       whereArgs: [id],
       limit: 1,
@@ -97,23 +60,24 @@ class EventController {
     return null;
   }
 
-  static Future<List<EventModel>> getEventByAttendee(int userId) async {
+  /// GET EVENTS JOINED BY USER
+  static Future<List<EventModel>> getEventByParticipant(int userId) async {
     final db = await DBHelper.db();
 
-    // ambil semua event_id dari tabel attendee
-    final attendeeData = await db.query(
-      "attendee",
+    // ambil semua event_id dari tabel event_participants
+    final participantData = await db.query(
+      "event_participants",
       where: "user_id = ?",
       whereArgs: [userId],
     );
 
     List<EventModel> events = [];
 
-    for (var a in attendeeData) {
+    for (var p in participantData) {
       final eventData = await db.query(
-        "event",
+        "events",
         where: "id = ?",
-        whereArgs: [a["event_id"]],
+        whereArgs: [p["event_id"]],
       );
 
       if (eventData.isNotEmpty) {
@@ -124,14 +88,27 @@ class EventController {
     return events;
   }
 
+  /// UPDATE EVENT
   static Future<void> updateEvent(EventModel event) async {
     final db = await DBHelper.db();
 
     await db.update(
-      'event',
+      'events',
       event.toMap(),
       where: 'id = ?',
       whereArgs: [event.id],
     );
+  }
+
+  static Future<int> getTotalPeserta(int eventId) async {
+    final db = await DBHelper.db();
+
+    final result = await db.query(
+      "event_participants",
+      where: "event_id = ?",
+      whereArgs: [eventId],
+    );
+
+    return result.length;
   }
 }
