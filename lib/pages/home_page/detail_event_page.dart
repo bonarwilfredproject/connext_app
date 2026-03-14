@@ -2,6 +2,8 @@ import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/services/user_controller.dart';
+import 'package:connext_app/widgets/app_list_card.dart';
+import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/positioning_inside.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
@@ -211,35 +213,51 @@ class _DetailEventPageState extends State<DetailEventPage> {
         children: [
           EllipseBackground(),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(height: 40),
-                Row(
-                  children: [
-                    Icon(Icons.numbers),
-                    SizedBox(width: 10),
-                    Text("${event!.id}", style: styleText()),
-                  ],
+                AppSectionCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.numbers, color: AppTheme.secondary),
+                          SizedBox(width: 10),
+                          Text("${event!.id}", style: styleText()),
+                        ],
+                      ),
+
+                      SizedBox(height: 16),
+
+                      Row(
+                        children: [
+                          Icon(Icons.location_pin, color: AppTheme.secondary),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(event!.location, style: styleText()),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: 16),
+
+                      Row(
+                        children: [
+                          Icon(Icons.people, color: AppTheme.secondary),
+                          SizedBox(width: 10),
+                          Text(
+                            "${event!.totalPeserta} Peserta",
+                            style: styleText(),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                SizedBox(height: 16),
-                Row(
-                  children: [
-                    Icon(Icons.location_pin),
-                    SizedBox(width: 10),
-                    Expanded(child: Text(event!.location, style: styleText())),
-                  ],
-                ),
-                SizedBox(height: 16),
-                Row(
-                  children: [
-                    Icon(Icons.people),
-                    SizedBox(width: 10),
-                    Text("${event!.totalPeserta} Peserta", style: styleText()),
-                  ],
-                ),
-                SizedBox(height: 40),
+
+                SizedBox(height: 20),
                 // Tombol Scan Peserta
                 TombolSementara(
                   onPressed: () async {
@@ -262,203 +280,171 @@ class _DetailEventPageState extends State<DetailEventPage> {
                 ),
 
                 SizedBox(height: 20),
+
                 // Tampilkan list peserta yang sudah discan
                 Expanded(
                   flex: 5,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("Peserta yang hadir: ", style: styleText()),
-                        SizedBox(height: 10),
-                        Expanded(
-                          child: scannedPeserta.isEmpty
-                              ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Lottie.asset(
-                                        "assets/lottie/yawn_emoji_animation.json",
-                                        height: 200,
-                                      ),
+                  child: AppSectionCard(
+                    title: "Peserta yang hadir",
+                    icon: Icons.people,
+                    child: Expanded(
+                      child: scannedPeserta.isEmpty
+                          ? Center(
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Lottie.asset(
+                                      "assets/lottie/yawn_emoji_animation.json",
+                                      height: 200,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      "Belum ada peserta yang hadir",
+                                      style: styleText(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(height: 20),
+                              itemCount: scannedPeserta.length,
+                              itemBuilder: (context, index) {
+                                final p = scannedPeserta[index];
 
-                                      SizedBox(height: 12),
-
-                                      Text(
-                                        "Belum ada peserta yang hadir",
-                                        style: styleText(),
-                                      ),
-                                    ],
+                                return Dismissible(
+                                  key: Key(p['userId']! + index.toString()),
+                                  direction: DismissDirection.endToStart,
+                                  movementDuration: const Duration(
+                                    milliseconds: 250,
                                   ),
-                                )
-                              : ListView.builder(
-                                  itemCount: scannedPeserta.length,
-                                  itemBuilder: (context, index) {
-                                    final p = scannedPeserta[index];
-                                    return Dismissible(
-                                      key: Key(p['userId']! + index.toString()),
-                                      direction: DismissDirection.endToStart,
+                                  resizeDuration: const Duration(
+                                    milliseconds: 200,
+                                  ),
 
-                                      movementDuration: Duration(
-                                        milliseconds: 250,
-                                      ),
-                                      resizeDuration: Duration(
-                                        milliseconds: 200,
-                                      ),
-
-                                      background: Container(
-                                        margin: const EdgeInsets.only(
-                                          bottom: 12,
+                                  background: Container(
+                                    alignment: Alignment.centerRight,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
+                                      children: const [
+                                        Icon(
+                                          Icons.delete_outline,
+                                          color: Colors.white,
                                         ),
-                                        alignment: Alignment.centerRight,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 24,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red,
-                                          borderRadius: BorderRadius.circular(
-                                            16,
+                                        SizedBox(width: 6),
+                                        Text(
+                                          "Hapus",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
+                                      ],
+                                    ),
+                                  ),
 
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.end,
-                                          children: const [
-                                            Icon(
-                                              Icons.delete_outline,
-                                              color: Colors.white,
+                                  confirmDismiss: (direction) async {
+                                    return await showDialog(
+                                      context: context,
+                                      builder: (_) => AlertDialog(
+                                        backgroundColor: AppTheme.third,
+                                        title: Text(
+                                          "Hapus Peserta",
+                                          style: styleText(),
+                                        ),
+                                        content: Text(
+                                          "Yakin ingin menghapus peserta ini?",
+                                          style: styleText(),
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: Text(
+                                              "Batal",
+                                              style: styleText(),
                                             ),
-                                            SizedBox(width: 6),
-                                            Text(
+                                          ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            child: Text(
                                               "Hapus",
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-
-                                      confirmDismiss: (direction) async {
-                                        return await showDialog(
-                                          context: context,
-                                          builder: (_) => AlertDialog(
-                                            backgroundColor: AppTheme.third,
-                                            title: Text(
-                                              "Hapus Peserta",
                                               style: styleText(),
                                             ),
-                                            content: Text(
-                                              "Yakin ingin menghapus peserta ini?",
-                                              style: styleText(),
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  false,
-                                                ),
-                                                child: Text(
-                                                  "Batal",
-                                                  style: styleText(),
-                                                ),
-                                              ),
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  true,
-                                                ),
-                                                child: Text(
-                                                  "Hapus",
-                                                  style: styleText(),
-                                                ),
-                                              ),
-                                            ],
                                           ),
-                                        );
-                                      },
-
-                                      onDismissed: (direction) async {
-                                        await CheckinController.deleteCheckin(
-                                          int.parse(p['userId']!),
-                                          widget.eventId,
-                                        );
-
-                                        setState(() {
-                                          scannedPeserta.removeAt(index);
-                                        });
-
-                                        await EventController.decrementPeserta(
-                                          widget.eventId,
-                                        );
-                                        await loadEvent();
-
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              "Peserta berhasil dihapus",
-                                            ),
-                                            behavior: SnackBarBehavior.floating,
-                                          ),
-                                        );
-                                      },
-
-                                      child: SizedBox(
-                                        width: double.infinity,
-                                        child: Material(
-                                          color: AppTheme.third,
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          child: Container(
-                                            margin: EdgeInsets.only(bottom: 12),
-                                            padding: EdgeInsets.symmetric(
-                                              vertical: 16,
-                                              horizontal: 16,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: AppTheme.primary,
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  p['namaUser'] ?? "",
-                                                  style: styleText(),
-                                                ),
-                                                SizedBox(height: 4),
-
-                                                Text(
-                                                  p['phone'] ?? "",
-                                                  style: styleText(),
-                                                ),
-
-                                                SizedBox(height: 4),
-
-                                                Text(
-                                                  formatTanggal(
-                                                    p['waktu'] ?? "",
-                                                  ),
-                                                  style: styleText(),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
+                                        ],
                                       ),
                                     );
                                   },
-                                ),
-                        ),
-                      ],
+
+                                  onDismissed: (direction) async {
+                                    await CheckinController.deleteCheckin(
+                                      int.parse(p['userId']!),
+                                      widget.eventId,
+                                    );
+
+                                    setState(() {
+                                      scannedPeserta.removeAt(index);
+                                    });
+
+                                    await EventController.decrementPeserta(
+                                      widget.eventId,
+                                    );
+
+                                    await loadEvent();
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          "Peserta berhasil dihapus",
+                                        ),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  },
+
+                                  child: SizedBox(
+                                    width: double.infinity,
+                                    child: AppListCard(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            p['namaUser'] ?? "",
+                                            style: styleText(),
+                                          ),
+
+                                          const SizedBox(height: 4),
+
+                                          Text(
+                                            p['phone'] ?? "",
+                                            style: styleText(),
+                                          ),
+
+                                          const SizedBox(height: 4),
+
+                                          Text(
+                                            formatTanggal(p['waktu'] ?? ""),
+                                            style: styleText(),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                     ),
                   ),
                 ),

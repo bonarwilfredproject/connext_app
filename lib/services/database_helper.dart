@@ -11,7 +11,7 @@ class DBHelper {
         CREATE TABLE user(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           nama TEXT,
-          phone TEXT,
+          phone TEXT UNIQUE,
           password TEXT,
           profile_image TEXT
         )

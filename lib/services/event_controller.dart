@@ -80,6 +80,23 @@ class EventController {
     return data.map((e) => EventModel.fromMap(e)).toList();
   }
 
+  static Future<EventModel?> getEventById(int id) async {
+    final db = await DBHelper.db();
+
+    final result = await db.query(
+      "event",
+      where: "id = ?",
+      whereArgs: [id],
+      limit: 1,
+    );
+
+    if (result.isNotEmpty) {
+      return EventModel.fromMap(result.first);
+    }
+
+    return null;
+  }
+
   static Future<List<EventModel>> getEventByAttendee(int userId) async {
     final db = await DBHelper.db();
 

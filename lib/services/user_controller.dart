@@ -7,6 +7,18 @@ class UserController {
     await dbs.insert('user', user.toMap());
   }
 
+  static Future<bool> isPhoneExists(String phone) async {
+    final db = await DBHelper.db();
+
+    final result = await db.query(
+      "user",
+      where: "phone = ?",
+      whereArgs: [phone],
+    );
+
+    return result.isNotEmpty;
+  }
+
   static Future<void> updateProfileImage(int userId, String imagePath) async {
     final db = await DBHelper.db();
 

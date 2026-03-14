@@ -79,11 +79,9 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
           EllipseBackground(),
 
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 30),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             child: Column(
               children: [
-                const SizedBox(height: 60),
-
                 /// TITLE
                 Text(
                   "Arahkan QR Code peserta\nke dalam kotak",
@@ -91,7 +89,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
                   style: styleText(),
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
 
                 /// SCANNER AREA
                 Center(
@@ -202,7 +200,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
                   ),
                 ),
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 20),
 
                 /// HINT TEXT
                 Text("QR akan terbaca otomatis", style: styleText()),
@@ -291,9 +289,20 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
       String phone = data['phone'];
 
       int eventId = widget.eventId;
-
+      final event = await EventController.getEventById(eventId);
       bool already = await CheckinController.isAlreadyCheckin(userId, eventId);
+      if (userId == event!.userId) {
+        showErrorDialog("Panitia tidak dapat menjadi peserta di event ini");
 
+        if (await Vibration.hasVibrator()) {
+          Vibration.vibrate();
+        }
+
+        await Future.delayed(const Duration(seconds: 1));
+        controller.stop();
+        Navigator.pop(context, true);
+        return;
+      }
       if (already) {
         showErrorDialog("Peserta sudah melakukan check-in");
 

@@ -5,6 +5,7 @@ import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/pages/landing_page/landing_page.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/services/user_controller.dart';
+import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:flutter/material.dart';
@@ -81,188 +82,171 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               EllipseBackground(),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: Center(
-                  child: Column(
-                    children: [
-                      /// FOTO PROFILE
-                      GestureDetector(
-                        onTap: pickImage,
-                        child: Stack(
-                          alignment: Alignment.bottomRight,
-                          children: [
-                            CircleAvatar(
-                              radius: 50,
-                              backgroundColor: AppTheme.third,
-                              backgroundImage: user.profileImage != null
-                                  ? FileImage(File(user.profileImage!))
-                                  : null,
-                              child: user.profileImage == null
-                                  ? Icon(Icons.person, size: 50)
-                                  : null,
-                            ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 20,
+                ),
+                child: Column(
+                  children: [
+                    /// FOTO PROFILE
+                    GestureDetector(
+                      onTap: pickImage,
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundColor: AppTheme.third,
+                            backgroundImage: user.profileImage != null
+                                ? FileImage(File(user.profileImage!))
+                                : null,
+                            child: user.profileImage == null
+                                ? Icon(Icons.person, size: 50)
+                                : null,
+                          ),
 
-                            Container(
-                              padding: EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: AppTheme.secondary,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.edit,
-                                size: 16,
-                                color: Colors.white,
-                              ),
+                          Container(
+                            padding: EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.secondary,
+                              shape: BoxShape.circle,
                             ),
-                          ],
-                        ),
+                            child: Icon(
+                              Icons.edit,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
 
-                      const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                      Text(
-                        user.nama,
-                        style: styleText().copyWith(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    Text(
+                      user.nama,
+                      style: styleText().copyWith(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
+                    ),
 
-                      const SizedBox(height: 24),
+                    const SizedBox(height: 24),
+                    AppSectionCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          /// NAMA
+                          Row(
+                            children: [
+                              Icon(Icons.person, color: AppTheme.secondary),
+                              SizedBox(width: 10),
 
-                      /// CARD IDENTITAS
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-
-                        decoration: BoxDecoration(
-                          color: AppTheme.third,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 10,
-                              offset: Offset(0, 5),
-                            ),
-                          ],
-                        ),
-
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            /// NAMA
-                            Row(
-                              children: [
-                                Icon(Icons.person, color: AppTheme.secondary),
-                                SizedBox(width: 10),
-
-                                Text(
-                                  "Nama",
-                                  style: styleText().copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              Text(
+                                "Nama",
+                                style: styleText().copyWith(
+                                  fontWeight: FontWeight.bold,
                                 ),
-
-                                Spacer(),
-
-                                Text(user.nama, style: styleText()),
-                              ],
-                            ),
-
-                            Divider(height: 20),
-
-                            /// PHONE
-                            Row(
-                              children: [
-                                Icon(Icons.phone, color: AppTheme.secondary),
-                                SizedBox(width: 10),
-
-                                Text(
-                                  "No HP",
-                                  style: styleText().copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-
-                                Spacer(),
-
-                                Text(user.phone, style: styleText()),
-                              ],
-                            ),
-
-                            Divider(height: 20),
-
-                            /// ROLE
-                            Row(
-                              children: [
-                                Icon(Icons.badge, color: AppTheme.secondary),
-                                SizedBox(width: 10),
-
-                                Text(
-                                  "Role",
-                                  style: styleText().copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-
-                                Spacer(),
-
-                                Text(role ?? "Unknown", style: styleText()),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 40),
-
-                      /// LOGOUT BUTTON
-                      TombolSementara(
-                        icon: Icons.logout,
-                        height: 54,
-                        width: double.infinity,
-                        onPressed: () async {
-                          final confirm = await showDialog(
-                            context: context,
-                            builder: (_) => AlertDialog(
-                              backgroundColor: AppTheme.third,
-                              title: Text("Logout", style: styleText()),
-                              content: Text(
-                                "Apakah kamu yakin ingin logout?",
-                                style: styleText(),
                               ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(context, false),
-                                  child: Text("Batal", style: styleText()),
+
+                              Spacer(),
+
+                              Text(user.nama, style: styleText()),
+                            ],
+                          ),
+
+                          Divider(height: 20),
+
+                          /// PHONE
+                          Row(
+                            children: [
+                              Icon(Icons.phone, color: AppTheme.secondary),
+                              SizedBox(width: 10),
+
+                              Text(
+                                "No HP",
+                                style: styleText().copyWith(
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: Text("Ya", style: styleText()),
+                              ),
+
+                              Spacer(),
+
+                              Text(user.phone, style: styleText()),
+                            ],
+                          ),
+
+                          Divider(height: 20),
+
+                          /// ROLE
+                          Row(
+                            children: [
+                              Icon(Icons.badge, color: AppTheme.secondary),
+                              SizedBox(width: 10),
+
+                              Text(
+                                "Role",
+                                style: styleText().copyWith(
+                                  fontWeight: FontWeight.bold,
                                 ),
-                              ],
+                              ),
+
+                              Spacer(),
+
+                              Text(role ?? "Unknown", style: styleText()),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    /// LOGOUT BUTTON
+                    TombolSementara(
+                      icon: Icons.logout,
+                      height: 54,
+                      width: double.infinity,
+                      onPressed: () async {
+                        final confirm = await showDialog(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            backgroundColor: AppTheme.third,
+                            title: Text("Logout", style: styleText()),
+                            content: Text(
+                              "Apakah kamu yakin ingin logout?",
+                              style: styleText(),
                             ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: Text("Batal", style: styleText()),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: Text("Ya", style: styleText()),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirm == true) {
+                          final pref = PreferenceHandler();
+                          await pref.init();
+                          await pref.logout();
+
+                          if (!mounted) return;
+
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (_) => LandingPage()),
+                            (route) => false,
                           );
-
-                          if (confirm == true) {
-                            final pref = PreferenceHandler();
-                            await pref.init();
-                            await pref.logout();
-
-                            if (!mounted) return;
-
-                            Navigator.pushAndRemoveUntil(
-                              context,
-                              MaterialPageRoute(builder: (_) => LandingPage()),
-                              (route) => false,
-                            );
-                          }
-                        },
-                        text: "Logout",
-                      ),
-                    ],
-                  ),
+                        }
+                      },
+                      text: "Logout",
+                    ),
+                  ],
                 ),
               ),
             ],

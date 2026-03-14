@@ -46,72 +46,70 @@ class _CreateEventState extends State<CreateEvent> {
       body: Stack(
         children: [
           EllipseBackground(),
-          PositioningInside(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Nama Event", style: styleText()),
-                    TextFormField(
-                      style: TextStyle(color: AppTheme.primary, fontSize: 12),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Nama event tidak boleh kosong";
-                        }
-                        return null;
-                      },
-                      controller: namaEventController,
-                      decoration: decorationConstant(
-                        hintText: "Masukkan nama event",
-                      ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Nama Event", style: styleText()),
+                  TextFormField(
+                    style: TextStyle(color: AppTheme.primary, fontSize: 12),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return "Nama event tidak boleh kosong";
+                      }
+                      return null;
+                    },
+                    controller: namaEventController,
+                    decoration: decorationConstant(
+                      hintText: "Masukkan nama event",
                     ),
-                    SizedBox(height: 20),
-                    Text("Lokasi", style: styleText()),
-                    TextFormField(
-                      style: TextStyle(color: AppTheme.primary, fontSize: 12),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Lokasi tidak boleh kosong";
-                        }
-                        return null;
-                      },
-                      controller: lokasiController,
-                      decoration: decorationConstant(
-                        hintText: "Masukkan lokasi event",
-                      ),
+                  ),
+                  SizedBox(height: 20),
+                  Text("Lokasi", style: styleText()),
+                  TextFormField(
+                    style: TextStyle(color: AppTheme.primary, fontSize: 12),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return "Lokasi tidak boleh kosong";
+                      }
+                      return null;
+                    },
+                    controller: lokasiController,
+                    decoration: decorationConstant(
+                      hintText: "Masukkan lokasi event",
                     ),
-                    SizedBox(height: 20),
-                    Center(
-                      child: IconButton(
-                        style: IconButton.styleFrom(
-                          backgroundColor: Color(0XFF424874),
-                        ),
-                        onPressed: () async {
-                          if (_formKey.currentState!.validate()) {
-                            await EventController.insertEvent(
-                              EventModel(
-                                userId: userId!,
-                                title: namaEventController.text.trim(),
-                                location: lokasiController.text.trim(),
-                                totalPeserta: 0,
-                                createdBy:
-                                    namaUser ??
-                                    "Unknown", // sementara, nanti bisa pakai nama user login
-                              ),
-                            );
+                  ),
+                  SizedBox(height: 20),
+                  Center(
+                    child: IconButton(
+                      style: IconButton.styleFrom(
+                        backgroundColor: Color(0XFF424874),
+                      ),
+                      onPressed: () async {
+                        if (_formKey.currentState!.validate()) {
+                          await EventController.insertEvent(
+                            EventModel(
+                              userId: userId!,
+                              title: namaEventController.text.trim(),
+                              location: lokasiController.text.trim(),
+                              totalPeserta: 0,
+                              createdBy:
+                                  namaUser ??
+                                  "Unknown", // sementara, nanti bisa pakai nama user login
+                            ),
+                          );
 
-                            Navigator.pop(context, true);
-                            // kirim sinyal ke HomePage bahwa event berhasil dibuat
-                          }
-                        },
-                        icon: Icon(Icons.add, color: Color(0xFFF4EEFF)),
-                      ),
+                          Navigator.pop(context, true);
+                          // kirim sinyal ke HomePage bahwa event berhasil dibuat
+                        }
+                      },
+                      icon: Icon(Icons.add, color: Color(0xFFF4EEFF)),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),

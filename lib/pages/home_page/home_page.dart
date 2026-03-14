@@ -12,6 +12,8 @@ import 'package:connext_app/models/checkin_model.dart';
 import 'package:connext_app/models/event_model.dart';
 import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/constants/style_text.dart';
+import 'package:connext_app/widgets/app_list_card.dart';
+import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:connext_app/pages/home_page/create_event.dart';
 import 'package:connext_app/pages/home_page/detail_event_page.dart';
@@ -112,261 +114,258 @@ class _HomePageState extends State<HomePage> {
       body: Stack(
         children: [
           EllipseBackground(),
-          PositioningInside(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (widget.role == "Committee") ...[
-                    TombolSementara(
-                      onPressed: () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => CreateEvent()),
-                        );
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.role == "Committee") ...[
+                  TombolSementara(
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => CreateEvent()),
+                      );
 
-                        if (result == true) {
-                          loadEvents();
-                        }
-                      },
-                      height: 54,
-                      width: 164,
-                      icon: Icons.edit,
-                      text: "Buat Event",
-                    ),
-                    SizedBox(height: 40),
-                    Text("Events:", style: styleText()),
-                    SizedBox(height: 20),
+                      if (result == true) {
+                        loadEvents();
+                      }
+                    },
+                    height: 54,
+                    width: 164,
+                    icon: Icons.edit,
+                    text: "Buat Event",
+                  ),
+                  SizedBox(height: 20),
 
-                    Expanded(
-                      child: isLoading
-                          ? Center(child: CircularProgressIndicator())
-                          : events.isEmpty
-                          ? Column(
-                              children: [
-                                Lottie.asset(
-                                  "assets/lottie/empty_bookings.json",
-                                ),
-
-                                SizedBox(height: 12),
-
-                                Text("Belum ada event", style: styleText()),
-                              ],
-                            )
-                          : ListView.separated(
-                              separatorBuilder: (context, index) =>
-                                  SizedBox(height: 20),
-                              itemCount: events.length,
-                              itemBuilder: (context, index) {
-                                final event = events[index];
-
-                                return Dismissible(
-                                  key: Key(event.id.toString()),
-                                  direction: DismissDirection.endToStart,
-
-                                  movementDuration: Duration(milliseconds: 250),
-                                  resizeDuration: Duration(milliseconds: 200),
-
-                                  background: Container(
-                                    alignment: Alignment.centerRight,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 24,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red,
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: const [
-                                        Icon(
-                                          Icons.delete_outline,
-                                          color: Colors.white,
-                                        ),
-                                        SizedBox(width: 6),
-                                        Text(
-                                          "Hapus",
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                  Expanded(
+                    child: AppSectionCard(
+                      icon: Icons.event_note,
+                      title: "Events",
+                      child: Expanded(
+                        child: isLoading
+                            ? const Center(child: CircularProgressIndicator())
+                            : events.isEmpty
+                            ? Column(
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: [
+                                  Lottie.asset(
+                                    "assets/lottie/empty_bookings.json",
                                   ),
+                                  const SizedBox(height: 12),
+                                  Text("Belum ada event", style: styleText()),
+                                ],
+                              )
+                            : ListView.separated(
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(height: 20),
+                                itemCount: events.length,
+                                itemBuilder: (context, index) {
+                                  final event = events[index];
 
-                                  confirmDismiss: (direction) async {
-                                    return await showDialog(
-                                      context: context,
-                                      builder: (_) => AlertDialog(
-                                        backgroundColor: AppTheme.third,
-                                        title: Text(
-                                          "Hapus Event",
-                                          style: styleText(),
-                                        ),
-                                        content: Text(
-                                          "Yakin ingin menghapus event ini?",
-                                          style: styleText(),
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context, false),
-                                            child: Text(
-                                              "Batal",
-                                              style: styleText(),
-                                            ),
-                                          ),
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context, true),
-                                            child: Text(
-                                              "Hapus",
-                                              style: styleText(),
-                                            ),
-                                          ),
-                                        ],
+                                  return Dismissible(
+                                    key: Key(event.id.toString()),
+                                    direction: DismissDirection.endToStart,
+                                    movementDuration: const Duration(
+                                      milliseconds: 250,
+                                    ),
+                                    resizeDuration: const Duration(
+                                      milliseconds: 200,
+                                    ),
+
+                                    background: Container(
+                                      alignment: Alignment.centerRight,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
                                       ),
-                                    );
-                                  },
-
-                                  onDismissed: (direction) async {
-                                    await EventController.deleteEvent(
-                                      event.id!,
-                                    );
-
-                                    setState(() {
-                                      events.removeAt(index);
-                                    });
-
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text("Event berhasil dihapus"),
-                                        behavior: SnackBarBehavior.floating,
-                                      ),
-                                    );
-                                  },
-
-                                  child: InkWell(
-                                    onTap: () async {
-                                      final result = await Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => DetailEventPage(
-                                            eventId: event.id!,
-                                          ),
-                                        ),
-                                      );
-
-                                      if (result == true) {
-                                        loadEvents();
-                                      }
-                                    },
-
-                                    child: Container(
-                                      padding: const EdgeInsets.all(16),
-
                                       decoration: BoxDecoration(
-                                        color: AppTheme.third,
+                                        color: Colors.red,
                                         borderRadius: BorderRadius.circular(20),
-                                        boxShadow: const [
-                                          BoxShadow(
-                                            color: Colors.black12,
-                                            blurRadius: 8,
-                                            offset: Offset(0, 4),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
+                                        children: const [
+                                          Icon(
+                                            Icons.delete_outline,
+                                            color: Colors.white,
+                                          ),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            "Hapus",
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ],
                                       ),
+                                    ),
 
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          /// HEADER EVENT
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.event,
-                                                    color: AppTheme.secondary,
-                                                  ),
-                                                  const SizedBox(width: 8),
-
-                                                  Text(
-                                                    event.title,
-                                                    style: styleText().copyWith(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              Icon(
-                                                Icons.info_outline,
-                                                color: AppTheme.secondary,
-                                              ),
-                                            ],
+                                    confirmDismiss: (direction) async {
+                                      return await showDialog(
+                                        context: context,
+                                        builder: (_) => AlertDialog(
+                                          backgroundColor: AppTheme.third,
+                                          title: Text(
+                                            "Hapus Event",
+                                            style: styleText(),
                                           ),
-
-                                          const SizedBox(height: 6),
-
-                                          /// LOKASI
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.location_pin,
-                                                color: AppTheme.secondary,
-                                                size: 20,
-                                              ),
-                                              const SizedBox(width: 8),
-
-                                              Expanded(
-                                                child: Text(
-                                                  event.location,
-                                                  style: styleText(),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
+                                          content: Text(
+                                            "Yakin ingin menghapus event ini?",
+                                            style: styleText(),
                                           ),
-
-                                          const SizedBox(height: 6),
-
-                                          /// JUMLAH PESERTA
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.people,
-                                                color: AppTheme.secondary,
-                                                size: 20,
-                                              ),
-                                              const SizedBox(width: 8),
-
-                                              Text(
-                                                "${event.totalPeserta} Peserta",
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, false),
+                                              child: Text(
+                                                "Batal",
                                                 style: styleText(),
                                               ),
-                                            ],
+                                            ),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, true),
+                                              child: Text(
+                                                "Hapus",
+                                                style: styleText(),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+
+                                    onDismissed: (direction) async {
+                                      await EventController.deleteEvent(
+                                        event.id!,
+                                      );
+
+                                      setState(() {
+                                        events.removeAt(index);
+                                      });
+
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "Event berhasil dihapus",
                                           ),
-                                        ],
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    },
+
+                                    child: InkWell(
+                                      onTap: () async {
+                                        final result = await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => DetailEventPage(
+                                              eventId: event.id!,
+                                            ),
+                                          ),
+                                        );
+
+                                        if (result == true) {
+                                          loadEvents();
+                                        }
+                                      },
+                                      child: AppListCard(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            /// HEADER EVENT
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.event,
+                                                      color: AppTheme.secondary,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      event.title,
+                                                      style: styleText()
+                                                          .copyWith(
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                Icon(
+                                                  Icons.info_outline,
+                                                  color: AppTheme.secondary,
+                                                ),
+                                              ],
+                                            ),
+
+                                            const SizedBox(height: 6),
+
+                                            /// LOKASI
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.location_pin,
+                                                  color: AppTheme.secondary,
+                                                  size: 20,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    event.location,
+                                                    style: styleText(),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+
+                                            const SizedBox(height: 6),
+
+                                            /// JUMLAH PESERTA
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.people,
+                                                  color: AppTheme.secondary,
+                                                  size: 20,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  "${event.totalPeserta} Peserta",
+                                                  style: styleText(),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                );
-                              },
-                            ),
+                                  );
+                                },
+                              ),
+                      ),
                     ),
-                  ] else if (widget.role == "Attendee") ...[
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 20),
-                      child: Column(
-                        children: [
-                          TombolSementara(
+                  ),
+                ] else if (widget.role == "Attendee") ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Column(
+                      children: [
+                        AppSectionCard(
+                          title: "Event",
+                          icon: Icons.event,
+                          child: TombolSementara(
                             onPressed: () {
                               Navigator.push(
                                 context,
@@ -379,37 +378,46 @@ class _HomePageState extends State<HomePage> {
                             },
                             text: "Lihat Event",
                             height: 54,
-                            width: 164,
+                            width: double.infinity,
                             icon: Icons.event,
                           ),
+                        ),
 
-                          SizedBox(height: 20),
-                          Center(
-                            child: currentUser == null
-                                ? CircularProgressIndicator()
-                                : QrImageView(
-                                    data: jsonEncode({
-                                      "userId": currentUser!.id,
-                                      "namaUser": currentUser!.nama,
-                                      "phone": currentUser!.phone,
-                                    }),
-                                    version: QrVersions.auto,
-                                    size: 200,
-                                    backgroundColor: Colors.white,
-                                  ),
+                        const SizedBox(height: 24),
+                        AppSectionCard(
+                          title: "QR Check-in",
+                          icon: Icons.qr_code,
+                          child: Column(
+                            children: [
+                              Center(
+                                child: currentUser == null
+                                    ? const CircularProgressIndicator()
+                                    : QrImageView(
+                                        data: jsonEncode({
+                                          "userId": currentUser!.id,
+                                          "namaUser": currentUser!.nama,
+                                          "phone": currentUser!.phone,
+                                        }),
+                                        version: QrVersions.auto,
+                                        size: 200,
+                                        backgroundColor: Colors.white,
+                                      ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              Text(
+                                "Berikan QR ini ke panitia saat datang ke acara",
+                                textAlign: TextAlign.center,
+                                style: styleText(),
+                              ),
+                            ],
                           ),
-                          SizedBox(height: 20),
-                          Text(
-                            textAlign: TextAlign.center,
-                            "Berikan QR ini ke panitia saat datang ke acara",
-                            style: styleText(),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
         ],

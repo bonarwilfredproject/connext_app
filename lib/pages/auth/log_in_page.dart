@@ -4,6 +4,7 @@ import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/pages/home_page/home_page.dart';
+import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/custom_appbar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/positioning_inside.dart';
@@ -65,26 +66,11 @@ class _LogInPageState extends State<LogInPage> {
           // ellipse di belakang layar (background)
           EllipseBackground(),
           //logo, dan field serta tombol
-          PositioningInside(
+          Center(
             child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 40.0,
-                  vertical: 20,
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 20,
-                        offset: Offset(0, 10),
-                      ),
-                    ],
-                  ),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: AppSectionCard(
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -240,7 +226,7 @@ class _LogInPageState extends State<LogInPage> {
                                 text: "Committee",
                               ),
                             ),
-                            SizedBox(width: 4),
+                            SizedBox(width: 16),
                             //login as attendee button
                             Expanded(
                               child: TombolSementara(

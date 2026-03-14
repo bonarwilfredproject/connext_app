@@ -1,3 +1,4 @@
+import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/models/event_model.dart';
 import 'package:connext_app/services/event_controller.dart';
@@ -31,7 +32,11 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Event Saya", style: styleText())),
+      backgroundColor: AppTheme.primary,
+      appBar: AppBar(
+        title: Text("Event Saya", style: styleText()),
+        backgroundColor: AppTheme.primary,
+      ),
       body: Stack(
         children: [
           EllipseBackground(),

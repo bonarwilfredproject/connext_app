@@ -4,6 +4,7 @@ import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/pages/auth/log_in_page.dart';
+import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/custom_appbar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/positioning_inside.dart';
@@ -35,23 +36,11 @@ class _DaftarPageState extends State<DaftarPage> {
       body: Stack(
         children: [
           EllipseBackground(),
-          PositioningInside(
+          Center(
             child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                child: Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 20,
-                        offset: Offset(0, 10),
-                      ),
-                    ],
-                  ),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: AppSectionCard(
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -299,21 +288,37 @@ class _DaftarPageState extends State<DaftarPage> {
                           width: double.infinity,
                           height: 54,
                           text: "Daftar",
-                          onPressed: () {
+                          onPressed: () async {
                             if (_formKey.currentState!.validate()) {
-                              UserController.registerUser(
-                                UserModel(
-                                  nama: namaController.text,
-                                  phone: phoneController.text,
-                                  password: passwordController.text,
-                                ),
+                              bool exists = await UserController.isPhoneExists(
+                                phoneController.text,
                               );
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => LogInPage(),
-                                ),
-                              );
+
+                              if (exists) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      "Nomor telepon sudah terdaftar",
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                                return;
+                              } else {
+                                UserController.registerUser(
+                                  UserModel(
+                                    nama: namaController.text,
+                                    phone: phoneController.text,
+                                    password: passwordController.text,
+                                  ),
+                                );
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => LogInPage(),
+                                  ),
+                                );
+                              }
                             }
                           },
                         ),
