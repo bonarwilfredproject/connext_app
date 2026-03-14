@@ -13,6 +13,7 @@ import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/positioning_inside.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 class AttendeeEventPage extends StatefulWidget {
@@ -36,11 +37,17 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
   bool isCheckedIn = false;
   bool isLoading = true;
   int totalPeserta = 0;
-
+  String? waktuCheckin;
   @override
   void initState() {
     super.initState();
     loadEvent();
+  }
+
+  String formatTanggal(String waktu) {
+    DateTime date = DateTime.tryParse(waktu) ?? DateTime.now();
+
+    return DateFormat("EEEE, dd MMM yyyy, HH.mm", "id").format(date);
   }
 
   Future<void> loadEvent() async {
@@ -66,9 +73,12 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
       widget.userId,
       widget.eventId,
     );
-
+    print(participant);
     if (participant != null) {
       isCheckedIn = await CheckinController.isAlreadyCheckin(participant["id"]);
+
+      /// ambil waktu check-in
+      waktuCheckin = participant["checkin_time"];
     }
 
     setState(() {
@@ -208,9 +218,12 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                                   color: Colors.green,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: const Text(
-                                  "Anda sudah check-in",
-                                  style: TextStyle(
+                                child: Text(
+                                  waktuCheckin != null
+                                      ? "Anda sudah check-in pada\n${formatTanggal(waktuCheckin!)}"
+                                      : "Anda sudah check-in",
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
