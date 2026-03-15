@@ -31,6 +31,7 @@ class DetailEventPage extends StatefulWidget {
 class _DetailEventPageState extends State<DetailEventPage> {
   int totalHadir = 0;
   String createdByName = "";
+  String? createdByImage;
   int totalPeserta = 0;
   EventModel? event;
   List<Map<String, dynamic>> scannedPeserta = []; // <- state untuk list peserta
@@ -202,7 +203,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
 
     final user = await UserController.getUserById(event!.createdBy);
     createdByName = user!.nama;
-
+    createdByImage = user.profileImage;
     setState(() {});
   }
 
@@ -445,7 +446,11 @@ class _DetailEventPageState extends State<DetailEventPage> {
                             SizedBox(width: 10),
                             Text("$totalPeserta Terdaftar", style: styleText()),
                             SizedBox(width: 6),
-                            Icon(Icons.chevron_right, size: 18),
+                            Icon(
+                              Icons.chevron_right,
+                              size: 18,
+                              color: AppTheme.secondary,
+                            ),
                           ],
                         ),
                       ),
@@ -465,8 +470,21 @@ class _DetailEventPageState extends State<DetailEventPage> {
                       /// DIBUAT OLEH
                       Row(
                         children: [
-                          Icon(Icons.person, color: AppTheme.secondary),
-                          SizedBox(width: 10),
+                          CircleAvatar(
+                            radius: 12,
+                            backgroundImage:
+                                createdByImage != null &&
+                                    createdByImage!.isNotEmpty &&
+                                    File(createdByImage!).existsSync()
+                                ? FileImage(File(createdByImage!))
+                                : null,
+                            child:
+                                createdByImage == null ||
+                                    createdByImage!.isEmpty
+                                ? const Icon(Icons.person, size: 16)
+                                : null,
+                          ),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Text(createdByName, style: styleText()),
                           ),
