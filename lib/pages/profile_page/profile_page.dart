@@ -23,6 +23,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  String? phoneError;
   final TextEditingController nameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -144,6 +145,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     /// NAMA
                     TextFormField(
+                      style: TextStyle(color: AppTheme.secondary, fontSize: 14),
                       controller: nameController,
                       decoration: decorationConstant(
                         labelText: "Nama",
@@ -161,6 +163,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     /// PHONE
                     TextFormField(
+                      style: TextStyle(color: AppTheme.secondary, fontSize: 14),
                       controller: phoneController,
                       keyboardType: TextInputType.number,
                       decoration: decorationConstant(
@@ -180,7 +183,18 @@ class _ProfilePageState extends State<ProfilePage> {
                           return "Nomor HP tidak valid";
                         }
 
+                        if (phoneError != null) {
+                          return phoneError;
+                        }
+
                         return null;
+                      },
+                      onChanged: (value) {
+                        if (phoneError != null) {
+                          setModalState(() {
+                            phoneError = null;
+                          });
+                        }
                       },
                     ),
 
@@ -204,11 +218,12 @@ class _ProfilePageState extends State<ProfilePage> {
                           );
 
                           if (exists) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Nomor HP sudah digunakan"),
-                              ),
-                            );
+                            setModalState(() {
+                              phoneError =
+                                  "Nomor HP sudah digunakan oleh akun lain";
+                            });
+
+                            _formKey.currentState!.validate();
                             return;
                           }
                         }
