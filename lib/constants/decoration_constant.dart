@@ -7,11 +7,11 @@ InputDecoration decorationConstant({
 }) {
   return InputDecoration(
     suffixIcon: suffixIcon,
-    errorMaxLines: 2,
+    errorMaxLines: 3,
     contentPadding: EdgeInsets.symmetric(horizontal: 8),
     hint: Text(
       hintText,
-      style: TextStyle(color: AppTheme.primary, fontSize: 12),
+      style: TextStyle(color: AppTheme.secondary, fontSize: 12),
     ),
     fillColor: AppTheme.fourth,
     filled: true,

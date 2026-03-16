@@ -11,7 +11,6 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:vibration/vibration.dart';
 import 'package:vibration/vibration_presets.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 
 class ScanPesertaPage extends StatefulWidget {
   final int eventId;

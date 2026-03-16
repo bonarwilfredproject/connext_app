@@ -8,7 +8,6 @@ import 'package:connext_app/pages/home_page/home_page.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/custom_appbar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
-import 'package:connext_app/widgets/positioning_inside.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:flutter/material.dart';
 
@@ -86,7 +85,7 @@ class _LogInPageState extends State<LogInPage> {
                         //phone field
                         Row(
                           children: [
-                            Icon(Icons.phone, color: Color(0XFF424874)),
+                            Icon(Icons.phone, color: AppTheme.secondary),
                             const SizedBox(width: 8),
                             Text("Phone", style: styleText()),
                           ],
@@ -172,11 +171,11 @@ class _LogInPageState extends State<LogInPage> {
                               icon: isVisible
                                   ? Icon(
                                       Icons.visibility_off,
-                                      color: AppTheme.primary,
+                                      color: AppTheme.secondary,
                                     )
                                   : Icon(
                                       Icons.visibility,
-                                      color: AppTheme.primary,
+                                      color: AppTheme.secondary,
                                     ),
                             ),
                           ),
@@ -200,7 +199,7 @@ class _LogInPageState extends State<LogInPage> {
           ),
         ],
       ),
-      backgroundColor: const Color(0xFFF4EEFF),
+      backgroundColor: AppTheme.primary,
     );
   }
 }

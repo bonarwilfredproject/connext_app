@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/services/user_controller.dart';
@@ -11,7 +10,6 @@ import 'package:connext_app/services/event_participant_controller.dart';
 import 'package:connext_app/widgets/app_list_card.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
-import 'package:connext_app/widgets/positioning_inside.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';

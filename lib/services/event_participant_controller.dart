@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:connext_app/services/database_helper.dart';
-import 'package:sqflite/sqflite.dart';
 
 class EventParticipantController {
   static String generateToken() {

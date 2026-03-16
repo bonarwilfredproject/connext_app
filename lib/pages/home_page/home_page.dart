@@ -15,14 +15,10 @@ import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:connext_app/pages/home_page/create_event.dart';
 import 'package:connext_app/pages/home_page/detail_event_page.dart';
-import 'package:connext_app/pages/landing_page/landing_page.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/home_screen_appbar.dart';
-import 'package:connext_app/widgets/positioning_inside.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
-import 'package:qr_flutter/qr_flutter.dart';
-import 'dart:convert';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -548,7 +544,7 @@ class _HomePageState extends State<HomePage> {
                                             );
 
                                             /// langsung buka halaman QR event
-                                            final result = await Navigator.push(
+                                            await Navigator.push(
                                               context,
                                               MaterialPageRoute(
                                                 builder: (_) =>

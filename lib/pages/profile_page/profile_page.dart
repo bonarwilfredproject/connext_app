@@ -22,6 +22,10 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  String? tempImage;
   late Future<UserModel?> userFuture;
   final ImagePicker picker = ImagePicker();
   String? role;
@@ -30,6 +34,110 @@ class _ProfilePageState extends State<ProfilePage> {
     super.initState();
     userFuture = UserController.getUserById(widget.userId);
     loadRole();
+  }
+
+  void showEditProfileSheet(UserModel user) {
+    nameController.text = user.nama;
+    phoneController.text = user.phone;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.primary,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                /// HANDLE
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.secondary,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                Text(
+                  "Edit Profile",
+                  style: styleText().copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                /// NAMA
+                TextFormField(
+                  controller: nameController,
+                  decoration: InputDecoration(labelText: "Nama"),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return "Nama tidak boleh kosong";
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                /// PHONE
+                TextFormField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: "Nomor HP"),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return "Nomor HP wajib diisi";
+                    }
+
+                    if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                      return "Nomor hanya boleh angka";
+                    }
+
+                    if (value.length < 10) {
+                      return "Nomor HP tidak valid";
+                    }
+
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 24),
+
+                /// SAVE BUTTON
+                TombolSementara(
+                  icon: Icons.save,
+                  text: "Simpan",
+                  width: double.infinity,
+                  height: 50,
+                  onPressed: () {
+                    if (_formKey.currentState!.validate()) {
+                      Navigator.pop(context);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> loadRole() async {
@@ -113,7 +221,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   children: [
                     /// FOTO PROFILE
                     GestureDetector(
-                      onTap: pickImage,
+                      onTap: () => showEditProfileSheet(user),
                       child: Stack(
                         alignment: Alignment.bottomRight,
                         children: [

@@ -1,8 +1,4 @@
 import 'package:connext_app/constants/app_theme.dart';
-import 'package:connext_app/pages/auth/daftar_page.dart';
-import 'package:connext_app/pages/home_page/home_page.dart';
-import 'package:connext_app/pages/landing_page/landing_page.dart';
-import 'package:connext_app/pages/auth/log_in_page.dart';
 import 'package:connext_app/pages/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';

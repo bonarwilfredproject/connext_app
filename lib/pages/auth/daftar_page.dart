@@ -7,7 +7,6 @@ import 'package:connext_app/pages/auth/log_in_page.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/custom_appbar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
-import 'package:connext_app/widgets/positioning_inside.dart';
 import 'package:connext_app/widgets/role_selector.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:flutter/material.dart';
@@ -181,7 +180,8 @@ class _DaftarPageState extends State<DaftarPage> {
                             color: Color(0xFFF4EEFF),
                             fontSize: 12,
                           ),
-                          decoration: InputDecoration(
+                          decoration: decorationConstant(
+                            hintText: "Masukkan password",
                             suffixIcon: IconButton(
                               onPressed: () {
                                 isVisible = !isVisible;
@@ -190,26 +190,12 @@ class _DaftarPageState extends State<DaftarPage> {
                               icon: isVisible
                                   ? Icon(
                                       Icons.visibility_off,
-                                      color: AppTheme.primary,
+                                      color: AppTheme.secondary,
                                     )
                                   : Icon(
                                       Icons.visibility,
-                                      color: AppTheme.primary,
+                                      color: AppTheme.secondary,
                                     ),
-                            ),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                            hint: Text(
-                              "Masukkan password",
-                              style: TextStyle(
-                                color: Color(0xFFF4EEFF),
-                                fontSize: 12,
-                              ),
-                            ),
-                            fillColor: Color(0xFFA6B1E1),
-                            filled: true,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
                             ),
                           ),
                         ),
@@ -252,7 +238,8 @@ class _DaftarPageState extends State<DaftarPage> {
                             color: Color(0xFFF4EEFF),
                             fontSize: 12,
                           ),
-                          decoration: InputDecoration(
+                          decoration: decorationConstant(
+                            hintText: "Masukkan ulang password",
                             suffixIcon: IconButton(
                               onPressed: () {
                                 isVisible = !isVisible;
@@ -261,26 +248,12 @@ class _DaftarPageState extends State<DaftarPage> {
                               icon: isVisible
                                   ? Icon(
                                       Icons.visibility_off,
-                                      color: AppTheme.primary,
+                                      color: AppTheme.secondary,
                                     )
                                   : Icon(
                                       Icons.visibility,
-                                      color: AppTheme.primary,
+                                      color: AppTheme.secondary,
                                     ),
-                            ),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                            hint: Text(
-                              "Masukkan ulang password",
-                              style: TextStyle(
-                                color: Color(0xFFF4EEFF),
-                                fontSize: 12,
-                              ),
-                            ),
-                            fillColor: Color(0xFFA6B1E1),
-                            filled: true,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
                             ),
                           ),
                         ),

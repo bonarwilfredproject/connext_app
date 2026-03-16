@@ -19,6 +19,21 @@ class UserController {
     return result.isNotEmpty;
   }
 
+  static Future<void> updateProfile(
+    int userId,
+    String name,
+    String phone,
+  ) async {
+    final db = await DBHelper.db();
+
+    await db.update(
+      "users",
+      {"nama": name, "phone": phone},
+      where: "id = ?",
+      whereArgs: [userId],
+    );
+  }
+
   static Future<void> updateProfileImage(int userId, String imagePath) async {
     final db = await DBHelper.db();
 

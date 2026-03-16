@@ -1,12 +1,10 @@
 import 'package:connext_app/constants/app_theme.dart';
-import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/services/event_participant_controller.dart';
 import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/widgets/app_list_card.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
-import 'package:connext_app/widgets/positioning_inside.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:connext_app/pages/scanner/scan_peserta_page.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +14,6 @@ import 'package:connext_app/constants/style_text.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:lottie/lottie.dart';
-import 'dart:convert';
 import 'dart:io';
 
 class DetailEventPage extends StatefulWidget {
