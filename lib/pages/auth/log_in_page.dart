@@ -111,7 +111,7 @@ class _LogInPageState extends State<LogInPage> {
                           },
                           controller: phoneController,
                           style: TextStyle(
-                            color: Color(0xFFF4EEFF),
+                            color: AppTheme.secondary,
                             fontSize: 12,
                           ),
                           decoration: decorationConstant(
@@ -158,7 +158,7 @@ class _LogInPageState extends State<LogInPage> {
                           obscureText: isVisible ? true : false,
                           obscuringCharacter: "*",
                           style: TextStyle(
-                            color: Color(0xFFF4EEFF),
+                            color: AppTheme.secondary,
                             fontSize: 12,
                           ),
                           decoration: decorationConstant(

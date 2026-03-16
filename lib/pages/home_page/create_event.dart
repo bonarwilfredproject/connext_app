@@ -54,6 +54,7 @@ class _CreateEventState extends State<CreateEvent> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: const Color(0xFFF4EEFF),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF4EEFF),
@@ -63,91 +64,89 @@ class _CreateEventState extends State<CreateEvent> {
         children: [
           EllipseBackground(),
 
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height,
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      /// NAMA EVENT
-                      Text("Nama Event", style: styleText()),
-                      TextFormField(
-                        style: TextStyle(color: AppTheme.primary, fontSize: 12),
-                        controller: namaEventController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Nama event tidak boleh kosong";
-                          }
-                          return null;
-                        },
-                        decoration: decorationConstant(
-                          hintText: "Masukkan nama event",
-                        ),
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height,
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    /// NAMA EVENT
+                    Text("Nama Event", style: styleText()),
+                    TextFormField(
+                      style: TextStyle(color: AppTheme.secondary, fontSize: 12),
+                      controller: namaEventController,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Nama event tidak boleh kosong";
+                        }
+                        return null;
+                      },
+                      decoration: decorationConstant(
+                        hintText: "Masukkan nama event",
                       ),
+                    ),
 
-                      const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                      /// LOKASI
-                      Text("Lokasi", style: styleText()),
-                      TextFormField(
-                        style: TextStyle(color: AppTheme.primary, fontSize: 12),
-                        controller: lokasiController,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Lokasi tidak boleh kosong";
-                          }
-                          return null;
-                        },
-                        decoration: decorationConstant(
-                          hintText: "Masukkan lokasi event",
-                        ),
+                    /// LOKASI
+                    Text("Lokasi", style: styleText()),
+                    TextFormField(
+                      style: TextStyle(color: AppTheme.secondary, fontSize: 12),
+                      controller: lokasiController,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Lokasi tidak boleh kosong";
+                        }
+                        return null;
+                      },
+                      decoration: decorationConstant(
+                        hintText: "Masukkan lokasi event",
                       ),
+                    ),
 
-                      const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                      /// DESKRIPSI
-                      Text("Deskripsi", style: styleText()),
-                      TextFormField(
-                        style: TextStyle(color: AppTheme.primary, fontSize: 12),
-                        controller: descriptionController,
-                        minLines: 4,
-                        maxLines: 6,
-                        textAlignVertical: TextAlignVertical.top,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return "Deskripsi tidak boleh kosong";
-                          }
-                          return null;
-                        },
-                        decoration:
-                            decorationConstant(
-                              hintText: "Masukkan deskripsi event",
-                            ).copyWith(
-                              contentPadding: const EdgeInsets.symmetric(
-                                vertical: 16,
-                                horizontal: 8,
-                              ),
+                    /// DESKRIPSI
+                    Text("Deskripsi", style: styleText()),
+                    TextFormField(
+                      style: TextStyle(color: AppTheme.secondary, fontSize: 12),
+                      controller: descriptionController,
+                      minLines: 4,
+                      maxLines: 6,
+                      textAlignVertical: TextAlignVertical.top,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Deskripsi tidak boleh kosong";
+                        }
+                        return null;
+                      },
+                      decoration:
+                          decorationConstant(
+                            hintText: "Masukkan deskripsi event",
+                          ).copyWith(
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 16,
+                              horizontal: 8,
                             ),
-                      ),
-
-                      const SizedBox(height: 30),
-
-                      /// BUTTON
-                      Center(
-                        child: IconButton(
-                          style: IconButton.styleFrom(
-                            backgroundColor: const Color(0XFF424874),
                           ),
-                          onPressed: createEvent,
-                          icon: const Icon(Icons.add, color: Color(0xFFF4EEFF)),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    /// BUTTON
+                    Center(
+                      child: IconButton(
+                        style: IconButton.styleFrom(
+                          backgroundColor: const Color(0XFF424874),
                         ),
+                        onPressed: createEvent,
+                        icon: const Icon(Icons.add, color: Color(0xFFF4EEFF)),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),

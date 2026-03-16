@@ -80,7 +80,7 @@ class _DaftarPageState extends State<DaftarPage> {
                             return null;
                           },
                           style: TextStyle(
-                            color: Color(0xFFF4EEFF),
+                            color: AppTheme.secondary,
                             fontSize: 12,
                           ),
                           decoration: decorationConstant(
@@ -124,7 +124,7 @@ class _DaftarPageState extends State<DaftarPage> {
                             return null;
                           },
                           style: TextStyle(
-                            color: Color(0xFFF4EEFF),
+                            color: AppTheme.secondary,
                             fontSize: 12,
                           ),
                           decoration: decorationConstant(
@@ -177,7 +177,7 @@ class _DaftarPageState extends State<DaftarPage> {
                           obscureText: isVisible ? true : false,
                           obscuringCharacter: "*",
                           style: TextStyle(
-                            color: Color(0xFFF4EEFF),
+                            color: AppTheme.secondary,
                             fontSize: 12,
                           ),
                           decoration: decorationConstant(
@@ -235,7 +235,7 @@ class _DaftarPageState extends State<DaftarPage> {
                           obscureText: isVisible ? true : false,
                           obscuringCharacter: "*",
                           style: TextStyle(
-                            color: Color(0xFFF4EEFF),
+                            color: AppTheme.secondary,
                             fontSize: 12,
                           ),
                           decoration: decorationConstant(

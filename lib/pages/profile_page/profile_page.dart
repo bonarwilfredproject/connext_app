@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:connext_app/constants/app_theme.dart';
+import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/pages/landing_page/landing_page.dart';
 import 'package:connext_app/services/preferences_services.dart';
@@ -36,6 +37,13 @@ class _ProfilePageState extends State<ProfilePage> {
     loadRole();
   }
 
+  @override
+  void dispose() {
+    nameController.dispose();
+    phoneController.dispose();
+    super.dispose();
+  }
+
   void showEditProfileSheet(UserModel user) {
     nameController.text = user.nama;
     phoneController.text = user.phone;
@@ -48,96 +56,204 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          ),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                /// HANDLE
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppTheme.secondary,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    /// HANDLE
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    Text(
+                      "Edit Profile",
+                      style: styleText().copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    GestureDetector(
+                      onTap: () async {
+                        final XFile? image = await picker.pickImage(
+                          source: ImageSource.gallery,
+                        );
+
+                        if (image != null) {
+                          setModalState(() {
+                            tempImage = image.path;
+                          });
+                        }
+                      },
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          CircleAvatar(
+                            radius: 45,
+                            backgroundColor: AppTheme.third,
+                            backgroundImage: tempImage != null
+                                ? FileImage(File(tempImage!))
+                                : (user.profileImage != null &&
+                                      user.profileImage!.isNotEmpty)
+                                ? FileImage(File(user.profileImage!))
+                                : null,
+                            child:
+                                (tempImage == null &&
+                                    (user.profileImage == null ||
+                                        user.profileImage!.isEmpty))
+                                ? const Icon(Icons.person, size: 45)
+                                : null,
+                          ),
+
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.secondary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    /// NAMA
+                    TextFormField(
+                      controller: nameController,
+                      decoration: decorationConstant(
+                        labelText: "Nama",
+                        hintText: nameController.text,
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Nama tidak boleh kosong";
+                        }
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    /// PHONE
+                    TextFormField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.number,
+                      decoration: decorationConstant(
+                        labelText: "Nomor HP",
+                        hintText: phoneController.text,
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return "Nomor HP wajib diisi";
+                        }
+
+                        if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                          return "Nomor hanya boleh angka";
+                        }
+
+                        if (value.length < 10) {
+                          return "Nomor HP tidak valid";
+                        }
+
+                        return null;
+                      },
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    /// SAVE BUTTON
+                    TombolSementara(
+                      icon: Icons.save,
+                      text: "Simpan",
+                      width: double.infinity,
+                      height: 50,
+                      onPressed: () async {
+                        if (!_formKey.currentState!.validate()) return;
+
+                        String newName = nameController.text.trim();
+                        String newPhone = phoneController.text.trim();
+
+                        if (newPhone != user.phone) {
+                          bool exists = await UserController.isPhoneExists(
+                            newPhone,
+                          );
+
+                          if (exists) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Nomor HP sudah digunakan"),
+                              ),
+                            );
+                            return;
+                          }
+                        }
+
+                        await UserController.updateProfile(
+                          widget.userId,
+                          newName,
+                          newPhone,
+                        );
+
+                        final pref = PreferenceHandler();
+                        await pref.init();
+                        await pref.saveNamaUser(newName);
+
+                        if (tempImage != null) {
+                          await UserController.updateProfileImage(
+                            widget.userId,
+                            tempImage!,
+                          );
+                        }
+
+                        setState(() {
+                          tempImage = null;
+                          userFuture = UserController.getUserById(
+                            widget.userId,
+                          );
+                        });
+
+                        if (!mounted) return;
+
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ],
                 ),
-
-                const SizedBox(height: 20),
-
-                Text(
-                  "Edit Profile",
-                  style: styleText().copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                /// NAMA
-                TextFormField(
-                  controller: nameController,
-                  decoration: InputDecoration(labelText: "Nama"),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return "Nama tidak boleh kosong";
-                    }
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 16),
-
-                /// PHONE
-                TextFormField(
-                  controller: phoneController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: "Nomor HP"),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return "Nomor HP wajib diisi";
-                    }
-
-                    if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                      return "Nomor hanya boleh angka";
-                    }
-
-                    if (value.length < 10) {
-                      return "Nomor HP tidak valid";
-                    }
-
-                    return null;
-                  },
-                ),
-
-                const SizedBox(height: 24),
-
-                /// SAVE BUTTON
-                TombolSementara(
-                  icon: Icons.save,
-                  text: "Simpan",
-                  width: double.infinity,
-                  height: 50,
-                  onPressed: () {
-                    if (_formKey.currentState!.validate()) {
-                      Navigator.pop(context);
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
-    );
+    ).then((_) {
+      setState(() {
+        tempImage = null;
+      });
+    });
   }
 
   Future<void> loadRole() async {
@@ -172,21 +288,28 @@ class _ProfilePageState extends State<ProfilePage> {
     Navigator.pop(context, true);
   }
 
-  Future<void> pickImage() async {
+  Future<void> pickImage(UserModel user) async {
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
     if (image != null) {
-      await UserController.updateProfileImage(widget.userId, image.path);
-
       setState(() {
-        userFuture = UserController.getUserById(widget.userId);
+        tempImage = image.path;
       });
+
+      if (!mounted) return;
+
+      /// tutup modal lama
+      Navigator.pop(context);
+
+      /// buka lagi modal dengan image baru
+      showEditProfileSheet(user);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppTheme.primary,
       appBar: AppBar(
         elevation: 0,

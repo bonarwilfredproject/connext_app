@@ -27,7 +27,7 @@ class MyApp extends StatelessWidget {
           surfaceTintColor: Colors.transparent,
         ),
         colorScheme: .fromSeed(seedColor: AppTheme.primary),
-        fontFamily: 'RacingSansOne',
+        fontFamily: 'PlusJakartaSans',
       ),
       home: SplashScreen(),
     );

@@ -16,6 +16,7 @@ class PreferenceHandler {
   static const String _role = "role";
   static const String _userId = "userId";
 
+  /// SAVE USER SAAT LOGIN / REGISTER
   Future<void> saveUser(int userId, String nama, String role) async {
     await _preferences.setInt(_userId, userId);
     await _preferences.setString(_namaUser, nama);
@@ -23,26 +24,37 @@ class PreferenceHandler {
     await _preferences.setBool(_isLogin, true);
   }
 
+  /// UPDATE NAMA USER SAJA
+  Future<void> saveNamaUser(String nama) async {
+    await _preferences.setString(_namaUser, nama);
+  }
+
+  /// UPDATE ROLE
   Future<void> saveRole(String role) async {
     await _preferences.setString(_role, role);
   }
 
+  /// GET USER ID
   int getUserId() {
     return _preferences.getInt(_userId) ?? 0;
   }
 
+  /// GET NAMA USER
   String? getNamaUser() {
     return _preferences.getString(_namaUser);
   }
 
+  /// GET ROLE
   String? getRole() {
     return _preferences.getString(_role);
   }
 
+  /// CEK LOGIN
   bool getIsLogin() {
     return _preferences.getBool(_isLogin) ?? false;
   }
 
+  /// LOGOUT
   Future<void> logout() async {
     await _preferences.clear();
   }

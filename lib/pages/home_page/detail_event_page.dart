@@ -79,7 +79,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                 /// NAMA EVENT
                 TextField(
                   controller: titleController,
-                  style: TextStyle(color: AppTheme.primary, fontSize: 14),
+                  style: TextStyle(color: AppTheme.secondary, fontSize: 14),
                   decoration: InputDecoration(
                     labelText: "Nama Event",
                     labelStyle: styleText(),
@@ -97,7 +97,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                 /// LOKASI
                 TextField(
                   controller: locationController,
-                  style: TextStyle(color: AppTheme.primary, fontSize: 14),
+                  style: TextStyle(color: AppTheme.secondary, fontSize: 14),
                   decoration: InputDecoration(
                     labelText: "Lokasi",
                     labelStyle: styleText(),
@@ -116,7 +116,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                 TextField(
                   controller: descriptionController,
                   maxLines: 3,
-                  style: TextStyle(color: AppTheme.primary, fontSize: 14),
+                  style: TextStyle(color: AppTheme.secondary, fontSize: 14),
                   decoration: InputDecoration(
                     labelText: "Deskripsi",
                     labelStyle: styleText(),
@@ -358,6 +358,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
     }
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppTheme.primary,
       appBar: AppBar(
         backgroundColor: AppTheme.primary,

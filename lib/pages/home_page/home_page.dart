@@ -158,7 +158,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: HomeScreenAppbar(
-        data: "Selamat datang, ${namaUser ?? ""} as ${role ?? ""}.",
+        data: "Selamat datang, ${currentUser?.nama ?? ""} as ${role ?? ""}.",
         onTap: () async {
           final result = await Navigator.push(
             context,
