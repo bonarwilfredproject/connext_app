@@ -1,4 +1,4 @@
-package com.example.connext_app
+package com.ppkd.connext
 
 import io.flutter.embedding.android.FlutterActivity
 
