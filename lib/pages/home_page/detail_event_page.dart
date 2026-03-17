@@ -469,6 +469,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                       Row(
                         children: [
                           CircleAvatar(
+                            backgroundColor: AppTheme.third,
                             radius: 12,
                             backgroundImage:
                                 createdByImage != null &&
