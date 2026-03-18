@@ -40,7 +40,7 @@ class RoleSelector extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppTheme.third,
+        color: AppTheme.primary,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(

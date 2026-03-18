@@ -66,199 +66,217 @@ class _ProfilePageState extends State<ProfilePage> {
                 top: 20,
                 bottom: MediaQuery.of(context).viewInsets.bottom + 20,
               ),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    /// HANDLE
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppTheme.secondary,
-                        borderRadius: BorderRadius.circular(10),
+              child: Wrap(
+                children: [
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      /// HANDLE
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppTheme.secondary,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      Form(
+                        key: _formKey,
+                        child: AppSectionCard(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "Edit Profile",
+                                style: styleText().copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              ),
 
-                    const SizedBox(height: 20),
+                              const SizedBox(height: 20),
 
-                    Text(
-                      "Edit Profile",
-                      style: styleText().copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
+                              GestureDetector(
+                                onTap: () async {
+                                  final XFile? image = await picker.pickImage(
+                                    source: ImageSource.gallery,
+                                  );
 
-                    const SizedBox(height: 20),
+                                  if (image != null) {
+                                    setModalState(() {
+                                      tempImage = image.path;
+                                    });
+                                  }
+                                },
+                                child: Stack(
+                                  alignment: Alignment.bottomRight,
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 45,
+                                      backgroundColor: AppTheme.third,
+                                      backgroundImage: tempImage != null
+                                          ? FileImage(File(tempImage!))
+                                          : (user.profileImage != null &&
+                                                user.profileImage!.isNotEmpty)
+                                          ? FileImage(File(user.profileImage!))
+                                          : null,
+                                      child:
+                                          (tempImage == null &&
+                                              (user.profileImage == null ||
+                                                  user.profileImage!.isEmpty))
+                                          ? const Icon(Icons.person, size: 45)
+                                          : null,
+                                    ),
 
-                    GestureDetector(
-                      onTap: () async {
-                        final XFile? image = await picker.pickImage(
-                          source: ImageSource.gallery,
-                        );
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.secondary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.camera_alt,
+                                        size: 18,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
 
-                        if (image != null) {
-                          setModalState(() {
-                            tempImage = image.path;
-                          });
-                        }
-                      },
-                      child: Stack(
-                        alignment: Alignment.bottomRight,
-                        children: [
-                          CircleAvatar(
-                            radius: 45,
-                            backgroundColor: AppTheme.third,
-                            backgroundImage: tempImage != null
-                                ? FileImage(File(tempImage!))
-                                : (user.profileImage != null &&
-                                      user.profileImage!.isNotEmpty)
-                                ? FileImage(File(user.profileImage!))
-                                : null,
-                            child:
-                                (tempImage == null &&
-                                    (user.profileImage == null ||
-                                        user.profileImage!.isEmpty))
-                                ? const Icon(Icons.person, size: 45)
-                                : null,
+                              const SizedBox(height: 20),
+
+                              /// NAMA
+                              TextFormField(
+                                style: TextStyle(
+                                  color: AppTheme.secondary,
+                                  fontSize: 14,
+                                ),
+                                controller: nameController,
+                                decoration: decorationConstant(
+                                  labelText: "Nama",
+                                  hintText: nameController.text,
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return "Nama tidak boleh kosong";
+                                  }
+                                  return null;
+                                },
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              /// PHONE
+                              TextFormField(
+                                style: TextStyle(
+                                  color: AppTheme.secondary,
+                                  fontSize: 14,
+                                ),
+                                controller: phoneController,
+                                keyboardType: TextInputType.number,
+                                decoration: decorationConstant(
+                                  labelText: "Nomor HP",
+                                  hintText: phoneController.text,
+                                ),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return "Nomor HP wajib diisi";
+                                  }
+
+                                  if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
+                                    return "Nomor hanya boleh angka";
+                                  }
+
+                                  if (value.length < 10) {
+                                    return "Nomor HP tidak valid";
+                                  }
+
+                                  if (phoneError != null) {
+                                    return phoneError;
+                                  }
+
+                                  return null;
+                                },
+                                onChanged: (value) {
+                                  if (phoneError != null) {
+                                    setModalState(() {
+                                      phoneError = null;
+                                    });
+                                  }
+                                },
+                              ),
+
+                              const SizedBox(height: 24),
+
+                              /// SAVE BUTTON
+                              TombolSementara(
+                                icon: Icons.save,
+                                text: "Simpan",
+                                width: double.infinity,
+                                height: 50,
+                                onPressed: () async {
+                                  if (!_formKey.currentState!.validate())
+                                    return;
+
+                                  String newName = nameController.text.trim();
+                                  String newPhone = phoneController.text.trim();
+
+                                  if (newPhone != user.phone) {
+                                    bool exists =
+                                        await UserController.isPhoneExists(
+                                          newPhone,
+                                        );
+
+                                    if (exists) {
+                                      setModalState(() {
+                                        phoneError =
+                                            "Nomor HP sudah digunakan oleh akun lain";
+                                      });
+
+                                      _formKey.currentState!.validate();
+                                      return;
+                                    }
+                                  }
+
+                                  await UserController.updateProfile(
+                                    widget.userId,
+                                    newName,
+                                    newPhone,
+                                  );
+
+                                  final pref = PreferenceHandler();
+                                  await pref.init();
+                                  await pref.saveNamaUser(newName);
+
+                                  if (tempImage != null) {
+                                    await UserController.updateProfileImage(
+                                      widget.userId,
+                                      tempImage!,
+                                    );
+                                  }
+
+                                  setState(() {
+                                    tempImage = null;
+                                    userFuture = UserController.getUserById(
+                                      widget.userId,
+                                    );
+                                  });
+
+                                  if (!mounted) return;
+
+                                  Navigator.pop(context);
+                                },
+                              ),
+                            ],
                           ),
-
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: AppTheme.secondary,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt,
-                              size: 18,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    /// NAMA
-                    TextFormField(
-                      style: TextStyle(color: AppTheme.secondary, fontSize: 14),
-                      controller: nameController,
-                      decoration: decorationConstant(
-                        labelText: "Nama",
-                        hintText: nameController.text,
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Nama tidak boleh kosong";
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    /// PHONE
-                    TextFormField(
-                      style: TextStyle(color: AppTheme.secondary, fontSize: 14),
-                      controller: phoneController,
-                      keyboardType: TextInputType.number,
-                      decoration: decorationConstant(
-                        labelText: "Nomor HP",
-                        hintText: phoneController.text,
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return "Nomor HP wajib diisi";
-                        }
-
-                        if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                          return "Nomor hanya boleh angka";
-                        }
-
-                        if (value.length < 10) {
-                          return "Nomor HP tidak valid";
-                        }
-
-                        if (phoneError != null) {
-                          return phoneError;
-                        }
-
-                        return null;
-                      },
-                      onChanged: (value) {
-                        if (phoneError != null) {
-                          setModalState(() {
-                            phoneError = null;
-                          });
-                        }
-                      },
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    /// SAVE BUTTON
-                    TombolSementara(
-                      icon: Icons.save,
-                      text: "Simpan",
-                      width: double.infinity,
-                      height: 50,
-                      onPressed: () async {
-                        if (!_formKey.currentState!.validate()) return;
-
-                        String newName = nameController.text.trim();
-                        String newPhone = phoneController.text.trim();
-
-                        if (newPhone != user.phone) {
-                          bool exists = await UserController.isPhoneExists(
-                            newPhone,
-                          );
-
-                          if (exists) {
-                            setModalState(() {
-                              phoneError =
-                                  "Nomor HP sudah digunakan oleh akun lain";
-                            });
-
-                            _formKey.currentState!.validate();
-                            return;
-                          }
-                        }
-
-                        await UserController.updateProfile(
-                          widget.userId,
-                          newName,
-                          newPhone,
-                        );
-
-                        final pref = PreferenceHandler();
-                        await pref.init();
-                        await pref.saveNamaUser(newName);
-
-                        if (tempImage != null) {
-                          await UserController.updateProfileImage(
-                            widget.userId,
-                            tempImage!,
-                          );
-                        }
-
-                        setState(() {
-                          tempImage = null;
-                          userFuture = UserController.getUserById(
-                            widget.userId,
-                          );
-                        });
-
-                        if (!mounted) return;
-
-                        Navigator.pop(context);
-                      },
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ),
             );
           },

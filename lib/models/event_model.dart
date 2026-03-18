@@ -8,6 +8,8 @@ class EventModel {
   final String description;
   final int createdBy;
   final String createdAt;
+  final String? eventDate;
+  final String? eventTime;
 
   EventModel({
     this.id,
@@ -16,6 +18,8 @@ class EventModel {
     required this.description,
     required this.createdBy,
     required this.createdAt,
+    this.eventDate,
+    this.eventTime,
   });
 
   Map<String, dynamic> toMap() {
@@ -26,6 +30,8 @@ class EventModel {
       'description': description,
       'created_by': createdBy,
       'created_at': createdAt,
+      'event_date': eventDate,
+      'event_time': eventTime,
     };
   }
 
@@ -37,6 +43,8 @@ class EventModel {
       description: map['description'] ?? "",
       createdBy: map['created_by'] ?? 0,
       createdAt: map['created_at'] ?? "",
+      eventDate: map['event_date'],
+      eventTime: map['event_time'],
     );
   }
 

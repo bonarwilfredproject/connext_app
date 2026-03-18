@@ -1,4 +1,5 @@
 import 'package:connext_app/constants/app_theme.dart';
+import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/services/event_participant_controller.dart';
 import 'package:connext_app/services/user_controller.dart';
@@ -32,6 +33,13 @@ class _DetailEventPageState extends State<DetailEventPage> {
   int totalPeserta = 0;
   EventModel? event;
   List<Map<String, dynamic>> scannedPeserta = []; // <- state untuk list peserta
+  DateTime? selectedDateEdit;
+  TimeOfDay? selectedTimeEdit;
+  String? dateTimeError;
+  String? timeError;
+  final GlobalKey<FormState> _editFormKey = GlobalKey<FormState>();
+  final TextEditingController dateControllerEdit = TextEditingController();
+  final TextEditingController timeControllerEdit = TextEditingController();
   final TextEditingController titleController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
@@ -55,117 +63,261 @@ class _DetailEventPageState extends State<DetailEventPage> {
     super.dispose();
   }
 
+  String? validateDateTimeEdit() {
+    if (selectedDateEdit == null || selectedTimeEdit == null) {
+      return "Tanggal dan waktu wajib diisi";
+    }
+
+    final now = DateTime.now();
+
+    final selectedDateTime = DateTime(
+      selectedDateEdit!.year,
+      selectedDateEdit!.month,
+      selectedDateEdit!.day,
+      selectedTimeEdit!.hour,
+      selectedTimeEdit!.minute,
+    );
+
+    if (selectedDateTime.isBefore(now)) {
+      return "Waktu sudah lewat";
+    }
+
+    return null;
+  }
+
   void showEditEventDialog() {
     titleController.text = event!.title;
     locationController.text = event!.location;
     descriptionController.text = event!.description;
 
+    selectedDateEdit = DateTime.parse(event!.eventDate!);
+
+    final timeParts = event!.eventTime!.split(":");
+    selectedTimeEdit = TimeOfDay(
+      hour: int.parse(timeParts[0]),
+      minute: int.parse(timeParts[1]),
+    );
+
+    dateControllerEdit.text = DateFormat(
+      'EEEE, d MMMM yyyy',
+      'id_ID',
+    ).format(selectedDateEdit!);
+
+    timeControllerEdit.text =
+        "${selectedTimeEdit!.hour.toString().padLeft(2, '0')}:${selectedTimeEdit!.minute.toString().padLeft(2, '0')}";
+
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppTheme.third,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            "Edit Event",
-            style: styleText().copyWith(fontWeight: FontWeight.bold),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                /// NAMA EVENT
-                TextField(
-                  controller: titleController,
-                  style: TextStyle(color: AppTheme.secondary, fontSize: 14),
-                  decoration: InputDecoration(
-                    labelText: "Nama Event",
-                    labelStyle: styleText(),
-                    filled: true,
-                    fillColor: AppTheme.fourth,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              backgroundColor: AppTheme.third,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Text(
+                "Edit Event",
+                style: styleText().copyWith(fontWeight: FontWeight.bold),
+              ),
+              content: Form(
+                key: _editFormKey,
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        /// NAMA EVENT
+                        TextField(
+                          controller: titleController,
+                          style: TextStyle(
+                            color: AppTheme.secondary,
+                            fontSize: 14,
+                          ),
+                          decoration: decorationConstant(
+                            hintText: "Nama Event",
+                            labelText: "Nama Event",
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        /// LOKASI
+                        TextField(
+                          controller: locationController,
+                          style: TextStyle(
+                            color: AppTheme.secondary,
+                            fontSize: 14,
+                          ),
+                          decoration: decorationConstant(
+                            hintText: "Lokasi",
+                            labelText: "Lokasi",
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        Row(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start, // 🔥 penting
+                          children: [
+                            /// DATE
+                            Expanded(
+                              child: TextFormField(
+                                controller: dateControllerEdit,
+                                readOnly: true,
+                                style: TextStyle(
+                                  color: AppTheme.secondary,
+                                  fontSize: 14,
+                                ),
+                                decoration: decorationConstant(
+                                  hintText: "Pilih tanggal",
+                                  labelText: "Tanggal",
+                                ),
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate:
+                                        selectedDateEdit ?? DateTime.now(),
+                                    firstDate: DateTime.now(),
+                                    lastDate: DateTime(2100),
+                                  );
+
+                                  if (picked != null) {
+                                    selectedDateEdit = picked;
+
+                                    dateControllerEdit.text = DateFormat(
+                                      'EEEE, d MMMM yyyy',
+                                      'id_ID',
+                                    ).format(picked);
+
+                                    timeError = validateDateTimeEdit();
+                                    setStateDialog(() {});
+                                  }
+                                },
+                              ),
+                            ),
+
+                            const SizedBox(width: 10),
+
+                            /// TIME
+                            Expanded(
+                              child: TextFormField(
+                                controller: timeControllerEdit,
+                                readOnly: true,
+                                style: TextStyle(
+                                  color: AppTheme.secondary,
+                                  fontSize: 14,
+                                ),
+                                decoration: decorationConstant(
+                                  hintText: "Pilih waktu",
+                                  labelText: "Waktu",
+                                ).copyWith(errorMaxLines: 1),
+                                onTap: () async {
+                                  final picked = await showTimePicker(
+                                    context: context,
+                                    initialTime:
+                                        selectedTimeEdit ?? TimeOfDay.now(),
+                                  );
+
+                                  if (picked != null) {
+                                    selectedTimeEdit = picked;
+
+                                    timeControllerEdit.text = picked.format(
+                                      context,
+                                    );
+
+                                    timeError = validateDateTimeEdit();
+                                    setStateDialog(() {});
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        if (timeError != null)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: Text(
+                                timeError!,
+                                style: TextStyle(
+                                  color: Colors.red.shade400,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 12),
+
+                        /// DESKRIPSI
+                        TextField(
+                          controller: descriptionController,
+                          maxLines: 3,
+                          style: TextStyle(
+                            color: AppTheme.secondary,
+                            fontSize: 14,
+                          ),
+                          decoration: decorationConstant(
+                            hintText: "Deskripsi",
+                            labelText: "Deskripsi",
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-
-                const SizedBox(height: 16),
-
-                /// LOKASI
-                TextField(
-                  controller: locationController,
-                  style: TextStyle(color: AppTheme.secondary, fontSize: 14),
-                  decoration: InputDecoration(
-                    labelText: "Lokasi",
-                    labelStyle: styleText(),
-                    filled: true,
-                    fillColor: AppTheme.fourth,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                /// DESKRIPSI EVENT
-                TextField(
-                  controller: descriptionController,
-                  maxLines: 3,
-                  style: TextStyle(color: AppTheme.secondary, fontSize: 14),
-                  decoration: InputDecoration(
-                    labelText: "Deskripsi",
-                    labelStyle: styleText(),
-                    filled: true,
-                    fillColor: AppTheme.fourth,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text("Batal", style: styleText()),
-            ),
-
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.fourth,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
                 ),
               ),
-              onPressed: () async {
-                final updatedEvent = EventModel(
-                  id: event!.id,
-                  title: titleController.text,
-                  location: locationController.text,
-                  description: descriptionController.text,
-                  createdBy: event!.createdBy,
-                  createdAt: event!.createdAt,
-                );
 
-                await EventController.updateEvent(updatedEvent);
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text("Batal", style: styleText()),
+                ),
 
-                Navigator.pop(context);
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.fourth,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  onPressed: () async {
+                    /// 🔥 VALIDASI SAAT SAVE
+                    timeError = validateDateTimeEdit();
 
-                await loadEvent();
-              },
-              child: Text("Simpan", style: styleText()),
-            ),
-          ],
+                    setStateDialog(() {});
+
+                    if (timeError != null) return;
+
+                    final updatedEvent = EventModel(
+                      id: event!.id,
+                      title: titleController.text,
+                      location: locationController.text,
+                      description: descriptionController.text,
+                      createdBy: event!.createdBy,
+                      createdAt: event!.createdAt,
+                      eventDate: selectedDateEdit!.toIso8601String(),
+                      eventTime:
+                          "${selectedTimeEdit!.hour.toString().padLeft(2, '0')}:${selectedTimeEdit!.minute.toString().padLeft(2, '0')}",
+                    );
+
+                    await EventController.updateEvent(updatedEvent);
+
+                    Navigator.pop(context);
+                    await loadEvent();
+                  },
+                  child: Text("Simpan", style: styleText()),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -495,11 +647,32 @@ class _DetailEventPageState extends State<DetailEventPage> {
                       /// TANGGAL DIBUAT
                       Row(
                         children: [
-                          Icon(Icons.schedule, color: AppTheme.secondary),
+                          Icon(
+                            Icons.history,
+                            color: AppTheme.secondary,
+                          ), // 🔥 beda icon
                           SizedBox(width: 10),
                           Text(
                             formatCreatedAt(event!.createdAt),
                             style: styleText(),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.event_available,
+                            color: AppTheme.secondary,
+                          ), // 🔥 beda icon
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              event!.eventDate != null
+                                  ? "${DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(DateTime.parse(event!.eventDate!))} • ${event!.eventTime ?? '-'}"
+                                  : "-",
+                              style: styleText(),
+                            ),
                           ),
                         ],
                       ),
@@ -546,7 +719,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                   children: [
                                     Lottie.asset(
                                       "assets/lottie/yawn_emoji_animation.json",
-                                      height: 200,
+                                      height: 120,
                                     ),
                                     const SizedBox(height: 12),
                                     Text(

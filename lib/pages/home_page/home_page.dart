@@ -19,6 +19,7 @@ import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/home_screen_appbar.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
+import 'package:intl/intl.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -48,6 +49,30 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     getCurrentUser();
     loadSession();
+  }
+
+  bool isEventPassed(EventModel event) {
+    if (event.eventDate == null || event.eventTime == null) return false;
+
+    try {
+      final date = DateTime.parse(event.eventDate!);
+
+      final timeParts = event.eventTime!.split(":");
+      final hour = int.parse(timeParts[0]);
+      final minute = int.parse(timeParts[1]);
+
+      final eventDateTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        hour,
+        minute,
+      );
+
+      return DateTime.now().isAfter(eventDateTime);
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<void> loadSession() async {
@@ -108,6 +133,17 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       role = pref.getRole();
     });
+  }
+
+  Widget buildRow(IconData icon, String text, {Widget? trailing}) {
+    return Row(
+      children: [
+        SizedBox(child: Icon(icon, size: 18, color: AppTheme.secondary)),
+        const SizedBox(width: 8),
+        Expanded(child: Text(text, style: styleText())),
+        if (trailing != null) ...[const SizedBox(width: 6), trailing],
+      ],
+    );
   }
 
   Future<void> loadAttendeeEvents() async {
@@ -360,10 +396,9 @@ class _HomePageState extends State<HomePage> {
                                                 Icon(
                                                   Icons.event,
                                                   color: AppTheme.secondary,
+                                                  size: 20,
                                                 ),
-
                                                 const SizedBox(width: 8),
-
                                                 Expanded(
                                                   child: Text(
                                                     event.title,
@@ -376,54 +411,37 @@ class _HomePageState extends State<HomePage> {
                                                         TextOverflow.ellipsis,
                                                   ),
                                                 ),
-
                                                 const SizedBox(width: 8),
-
                                                 Icon(
                                                   Icons.info_outline,
                                                   color: AppTheme.secondary,
+                                                  size: 20,
                                                 ),
                                               ],
                                             ),
 
-                                            const SizedBox(height: 6),
+                                            const SizedBox(height: 8),
 
-                                            /// LOKASI
-                                            Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.location_pin,
-                                                  color: AppTheme.secondary,
-                                                  size: 20,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    event.location,
-                                                    style: styleText(),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              ],
+                                            buildRow(
+                                              Icons.location_pin,
+                                              event.location,
                                             ),
 
                                             const SizedBox(height: 6),
 
-                                            /// JUMLAH PESERTA
-                                            Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.people,
-                                                  color: AppTheme.secondary,
-                                                  size: 20,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  "${eventParticipantCount[event.id] ?? 0} Peserta",
-                                                  style: styleText(),
-                                                ),
-                                              ],
+                                            buildRow(
+                                              Icons
+                                                  .event_available, // 🔥 icon baru
+                                              event.eventDate != null
+                                                  ? "${DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(DateTime.parse(event.eventDate!))} • ${event.eventTime}"
+                                                  : "-",
+                                            ),
+
+                                            const SizedBox(height: 6),
+
+                                            buildRow(
+                                              Icons.people,
+                                              "${eventParticipantCount[event.id] ?? 0} Peserta",
                                             ),
                                           ],
                                         ),
@@ -438,7 +456,7 @@ class _HomePageState extends State<HomePage> {
                 ] else if (role == "Attendee") ...[
                   Expanded(
                     child: AppSectionCard(
-                      title: "Event Tersedia",
+                      title: "Pilih Event Tersedia",
                       icon: Icons.event,
                       child: isLoadingAttendee
                           ? const Center(child: CircularProgressIndicator())
@@ -481,8 +499,8 @@ class _HomePageState extends State<HomePage> {
                                           (e) => e.id == event.id,
                                         );
 
+                                        /// ✅ JIKA SUDAH JOIN → BOLEH MASUK (walaupun expired)
                                         if (isJoined) {
-                                          /// jika masih join → buka detail
                                           final result = await Navigator.push(
                                             context,
                                             MaterialPageRoute(
@@ -496,68 +514,94 @@ class _HomePageState extends State<HomePage> {
                                           if (result == true) {
                                             await loadAttendeeEvents();
                                           }
-                                        } else {
-                                          /// jika tidak join → dialog join
-                                          final confirm = await showDialog(
+                                          return;
+                                        }
+
+                                        /// ❌ JIKA BELUM JOIN & EVENT SUDAH LEWAT → BLOCK
+                                        if (isEventPassed(event)) {
+                                          await showDialog(
                                             context: context,
                                             builder: (_) => AlertDialog(
                                               backgroundColor: AppTheme.third,
                                               title: Text(
-                                                "Join Event",
+                                                "Event Berakhir",
                                                 style: styleText(),
                                               ),
                                               content: Text(
-                                                "Bergabung ke event ${event.title}?",
+                                                "Tidak bisa join, waktu event sudah lewat",
                                                 style: styleText(),
                                               ),
                                               actions: [
                                                 TextButton(
                                                   onPressed: () =>
-                                                      Navigator.pop(
-                                                        context,
-                                                        false,
-                                                      ),
+                                                      Navigator.pop(context),
                                                   child: Text(
-                                                    "Batal",
-                                                    style: styleText(),
-                                                  ),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(
-                                                        context,
-                                                        true,
-                                                      ),
-                                                  child: Text(
-                                                    "Join",
+                                                    "OK",
                                                     style: styleText(),
                                                   ),
                                                 ),
                                               ],
                                             ),
                                           );
+                                          setState(() {});
+                                          return;
+                                        }
 
-                                          if (confirm == true) {
-                                            await EventParticipantController.joinEvent(
-                                              currentUser!.id!,
-                                              event.id!,
-                                            );
-
-                                            /// langsung buka halaman QR event
-                                            await Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    AttendeeEventPage(
-                                                      userId: currentUser!.id!,
-                                                      eventId: event.id!,
-                                                    ),
+                                        /// ✅ JIKA BELUM JOIN & MASIH AKTIF → BISA JOIN
+                                        final confirm = await showDialog(
+                                          context: context,
+                                          builder: (_) => AlertDialog(
+                                            backgroundColor: AppTheme.third,
+                                            title: Text(
+                                              "Join Event",
+                                              style: styleText(),
+                                            ),
+                                            content: Text(
+                                              "Bergabung ke event ${event.title}?",
+                                              style: styleText(),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  false,
+                                                ),
+                                                child: Text(
+                                                  "Batal",
+                                                  style: styleText(),
+                                                ),
                                               ),
-                                            );
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  true,
+                                                ),
+                                                child: Text(
+                                                  "Join",
+                                                  style: styleText(),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
 
-                                            /// setelah kembali ke homepage baru refresh
-                                            await loadAttendeeEvents();
-                                          }
+                                        if (confirm == true) {
+                                          await EventParticipantController.joinEvent(
+                                            currentUser!.id!,
+                                            event.id!,
+                                          );
+
+                                          await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => AttendeeEventPage(
+                                                userId: currentUser!.id!,
+                                                eventId: event.id!,
+                                              ),
+                                            ),
+                                          );
+
+                                          await loadAttendeeEvents();
                                         }
                                       },
                                       child: Column(
@@ -615,56 +659,62 @@ class _HomePageState extends State<HomePage> {
                                                   ),
                                                 ),
                                               ],
+                                              if (isEventPassed(event)) ...[
+                                                const SizedBox(width: 8),
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 4,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.grey,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                  ),
+                                                  child: const Text(
+                                                    "EXPIRED",
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ],
                                           ),
 
                                           const SizedBox(height: 8),
 
                                           /// LOCATION
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.location_pin,
-                                                color: AppTheme.secondary,
-                                                size: 20,
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: Text(
-                                                  event.location,
-                                                  style: styleText(),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
+                                          buildRow(
+                                            Icons.location_pin,
+                                            event.location,
                                           ),
 
                                           const SizedBox(height: 8),
 
                                           /// TOTAL PESERTA
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.people,
-                                                color: AppTheme.secondary,
-                                                size: 20,
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Text(
-                                                "${eventParticipantCount[event.id] ?? 0} Peserta",
-                                                style: styleText(),
-                                              ),
-                                            ],
+                                          buildRow(
+                                            Icons.people,
+                                            "${eventParticipantCount[event.id] ?? 0} Peserta",
                                           ),
+                                          const SizedBox(height: 8),
 
+                                          buildRow(
+                                            Icons.event_available,
+                                            event.eventDate != null
+                                                ? "${DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(DateTime.parse(event.eventDate!))} • ${event.eventTime ?? '-'}"
+                                                : "-",
+                                          ),
                                           const SizedBox(height: 8),
 
                                           /// PANITIA PEMBUAT EVENT
                                           if (creator != null)
                                             Row(
                                               children: [
-                                                /// FOTO PANITIA
                                                 CircleAvatar(
                                                   radius: 12,
                                                   backgroundColor:
@@ -698,10 +748,7 @@ class _HomePageState extends State<HomePage> {
                                                         )
                                                       : null,
                                                 ),
-
                                                 const SizedBox(width: 8),
-
-                                                /// NAMA PANITIA
                                                 Expanded(
                                                   child: Text(
                                                     "by ${creator.nama}",

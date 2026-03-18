@@ -36,10 +36,33 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
   bool isLoading = true;
   int totalPeserta = 0;
   String? waktuCheckin;
+
   @override
   void initState() {
     super.initState();
     loadEvent();
+  }
+
+  bool isEventPassed() {
+    if (event?.eventDate == null || event?.eventTime == null) return false;
+
+    try {
+      final date = DateTime.parse(event!.eventDate!);
+
+      final timeParts = event!.eventTime!.split(":");
+
+      final eventDateTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        int.parse(timeParts[0]),
+        int.parse(timeParts[1]),
+      );
+
+      return DateTime.now().isAfter(eventDateTime);
+    } catch (e) {
+      return false;
+    }
   }
 
   String formatTanggal(String waktu) {
@@ -158,7 +181,27 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                                   ),
                                 ],
                               ),
+                              const SizedBox(height: 8),
 
+                              /// TANGGAL & WAKTU EVENT
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.event_available,
+                                    size: 18,
+                                    color: AppTheme.secondary,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      event!.eventDate != null
+                                          ? "${DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(DateTime.parse(event!.eventDate!))} • ${event!.eventTime ?? '-'}"
+                                          : "-",
+                                      style: styleText(),
+                                    ),
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: 8),
 
                               /// PANITIA PEMBUAT EVENT
@@ -167,7 +210,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                                   children: [
                                     CircleAvatar(
                                       radius: 12,
-                                      backgroundColor: Colors.grey.shade300,
+                                      backgroundColor: AppTheme.third,
                                       backgroundImage:
                                           creator!.profileImage != null &&
                                               creator!
@@ -179,6 +222,11 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                                           ? FileImage(
                                               File(creator!.profileImage!),
                                             )
+                                          : null,
+                                      child:
+                                          creator!.profileImage == null ||
+                                              creator!.profileImage!.isEmpty
+                                          ? const Icon(Icons.person, size: 16)
                                           : null,
                                     ),
 
@@ -206,116 +254,135 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                       AppSectionCard(
                         title: "QR Check-in",
                         icon: Icons.qr_code,
-                        child: Column(
-                          children: [
-                            if (isCheckedIn)
-                              /// SUDAH CHECKIN
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.green,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  waktuCheckin != null
-                                      ? "Anda sudah check-in pada\n${formatTanggal(waktuCheckin!)}"
-                                      : "Anda sudah check-in",
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
+                        child: Center(
+                          child: Column(
+                            children: [
+                              if (isCheckedIn)
+                                /// SUDAH CHECKIN
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    waktuCheckin != null
+                                        ? "Anda sudah check-in pada\n${formatTanggal(waktuCheckin!)}"
+                                        : "Anda sudah check-in",
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                )
+                              else if (qrToken != null && !isEventPassed())
+                                /// QR CODE
+                                QrImageView(
+                                  data: '{"token":"$qrToken"}',
+                                  version: QrVersions.auto,
+                                  size: 200,
+                                  backgroundColor: Colors.white,
+                                )
+                              else if (isEventPassed())
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Text(
+                                    "QR Sudah tidak berlaku",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
-                              )
-                            else if (qrToken != null)
-                              /// QR CODE
-                              QrImageView(
-                                data: '{"token":"$qrToken"}',
-                                version: QrVersions.auto,
-                                size: 200,
-                                backgroundColor: Colors.white,
+                              const SizedBox(height: 12),
+
+                              Text(
+                                isCheckedIn
+                                    ? "Terima kasih sudah menghadiri event ini"
+                                    : isEventPassed()
+                                    ? "Event sudah selesai"
+                                    : "Tunjukkan QR ini ke panitia saat datang",
+                                textAlign: TextAlign.center,
+                                style: styleText(),
                               ),
+                              const SizedBox(height: 24),
 
-                            const SizedBox(height: 12),
-
-                            Text(
-                              isCheckedIn
-                                  ? "Terima kasih sudah menghadiri event ini"
-                                  : "Tunjukkan QR ini ke panitia saat datang",
-                              textAlign: TextAlign.center,
-                              style: styleText(),
-                            ),
-                            const SizedBox(height: 24),
-
-                            /// CANCEL JOIN BUTTON
-                            if (!isCheckedIn) ...[
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.red,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  icon: const Icon(
-                                    Icons.exit_to_app,
-                                    color: AppTheme.white,
-                                  ),
-                                  label: const Text(
-                                    "Cancel Join",
-                                    style: TextStyle(color: AppTheme.white),
-                                  ),
-                                  onPressed: () async {
-                                    final confirm = await showDialog(
-                                      context: context,
-                                      builder: (_) => AlertDialog(
-                                        backgroundColor: AppTheme.third,
-                                        title: Text(
-                                          "Cancel Join",
-                                          style: styleText(),
-                                        ),
-                                        content: Text(
-                                          "Yakin ingin keluar dari event ini?",
-                                          style: styleText(),
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context, false),
-                                            child: Text(
-                                              "Batal",
-                                              style: styleText(),
-                                            ),
-                                          ),
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context, true),
-                                            child: Text(
-                                              "Keluar",
-                                              style: styleText(),
-                                            ),
-                                          ),
-                                        ],
+                              /// CANCEL JOIN BUTTON
+                              if (!isCheckedIn && !isEventPassed()) ...[
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
                                       ),
-                                    );
-
-                                    if (confirm == true) {
-                                      await EventParticipantController.cancelJoin(
-                                        widget.userId,
-                                        widget.eventId,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.exit_to_app,
+                                      color: AppTheme.white,
+                                    ),
+                                    label: const Text(
+                                      "Cancel Join",
+                                      style: TextStyle(color: AppTheme.white),
+                                    ),
+                                    onPressed: () async {
+                                      final confirm = await showDialog(
+                                        context: context,
+                                        builder: (_) => AlertDialog(
+                                          backgroundColor: AppTheme.third,
+                                          title: Text(
+                                            "Cancel Join",
+                                            style: styleText(),
+                                          ),
+                                          content: Text(
+                                            "Yakin ingin keluar dari event ini?",
+                                            style: styleText(),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, false),
+                                              child: Text(
+                                                "Batal",
+                                                style: styleText(),
+                                              ),
+                                            ),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, true),
+                                              child: Text(
+                                                "Keluar",
+                                                style: styleText(),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       );
 
-                                      Navigator.pop(context, true);
-                                    }
-                                  },
+                                      if (confirm == true) {
+                                        await EventParticipantController.cancelJoin(
+                                          widget.userId,
+                                          widget.eventId,
+                                        );
+
+                                        Navigator.pop(context, true);
+                                      }
+                                    },
+                                  ),
                                 ),
-                              ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ],

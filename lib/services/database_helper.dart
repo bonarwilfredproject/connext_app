@@ -7,7 +7,7 @@ class DBHelper {
 
     return openDatabase(
       join(dbpath, "connext.db"),
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         /// USERS
         await db.execute('''
@@ -29,7 +29,9 @@ class DBHelper {
           location TEXT,
           description TEXT,
           created_by INTEGER,
-          created_at TEXT
+          created_at TEXT,
+          event_date TEXT,
+          event_time TEXT
         )
         ''');
 
@@ -57,6 +59,12 @@ class DBHelper {
           created_at TEXT
         )
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute("ALTER TABLE events ADD COLUMN event_date TEXT");
+          await db.execute("ALTER TABLE events ADD COLUMN event_time TEXT");
+        }
       },
     );
   }
