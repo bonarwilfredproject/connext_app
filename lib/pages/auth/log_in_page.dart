@@ -188,7 +188,7 @@ class _LogInPageState extends State<LogInPage> {
                           height: 54,
                           onPressed: login,
                           icon: Icons.login,
-                          text: "Login",
+                          text: "Log In",
                         ),
                       ],
                     ),

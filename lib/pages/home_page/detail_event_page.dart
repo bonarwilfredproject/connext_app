@@ -68,7 +68,16 @@ class _DetailEventPageState extends State<DetailEventPage> {
       return "Tanggal dan waktu wajib diisi";
     }
 
-    final now = DateTime.now();
+    final nowRaw = DateTime.now();
+
+    /// 🔥 buang detik & millisecond
+    final now = DateTime(
+      nowRaw.year,
+      nowRaw.month,
+      nowRaw.day,
+      nowRaw.hour,
+      nowRaw.minute,
+    );
 
     final selectedDateTime = DateTime(
       selectedDateEdit!.year,

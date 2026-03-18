@@ -59,7 +59,17 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
         int.parse(timeParts[1]),
       );
 
-      return DateTime.now().isAfter(eventDateTime);
+      final nowRaw = DateTime.now();
+
+      final now = DateTime(
+        nowRaw.year,
+        nowRaw.month,
+        nowRaw.day,
+        nowRaw.hour,
+        nowRaw.minute,
+      );
+
+      return now.isAfter(eventDateTime);
     } catch (e) {
       return false;
     }

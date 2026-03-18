@@ -517,9 +517,9 @@ class _ProfilePageState extends State<ProfilePage> {
                           context: context,
                           builder: (_) => AlertDialog(
                             backgroundColor: AppTheme.third,
-                            title: Text("Logout", style: styleText()),
+                            title: Text("Log Out", style: styleText()),
                             content: Text(
-                              "Apakah kamu yakin ingin logout?",
+                              "Apakah kamu yakin ingin log out?",
                               style: styleText(),
                             ),
                             actions: [
@@ -549,7 +549,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           );
                         }
                       },
-                      text: "Logout",
+                      text: "Log Out",
                     ),
                   ],
                 ),

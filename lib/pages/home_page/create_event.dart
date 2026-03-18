@@ -30,7 +30,16 @@ class _CreateEventState extends State<CreateEvent> {
   void validateTime() {
     if (selectedDate == null || selectedTime == null) return;
 
-    final now = DateTime.now();
+    final nowRaw = DateTime.now();
+
+    /// 🔥 buang detik & millisecond
+    final now = DateTime(
+      nowRaw.year,
+      nowRaw.month,
+      nowRaw.day,
+      nowRaw.hour,
+      nowRaw.minute,
+    );
 
     final pickedDateTime = DateTime(
       selectedDate!.year,

@@ -1,5 +1,5 @@
 import 'dart:io';
-
+import 'dart:async';
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
 import 'package:connext_app/pages/profile_page/profile_page.dart';
@@ -29,6 +29,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  Timer? timer;
   String? role;
   String? namaUser;
   UserModel? currentUser;
@@ -49,6 +50,19 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     getCurrentUser();
     loadSession();
+
+    /// 🔥 AUTO REFRESH TIAP DETIK
+    timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    super.dispose();
   }
 
   bool isEventPassed(EventModel event) {
@@ -69,7 +83,17 @@ class _HomePageState extends State<HomePage> {
         minute,
       );
 
-      return DateTime.now().isAfter(eventDateTime);
+      final nowRaw = DateTime.now();
+
+      final now = DateTime(
+        nowRaw.year,
+        nowRaw.month,
+        nowRaw.day,
+        nowRaw.hour,
+        nowRaw.minute,
+      );
+
+      return now.isAfter(eventDateTime);
     } catch (e) {
       return false;
     }
@@ -456,7 +480,7 @@ class _HomePageState extends State<HomePage> {
                 ] else if (role == "Attendee") ...[
                   Expanded(
                     child: AppSectionCard(
-                      title: "Pilih Event Tersedia",
+                      title: "Pilih Event",
                       icon: Icons.event,
                       child: isLoadingAttendee
                           ? const Center(child: CircularProgressIndicator())
