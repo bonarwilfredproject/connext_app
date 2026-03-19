@@ -45,6 +45,61 @@ class _ProfilePageState extends State<ProfilePage> {
     super.dispose();
   }
 
+  Future<void> pickImageSource(Function(void Function()) setModalState) async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.primary,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(
+                  Icons.camera_alt,
+                  color: AppTheme.secondary,
+                ),
+                title: Text("Ambil dari Kamera", style: styleText()),
+                onTap: () async {
+                  Navigator.pop(context);
+
+                  final XFile? image = await picker.pickImage(
+                    source: ImageSource.camera,
+                  );
+
+                  if (image != null) {
+                    setModalState(() {
+                      tempImage = image.path;
+                    });
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo, color: AppTheme.secondary),
+                title: Text("Pilih dari Galeri", style: styleText()),
+                onTap: () async {
+                  Navigator.pop(context);
+
+                  final XFile? image = await picker.pickImage(
+                    source: ImageSource.gallery,
+                  );
+
+                  if (image != null) {
+                    setModalState(() {
+                      tempImage = image.path;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void showEditProfileSheet(UserModel user) {
     nameController.text = user.nama;
     phoneController.text = user.phone;
@@ -99,17 +154,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               const SizedBox(height: 20),
 
                               GestureDetector(
-                                onTap: () async {
-                                  final XFile? image = await picker.pickImage(
-                                    source: ImageSource.gallery,
-                                  );
-
-                                  if (image != null) {
-                                    setModalState(() {
-                                      tempImage = image.path;
-                                    });
-                                  }
-                                },
+                                onTap: () => pickImageSource(setModalState),
                                 child: Stack(
                                   alignment: Alignment.bottomRight,
                                   children: [
