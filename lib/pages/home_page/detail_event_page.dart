@@ -88,7 +88,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
     );
 
     if (selectedDateTime.isBefore(now)) {
-      return "Waktu sudah lewat";
+      return "Waktu sudah lewat pilih waktu lain";
     }
 
     return null;
@@ -254,9 +254,8 @@ class _DetailEventPageState extends State<DetailEventPage> {
                               child: Text(
                                 timeError!,
                                 style: TextStyle(
-                                  color: Colors.red.shade400,
+                                  color: Colors.red,
                                   fontSize: 11.5,
-                                  fontWeight: FontWeight.w400,
                                 ),
                               ),
                             ),

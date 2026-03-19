@@ -32,7 +32,6 @@ class _CreateEventState extends State<CreateEvent> {
 
     final nowRaw = DateTime.now();
 
-    /// 🔥 buang detik & millisecond
     final now = DateTime(
       nowRaw.year,
       nowRaw.month,
@@ -49,10 +48,7 @@ class _CreateEventState extends State<CreateEvent> {
       selectedTime!.minute,
     );
 
-    if (selectedDate!.year == now.year &&
-        selectedDate!.month == now.month &&
-        selectedDate!.day == now.day &&
-        pickedDateTime.isBefore(now)) {
+    if (pickedDateTime.isBefore(now)) {
       timeError = "Tidak bisa pilih waktu yang sudah lewat";
     } else {
       timeError = null;
@@ -81,6 +77,8 @@ class _CreateEventState extends State<CreateEvent> {
   }
 
   Future<void> createEvent() async {
+    validateTime();
+    _formKey.currentState!.validate();
     if (!_formKey.currentState!.validate()) return;
     if (timeError != null) return;
     final event = EventModel(
