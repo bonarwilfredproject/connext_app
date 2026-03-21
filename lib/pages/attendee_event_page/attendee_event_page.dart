@@ -78,7 +78,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
   String formatTanggal(String waktu) {
     DateTime date = DateTime.tryParse(waktu) ?? DateTime.now();
 
-    return DateFormat("EEEE, dd MMM yyyy, HH.mm", "id").format(date);
+    return DateFormat("EEEE, dd MMM yyyy, HH.mm").format(date);
   }
 
   Future<void> loadEvent() async {
@@ -123,7 +123,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
       backgroundColor: AppTheme.primary,
       appBar: AppBar(
         backgroundColor: AppTheme.primary,
-        title: Text("Detail Event", style: styleText()),
+        title: Text("Event Detail", style: styleText()),
       ),
       body: Stack(
         children: [
@@ -186,7 +186,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    "$totalPeserta Peserta",
+                                    "$totalPeserta Attendee",
                                     style: styleText(),
                                   ),
                                 ],
@@ -205,7 +205,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                                   Expanded(
                                     child: Text(
                                       event!.eventDate != null
-                                          ? "${DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(DateTime.parse(event!.eventDate!))} • ${event!.eventTime ?? '-'}"
+                                          ? "${DateFormat('EEEE, d MMMM yyyy').format(DateTime.parse(event!.eventDate!))} • ${event!.eventTime ?? '-'}"
                                           : "-",
                                       style: styleText(),
                                     ),
@@ -262,7 +262,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                       /// SECTION QR CHECKIN
                       /// =====================
                       AppSectionCard(
-                        title: "QR Check-in",
+                        title: "Check-In QR",
                         icon: Icons.qr_code,
                         child: Center(
                           child: Column(
@@ -277,8 +277,8 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                                   ),
                                   child: Text(
                                     waktuCheckin != null
-                                        ? "Anda sudah check-in pada\n${formatTanggal(waktuCheckin!)}"
-                                        : "Anda sudah check-in",
+                                        ? "You have checked-in on\n${formatTanggal(waktuCheckin!)}"
+                                        : "You have checked-in",
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
                                       color: Colors.white,
@@ -302,7 +302,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: const Text(
-                                    "QR Sudah tidak berlaku",
+                                    "QR is not available",
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color: Colors.white,
@@ -314,10 +314,10 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
 
                               Text(
                                 isCheckedIn
-                                    ? "Terima kasih sudah menghadiri event ini"
+                                    ? "Thank you for attending this event"
                                     : isEventPassed()
-                                    ? "Event sudah selesai"
-                                    : "Tunjukkan QR ini ke panitia saat datang",
+                                    ? "Event has passed"
+                                    : "Show this QR to the Committee at the event",
                                 textAlign: TextAlign.center,
                                 style: styleText(),
                               ),
@@ -342,7 +342,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                                       color: AppTheme.white,
                                     ),
                                     label: const Text(
-                                      "Cancel Join",
+                                      "Leave",
                                       style: TextStyle(color: AppTheme.white),
                                     ),
                                     onPressed: () async {
@@ -351,19 +351,33 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                                         builder: (_) => AlertDialog(
                                           backgroundColor: AppTheme.third,
                                           title: Text(
-                                            "Cancel Join",
+                                            "Leave",
                                             style: styleText(),
                                           ),
-                                          content: Text(
-                                            "Yakin ingin keluar dari event ini?",
+                                          content: Text.rich(
                                             style: styleText(),
+                                            TextSpan(
+                                              children: [
+                                                TextSpan(
+                                                  text:
+                                                      "Are you sure want to leave ",
+                                                ),
+                                                TextSpan(
+                                                  text: event!.title,
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                TextSpan(text: "?"),
+                                              ],
+                                            ),
                                           ),
                                           actions: [
                                             TextButton(
                                               onPressed: () =>
                                                   Navigator.pop(context, false),
                                               child: Text(
-                                                "Batal",
+                                                "Cancel",
                                                 style: styleText(),
                                               ),
                                             ),
@@ -371,7 +385,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                                               onPressed: () =>
                                                   Navigator.pop(context, true),
                                               child: Text(
-                                                "Keluar",
+                                                "Leave",
                                                 style: styleText(),
                                               ),
                                             ),

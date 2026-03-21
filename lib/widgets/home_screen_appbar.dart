@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 class HomeScreenAppbar extends StatelessWidget implements PreferredSizeWidget {
   const HomeScreenAppbar({
     super.key,
-    required this.data,
+    required this.title,
     this.child,
     this.onTap,
   });
-  final String data;
+  final Widget title;
   final Widget? child;
   final Function()? onTap;
   @override
@@ -19,10 +19,7 @@ class HomeScreenAppbar extends StatelessWidget implements PreferredSizeWidget {
         padding: EdgeInsets.symmetric(vertical: 60.0),
         child: Row(
           children: [
-            Expanded(
-              flex: 4,
-              child: Text(data, maxLines: 2, style: styleText()),
-            ),
+            Expanded(flex: 4, child: title),
             Spacer(),
             Expanded(
               child: InkWell(
@@ -41,6 +38,5 @@ class HomeScreenAppbar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  // TODO: implement preferredSize
   Size get preferredSize => Size.fromHeight(kToolbarHeight);
 }

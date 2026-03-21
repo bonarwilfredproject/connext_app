@@ -37,7 +37,7 @@ class _LandingPageState extends State<LandingPage> {
               FadeInDown(
                 duration: Duration(milliseconds: 900),
                 child: Text(
-                  "Selamat Datang!",
+                  "Welcome!",
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -58,7 +58,7 @@ class _LandingPageState extends State<LandingPage> {
                     },
                     width: 240,
                     height: 56,
-                    text: "Masuk",
+                    text: "Log In",
                   ),
                 ),
               ),
@@ -74,7 +74,7 @@ class _LandingPageState extends State<LandingPage> {
                       Expanded(child: Divider(color: Color(0xFF424874))),
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 12),
-                        child: Text("atau", style: styleText()),
+                        child: Text("or", style: styleText()),
                       ),
                       Expanded(child: Divider(color: Color(0xFF424874))),
                     ],
@@ -97,7 +97,7 @@ class _LandingPageState extends State<LandingPage> {
                     },
                     width: 240,
                     height: 56,
-                    text: "Daftar",
+                    text: "Sign Up",
                   ),
                 ),
               ),

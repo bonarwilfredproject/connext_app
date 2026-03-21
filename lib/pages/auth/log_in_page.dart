@@ -34,9 +34,9 @@ class _LogInPageState extends State<LogInPage> {
     );
 
     if (login == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Phone atau password salah")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Phone number or password is wrong")),
+      );
       return;
     }
 
@@ -87,7 +87,7 @@ class _LogInPageState extends State<LogInPage> {
                           children: [
                             Icon(Icons.phone, color: AppTheme.secondary),
                             const SizedBox(width: 8),
-                            Text("Phone", style: styleText()),
+                            Text("Phone Number", style: styleText()),
                           ],
                         ),
                         TextFormField(
@@ -96,15 +96,15 @@ class _LogInPageState extends State<LogInPage> {
                             final phone = (value ?? '').trim();
 
                             if (phone.isEmpty) {
-                              return "Nomor telepon tidak boleh kosong";
+                              return "Phone number can't be empty";
                             }
 
                             if (!RegExp(r'^\d+$').hasMatch(phone)) {
-                              return "Nomor telepon hanya boleh angka";
+                              return "Phone number must be numbers";
                             }
 
                             if (phone.length < 9) {
-                              return "Minimal 9 digit";
+                              return "Phone number must at least 9 digits";
                             }
 
                             return null;
@@ -115,7 +115,7 @@ class _LogInPageState extends State<LogInPage> {
                             fontSize: 12,
                           ),
                           decoration: decorationConstant(
-                            hintText: "Masukkan nomor telepon",
+                            hintText: "Please input your phone number",
                           ),
                         ),
                         SizedBox(height: 12),
@@ -141,7 +141,7 @@ class _LogInPageState extends State<LogInPage> {
                               r'[!@#$%^&*(),.?":{}|<>_\-\\/\[\];\`~+=]',
                             ).hasMatch(password);
                             if (password.isEmpty) {
-                              return "Password tidak boleh kosong";
+                              return "Password can't be empty";
                             }
 
                             if (password.length < 8 ||
@@ -149,7 +149,7 @@ class _LogInPageState extends State<LogInPage> {
                                 !hasLowercase ||
                                 !hasNumber ||
                                 !hasSpecialChar) {
-                              return "Password harus terdiri dari minimal 8 karakter, memiliki huruf besar, huruf kecil, nomor, dan special character";
+                              return "Password must have at least 8 characters, an uppercase, a lowercase, a number, and a special character";
                             }
 
                             return null;
@@ -162,7 +162,7 @@ class _LogInPageState extends State<LogInPage> {
                             fontSize: 12,
                           ),
                           decoration: decorationConstant(
-                            hintText: "Masukkan password",
+                            hintText: "Please input your password",
                             suffixIcon: IconButton(
                               onPressed: () {
                                 isVisible = !isVisible;

@@ -49,7 +49,7 @@ class _CreateEventState extends State<CreateEvent> {
     );
 
     if (pickedDateTime.isBefore(now)) {
-      timeError = "Tidak bisa pilih waktu yang sudah lewat";
+      timeError = "Can't pick the passed time";
     } else {
       timeError = null;
     }
@@ -62,10 +62,7 @@ class _CreateEventState extends State<CreateEvent> {
 
     selectedDate = DateTime.now();
     selectedTime = TimeOfDay.now();
-    dateController.text = DateFormat(
-      'EEEE, d MMMM yyyy',
-      'id_ID',
-    ).format(selectedDate!);
+    dateController.text = DateFormat('EE, d MMMM yyyy').format(selectedDate!);
     timeController.text =
         "${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}";
   }
@@ -103,7 +100,7 @@ class _CreateEventState extends State<CreateEvent> {
       backgroundColor: const Color(0xFFF4EEFF),
       appBar: AppBar(
         backgroundColor: const Color(0xFFF4EEFF),
-        title: Text("Buat Event", style: styleText()),
+        title: Text("Create Event", style: styleText()),
       ),
       body: Stack(
         children: [
@@ -116,13 +113,13 @@ class _CreateEventState extends State<CreateEvent> {
               child: Form(
                 key: _formKey,
                 child: AppSectionCard(
-                  title: "Form Event",
+                  title: "Event Form",
                   icon: Icons.event_note,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       /// NAMA EVENT
-                      Text("Nama Event", style: styleText()),
+                      Text("Event Name", style: styleText()),
                       TextFormField(
                         style: TextStyle(
                           color: AppTheme.secondary,
@@ -131,19 +128,19 @@ class _CreateEventState extends State<CreateEvent> {
                         controller: namaEventController,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return "Nama event tidak boleh kosong";
+                            return "Event name can't be empty";
                           }
                           return null;
                         },
                         decoration: decorationConstant(
-                          hintText: "Masukkan nama event",
+                          hintText: "Please input event name",
                         ),
                       ),
 
                       const SizedBox(height: 20),
 
                       /// LOKASI
-                      Text("Lokasi", style: styleText()),
+                      Text("Location", style: styleText()),
                       TextFormField(
                         style: TextStyle(
                           color: AppTheme.secondary,
@@ -152,12 +149,12 @@ class _CreateEventState extends State<CreateEvent> {
                         controller: lokasiController,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return "Lokasi tidak boleh kosong";
+                            return "Location can't be empty";
                           }
                           return null;
                         },
                         decoration: decorationConstant(
-                          hintText: "Masukkan lokasi event",
+                          hintText: "Please input event location",
                         ),
                       ),
 
@@ -172,7 +169,7 @@ class _CreateEventState extends State<CreateEvent> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text("Tanggal", style: styleText()),
+                                Text("Date", style: styleText()),
                                 const SizedBox(height: 6),
                                 TextFormField(
                                   controller: dateController,
@@ -182,11 +179,11 @@ class _CreateEventState extends State<CreateEvent> {
                                     fontSize: 12,
                                   ),
                                   decoration: decorationConstant(
-                                    hintText: "Pilih tanggal",
+                                    hintText: "Choose date",
                                   ).copyWith(helperText: ' '),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return "Tanggal wajib diisi";
+                                      return "Date must be filled";
                                     }
                                     return null;
                                   },
@@ -203,8 +200,7 @@ class _CreateEventState extends State<CreateEvent> {
                                       setState(() {
                                         selectedDate = picked;
                                         dateController.text = DateFormat(
-                                          'EEEE, d MMMM yyyy',
-                                          'id_ID',
+                                          'EE, d MMMM yyyy',
                                         ).format(picked);
                                       });
                                     }
@@ -224,7 +220,7 @@ class _CreateEventState extends State<CreateEvent> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text("Waktu", style: styleText()),
+                                Text("Time", style: styleText()),
                                 const SizedBox(height: 6),
                                 TextFormField(
                                   controller: timeController,
@@ -234,11 +230,11 @@ class _CreateEventState extends State<CreateEvent> {
                                     fontSize: 12,
                                   ),
                                   decoration: decorationConstant(
-                                    hintText: "Pilih waktu",
+                                    hintText: "Choose time",
                                   ).copyWith(helperText: ' '),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return "Waktu wajib diisi";
+                                      return "Time must be filled";
                                     }
                                     if (timeError != null) {
                                       return timeError;
@@ -275,7 +271,7 @@ class _CreateEventState extends State<CreateEvent> {
                       const SizedBox(height: 8),
 
                       /// DESKRIPSI
-                      Text("Deskripsi", style: styleText()),
+                      Text("Description", style: styleText()),
                       TextFormField(
                         controller: descriptionController,
                         minLines: 4,
@@ -286,13 +282,13 @@ class _CreateEventState extends State<CreateEvent> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return "Deskripsi tidak boleh kosong";
+                            return "Description can't be empty";
                           }
                           return null;
                         },
                         decoration:
                             decorationConstant(
-                              hintText: "Masukkan deskripsi event",
+                              hintText: "Please input event description",
                             ).copyWith(
                               contentPadding: const EdgeInsets.symmetric(
                                 vertical: 16,

@@ -150,15 +150,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  Future<void> loadRole() async {
-    final pref = PreferenceHandler();
-    await pref.init();
-
-    setState(() {
-      role = pref.getRole();
-    });
-  }
-
   Widget buildRow(IconData icon, String text, {Widget? trailing}) {
     return Row(
       children: [
@@ -218,7 +209,24 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: HomeScreenAppbar(
-        data: "Selamat datang, ${currentUser?.nama ?? ""} as ${role ?? ""}.",
+        title: Text.rich(
+          maxLines: 2,
+          TextSpan(
+            style: styleText().copyWith(height: 1.4),
+            children: [
+              const TextSpan(text: "Welcome, "),
+              TextSpan(
+                text: currentUser?.nama ?? "",
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const TextSpan(text: " as "),
+              TextSpan(
+                text: role ?? "",
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
         onTap: () async {
           final result = await Navigator.push(
             context,
@@ -268,14 +276,14 @@ class _HomePageState extends State<HomePage> {
                     height: 54,
                     width: 164,
                     icon: Icons.edit,
-                    text: "Buat Event",
+                    text: "Create Event",
                   ),
                   SizedBox(height: 20),
 
                   Expanded(
                     child: AppSectionCard(
                       icon: Icons.event_note,
-                      title: "Events",
+                      title: "Your Event",
                       child: Expanded(
                         child: isLoadingCommittee
                             ? const Center(child: CircularProgressIndicator())
@@ -287,7 +295,7 @@ class _HomePageState extends State<HomePage> {
                                     "assets/lottie/empty_bookings.json",
                                   ),
                                   const SizedBox(height: 12),
-                                  Text("Belum ada event", style: styleText()),
+                                  Text("There is no event", style: styleText()),
                                 ],
                               )
                             : ListView.separated(
@@ -326,7 +334,7 @@ class _HomePageState extends State<HomePage> {
                                           ),
                                           SizedBox(width: 6),
                                           Text(
-                                            "Hapus",
+                                            "Delete",
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
@@ -342,19 +350,33 @@ class _HomePageState extends State<HomePage> {
                                         builder: (_) => AlertDialog(
                                           backgroundColor: AppTheme.third,
                                           title: Text(
-                                            "Hapus Event",
+                                            "Delete Event",
                                             style: styleText(),
                                           ),
-                                          content: Text(
-                                            "Yakin ingin menghapus event ini?",
+                                          content: Text.rich(
                                             style: styleText(),
+                                            TextSpan(
+                                              children: [
+                                                TextSpan(
+                                                  text:
+                                                      "Are you sure want to delete ",
+                                                ),
+                                                TextSpan(
+                                                  text: event.title,
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                TextSpan(text: "?"),
+                                              ],
+                                            ),
                                           ),
                                           actions: [
                                             TextButton(
                                               onPressed: () =>
                                                   Navigator.pop(context, false),
                                               child: Text(
-                                                "Batal",
+                                                "Cancel",
                                                 style: styleText(),
                                               ),
                                             ),
@@ -362,7 +384,7 @@ class _HomePageState extends State<HomePage> {
                                               onPressed: () =>
                                                   Navigator.pop(context, true),
                                               child: Text(
-                                                "Hapus",
+                                                "Delete",
                                                 style: styleText(),
                                               ),
                                             ),
@@ -385,7 +407,7 @@ class _HomePageState extends State<HomePage> {
                                       ).showSnackBar(
                                         const SnackBar(
                                           content: Text(
-                                            "Event berhasil dihapus",
+                                            "Event deleted succesfully",
                                           ),
                                           behavior: SnackBarBehavior.floating,
                                         ),
@@ -457,7 +479,7 @@ class _HomePageState extends State<HomePage> {
                                               Icons
                                                   .event_available, // 🔥 icon baru
                                               event.eventDate != null
-                                                  ? "${DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(DateTime.parse(event.eventDate!))} • ${event.eventTime}"
+                                                  ? "${DateFormat('EE, d MMMM yyyy').format(DateTime.parse(event.eventDate!))} • ${event.eventTime}"
                                                   : "-",
                                             ),
 
@@ -465,7 +487,7 @@ class _HomePageState extends State<HomePage> {
 
                                             buildRow(
                                               Icons.people,
-                                              "${eventParticipantCount[event.id] ?? 0} Peserta",
+                                              "${eventParticipantCount[event.id] ?? 0} Attendee",
                                             ),
                                           ],
                                         ),
@@ -480,7 +502,7 @@ class _HomePageState extends State<HomePage> {
                 ] else if (role == "Attendee") ...[
                   Expanded(
                     child: AppSectionCard(
-                      title: "Pilih Event",
+                      title: "Event Available",
                       icon: Icons.event,
                       child: isLoadingAttendee
                           ? const Center(child: CircularProgressIndicator())
@@ -492,7 +514,7 @@ class _HomePageState extends State<HomePage> {
                                 ),
                                 const SizedBox(height: 12),
                                 Text(
-                                  "Belum ada event tersedia",
+                                  "There is no event available",
                                   style: styleText(),
                                 ),
                               ],
@@ -548,11 +570,11 @@ class _HomePageState extends State<HomePage> {
                                             builder: (_) => AlertDialog(
                                               backgroundColor: AppTheme.third,
                                               title: Text(
-                                                "Event Berakhir",
+                                                "Event ended",
                                                 style: styleText(),
                                               ),
                                               content: Text(
-                                                "Tidak bisa join, waktu event sudah lewat",
+                                                "Can not join event, the event has ended",
                                                 style: styleText(),
                                               ),
                                               actions: [
@@ -580,9 +602,21 @@ class _HomePageState extends State<HomePage> {
                                               "Join Event",
                                               style: styleText(),
                                             ),
-                                            content: Text(
-                                              "Bergabung ke event ${event.title}?",
+                                            content: Text.rich(
                                               style: styleText(),
+                                              TextSpan(
+                                                children: [
+                                                  TextSpan(text: "Join to "),
+                                                  TextSpan(
+                                                    text: event.title,
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  TextSpan(text: "?"),
+                                                ],
+                                              ),
                                             ),
                                             actions: [
                                               TextButton(
@@ -591,7 +625,7 @@ class _HomePageState extends State<HomePage> {
                                                   false,
                                                 ),
                                                 child: Text(
-                                                  "Batal",
+                                                  "Cancel",
                                                   style: styleText(),
                                                 ),
                                               ),
@@ -723,14 +757,14 @@ class _HomePageState extends State<HomePage> {
                                           /// TOTAL PESERTA
                                           buildRow(
                                             Icons.people,
-                                            "${eventParticipantCount[event.id] ?? 0} Peserta",
+                                            "${eventParticipantCount[event.id] ?? 0} Attendee",
                                           ),
                                           const SizedBox(height: 8),
 
                                           buildRow(
                                             Icons.event_available,
                                             event.eventDate != null
-                                                ? "${DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(DateTime.parse(event.eventDate!))} • ${event.eventTime ?? '-'}"
+                                                ? "${DateFormat('EE, d MMMM yyyy').format(DateTime.parse(event.eventDate!))} • ${event.eventTime ?? '-'}"
                                                 : "-",
                                           ),
                                           const SizedBox(height: 8),

@@ -65,7 +65,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
 
   String? validateDateTimeEdit() {
     if (selectedDateEdit == null || selectedTimeEdit == null) {
-      return "Tanggal dan waktu wajib diisi";
+      return "Date and time must be filled";
     }
 
     final nowRaw = DateTime.now();
@@ -88,9 +88,16 @@ class _DetailEventPageState extends State<DetailEventPage> {
     );
 
     if (selectedDateTime.isBefore(now)) {
-      return "Waktu sudah lewat pilih waktu lain";
+      return "Time has passed, please pick another time";
     }
 
+    return null;
+  }
+
+  String? requiredValidator(String? value, String fieldName) {
+    if (value == null || value.trim().isEmpty) {
+      return "$fieldName can't be empty";
+    }
     return null;
   }
 
@@ -108,8 +115,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
     );
 
     dateControllerEdit.text = DateFormat(
-      'EEEE, d MMMM yyyy',
-      'id_ID',
+      'EE, d MMMM yyyy',
     ).format(selectedDateEdit!);
 
     timeControllerEdit.text =
@@ -138,30 +144,34 @@ class _DetailEventPageState extends State<DetailEventPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         /// NAMA EVENT
-                        TextField(
+                        TextFormField(
                           controller: titleController,
                           style: TextStyle(
                             color: AppTheme.secondary,
                             fontSize: 14,
                           ),
+                          validator: (value) =>
+                              requiredValidator(value, "Event name"),
                           decoration: decorationConstant(
-                            hintText: "Nama Event",
-                            labelText: "Nama Event",
+                            hintText: "Event Name",
+                            labelText: "Event Name",
                           ),
                         ),
 
                         const SizedBox(height: 16),
 
                         /// LOKASI
-                        TextField(
+                        TextFormField(
                           controller: locationController,
                           style: TextStyle(
                             color: AppTheme.secondary,
                             fontSize: 14,
                           ),
+                          validator: (value) =>
+                              requiredValidator(value, "Location"),
                           decoration: decorationConstant(
-                            hintText: "Lokasi",
-                            labelText: "Lokasi",
+                            hintText: "Location",
+                            labelText: "Location",
                           ),
                         ),
 
@@ -181,15 +191,22 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                   fontSize: 14,
                                 ),
                                 decoration: decorationConstant(
-                                  hintText: "Pilih tanggal",
-                                  labelText: "Tanggal",
+                                  hintText: "Choose date",
+                                  labelText: "Date",
                                 ),
                                 onTap: () async {
+                                  final now = DateTime.now();
+
+                                  final safeInitialDate =
+                                      (selectedDateEdit != null &&
+                                          selectedDateEdit!.isBefore(now))
+                                      ? now
+                                      : selectedDateEdit ?? now;
+
                                   final picked = await showDatePicker(
                                     context: context,
-                                    initialDate:
-                                        selectedDateEdit ?? DateTime.now(),
-                                    firstDate: DateTime.now(),
+                                    initialDate: safeInitialDate,
+                                    firstDate: now,
                                     lastDate: DateTime(2100),
                                   );
 
@@ -197,8 +214,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                     selectedDateEdit = picked;
 
                                     dateControllerEdit.text = DateFormat(
-                                      'EEEE, d MMMM yyyy',
-                                      'id_ID',
+                                      'EE, d MMMM yyyy',
                                     ).format(picked);
 
                                     timeError = validateDateTimeEdit();
@@ -220,8 +236,8 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                   fontSize: 14,
                                 ),
                                 decoration: decorationConstant(
-                                  hintText: "Pilih waktu",
-                                  labelText: "Waktu",
+                                  hintText: "Choose time",
+                                  labelText: "Time",
                                 ).copyWith(errorMaxLines: 1),
                                 onTap: () async {
                                   final picked = await showTimePicker(
@@ -263,16 +279,18 @@ class _DetailEventPageState extends State<DetailEventPage> {
                         const SizedBox(height: 12),
 
                         /// DESKRIPSI
-                        TextField(
+                        TextFormField(
                           controller: descriptionController,
                           maxLines: 3,
                           style: TextStyle(
                             color: AppTheme.secondary,
                             fontSize: 14,
                           ),
+                          validator: (value) =>
+                              requiredValidator(value, "Description"),
                           decoration: decorationConstant(
-                            hintText: "Deskripsi",
-                            labelText: "Deskripsi",
+                            hintText: "Description",
+                            labelText: "Description",
                           ),
                         ),
                       ],
@@ -286,7 +304,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                   onPressed: () {
                     Navigator.pop(context);
                   },
-                  child: Text("Batal", style: styleText()),
+                  child: Text("Cancel", style: styleText()),
                 ),
 
                 ElevatedButton(
@@ -298,11 +316,13 @@ class _DetailEventPageState extends State<DetailEventPage> {
                   ),
                   onPressed: () async {
                     /// 🔥 VALIDASI SAAT SAVE
+                    final isValid = _editFormKey.currentState!.validate();
+
                     timeError = validateDateTimeEdit();
 
                     setStateDialog(() {});
 
-                    if (timeError != null) return;
+                    if (!isValid || timeError != null) return;
 
                     final updatedEvent = EventModel(
                       id: event!.id,
@@ -321,7 +341,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                     Navigator.pop(context);
                     await loadEvent();
                   },
-                  child: Text("Simpan", style: styleText()),
+                  child: Text("Save", style: styleText()),
                 ),
               ],
             );
@@ -343,12 +363,12 @@ class _DetailEventPageState extends State<DetailEventPage> {
   String formatTanggal(String waktu) {
     DateTime date = DateTime.tryParse(waktu) ?? DateTime.now();
 
-    return DateFormat("EEEE, dd MMM yyyy, HH.mm", "id").format(date);
+    return DateFormat("EE, dd MMM yyyy, HH.mm").format(date);
   }
 
   String formatCreatedAt(String waktu) {
     DateTime date = DateTime.tryParse(waktu) ?? DateTime.now();
-    return DateFormat("dd MMM yyyy, HH:mm", "id").format(date);
+    return DateFormat("dd MMM yyyy, HH:mm").format(date);
   }
 
   Future<void> loadEvent() async {
@@ -396,7 +416,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
 
                 /// TEXT UTAMA
                 Text(
-                  "Belum ada peserta",
+                  "There is no attendee",
                   style: styleText().copyWith(fontWeight: FontWeight.bold),
                 ),
 
@@ -404,7 +424,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
 
                 /// SUBTEXT
                 Text(
-                  "Bagikan event ini agar orang lain bisa bergabung",
+                  "Share this event so people can join",
                   textAlign: TextAlign.center,
                   style: styleText().copyWith(
                     fontSize: 13,
@@ -473,7 +493,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  hadir ? "Hadir" : "Belum Hadir",
+                                  hadir ? "Present" : "Absent",
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 11,
@@ -522,7 +542,10 @@ class _DetailEventPageState extends State<DetailEventPage> {
       backgroundColor: AppTheme.primary,
       appBar: AppBar(
         backgroundColor: AppTheme.primary,
-        title: Text(event!.title, style: styleText()),
+        title: Text(
+          event!.title,
+          style: styleText().copyWith(fontWeight: FontWeight.bold),
+        ),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
@@ -583,7 +606,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                           Expanded(
                             child: Text(
                               event!.description.isEmpty
-                                  ? "Tidak ada deskripsi"
+                                  ? "There is no description"
                                   : event!.description,
                               style: styleText(),
                             ),
@@ -602,7 +625,10 @@ class _DetailEventPageState extends State<DetailEventPage> {
                           children: [
                             Icon(Icons.people, color: AppTheme.secondary),
                             SizedBox(width: 10),
-                            Text("$totalPeserta Terdaftar", style: styleText()),
+                            Text(
+                              "$totalPeserta registered",
+                              style: styleText(),
+                            ),
                             SizedBox(width: 6),
                             Icon(
                               Icons.chevron_right,
@@ -620,7 +646,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                         children: [
                           Icon(Icons.verified, color: AppTheme.secondary),
                           SizedBox(width: 10),
-                          Text("$totalHadir Hadir", style: styleText()),
+                          Text("$totalHadir present", style: styleText()),
                         ],
                       ),
                       SizedBox(height: 16),
@@ -677,7 +703,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                           Expanded(
                             child: Text(
                               event!.eventDate != null
-                                  ? "${DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(DateTime.parse(event!.eventDate!))} • ${event!.eventTime ?? '-'}"
+                                  ? "${DateFormat('EEEE, d MMMM yyyy').format(DateTime.parse(event!.eventDate!))} • ${event!.eventTime ?? '-'}"
                                   : "-",
                               style: styleText(),
                             ),
@@ -704,7 +730,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                       await loadPeserta();
                     }
                   },
-                  text: "Scan Peserta",
+                  text: "Scan Attendee",
                   height: 54,
                   width: double.infinity,
                   icon: Icons.qr_code_scanner,
@@ -716,7 +742,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                 Expanded(
                   flex: 5,
                   child: AppSectionCard(
-                    title: "Peserta yang hadir",
+                    title: "Present Attendee",
                     icon: Icons.people,
                     child: Expanded(
                       child: scannedPeserta.isEmpty
@@ -731,7 +757,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                     ),
                                     const SizedBox(height: 12),
                                     Text(
-                                      "Belum ada peserta yang hadir",
+                                      "There is no present attendee",
                                       style: styleText(),
                                     ),
                                   ],
@@ -773,7 +799,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                         ),
                                         SizedBox(width: 6),
                                         Text(
-                                          "Hapus",
+                                          "Delete",
                                           style: TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.bold,
@@ -789,19 +815,33 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                       builder: (_) => AlertDialog(
                                         backgroundColor: AppTheme.third,
                                         title: Text(
-                                          "Hapus Peserta",
+                                          "Delete Attendee",
                                           style: styleText(),
                                         ),
-                                        content: Text(
-                                          "Yakin ingin menghapus peserta ini?",
+                                        content: Text.rich(
                                           style: styleText(),
+                                          TextSpan(
+                                            children: [
+                                              TextSpan(
+                                                text:
+                                                    "Are you sure want to delete ",
+                                              ),
+                                              TextSpan(
+                                                text: p['namaUser'],
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              TextSpan(text: "?"),
+                                            ],
+                                          ),
                                         ),
                                         actions: [
                                           TextButton(
                                             onPressed: () =>
                                                 Navigator.pop(context, false),
                                             child: Text(
-                                              "Batal",
+                                              "Cancel",
                                               style: styleText(),
                                             ),
                                           ),
@@ -809,7 +849,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                             onPressed: () =>
                                                 Navigator.pop(context, true),
                                             child: Text(
-                                              "Hapus",
+                                              "Delete",
                                               style: styleText(),
                                             ),
                                           ),
@@ -831,7 +871,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text(
-                                          "Peserta berhasil dihapus",
+                                          "Attendee deleted succesfully",
                                         ),
                                         behavior: SnackBarBehavior.floating,
                                       ),
@@ -907,7 +947,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                                             ),
                                                       ),
                                                       child: const Text(
-                                                        "Hadir",
+                                                        "Present",
                                                         style: TextStyle(
                                                           color: Colors.white,
                                                           fontSize: 11,

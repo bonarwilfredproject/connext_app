@@ -61,7 +61,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   Icons.camera_alt,
                   color: AppTheme.secondary,
                 ),
-                title: Text("Ambil dari Kamera", style: styleText()),
+                title: Text("Take a picture", style: styleText()),
                 onTap: () async {
                   Navigator.pop(context);
 
@@ -78,7 +78,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               ListTile(
                 leading: const Icon(Icons.photo, color: AppTheme.secondary),
-                title: Text("Pilih dari Galeri", style: styleText()),
+                title: Text("Choose from Gallery", style: styleText()),
                 onTap: () async {
                   Navigator.pop(context);
 
@@ -201,12 +201,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                                 controller: nameController,
                                 decoration: decorationConstant(
-                                  labelText: "Nama",
+                                  labelText: "Name",
                                   hintText: nameController.text,
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return "Nama tidak boleh kosong";
+                                    return "Name can't be empty";
                                   }
                                   return null;
                                 },
@@ -223,20 +223,20 @@ class _ProfilePageState extends State<ProfilePage> {
                                 controller: phoneController,
                                 keyboardType: TextInputType.number,
                                 decoration: decorationConstant(
-                                  labelText: "Nomor HP",
+                                  labelText: "Phone Number",
                                   hintText: phoneController.text,
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return "Nomor HP wajib diisi";
+                                    return "Phone number must be filled";
                                   }
 
                                   if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                                    return "Nomor hanya boleh angka";
+                                    return "Phone number must be numbers";
                                   }
 
                                   if (value.length < 10) {
-                                    return "Nomor HP tidak valid";
+                                    return "Phone number is not valid";
                                   }
 
                                   if (phoneError != null) {
@@ -259,7 +259,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               /// SAVE BUTTON
                               TombolSementara(
                                 icon: Icons.save,
-                                text: "Simpan",
+                                text: "Save",
                                 width: double.infinity,
                                 height: 50,
                                 onPressed: () async {
@@ -278,7 +278,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     if (exists) {
                                       setModalState(() {
                                         phoneError =
-                                            "Nomor HP sudah digunakan oleh akun lain";
+                                            "Phone number is already used";
                                       });
 
                                       _formKey.currentState!.validate();
@@ -403,9 +403,7 @@ class _ProfilePageState extends State<ProfilePage> {
           }
 
           if (!snapshot.hasData) {
-            return Center(
-              child: Text("User tidak ditemukan", style: styleText()),
-            );
+            return Center(child: Text("User is not found", style: styleText()));
           }
 
           final user = snapshot.data!;
@@ -475,7 +473,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               SizedBox(width: 10),
 
                               Text(
-                                "Nama",
+                                "Name",
                                 style: styleText().copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -496,7 +494,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               SizedBox(width: 10),
 
                               Text(
-                                "No HP",
+                                "Phone Number",
                                 style: styleText().copyWith(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -564,17 +562,17 @@ class _ProfilePageState extends State<ProfilePage> {
                             backgroundColor: AppTheme.third,
                             title: Text("Log Out", style: styleText()),
                             content: Text(
-                              "Apakah kamu yakin ingin log out?",
+                              "Are you sure want to log out?",
                               style: styleText(),
                             ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context, false),
-                                child: Text("Batal", style: styleText()),
+                                child: Text("Cancel", style: styleText()),
                               ),
                               TextButton(
                                 onPressed: () => Navigator.pop(context, true),
-                                child: Text("Ya", style: styleText()),
+                                child: Text("Yes", style: styleText()),
                               ),
                             ],
                           ),

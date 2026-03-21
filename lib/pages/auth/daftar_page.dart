@@ -67,7 +67,7 @@ class _DaftarPageState extends State<DaftarPage> {
 
                             Expanded(
                               flex: 8,
-                              child: Text("Nama", style: styleText()),
+                              child: Text("Name", style: styleText()),
                             ),
                           ],
                         ),
@@ -75,7 +75,7 @@ class _DaftarPageState extends State<DaftarPage> {
                           controller: namaController,
                           validator: (value) {
                             if (value!.isEmpty) {
-                              return "Nama wajib diisi";
+                              return "Name must be filled";
                             }
                             return null;
                           },
@@ -84,7 +84,7 @@ class _DaftarPageState extends State<DaftarPage> {
                             fontSize: 12,
                           ),
                           decoration: decorationConstant(
-                            hintText: "Masukkan nama anda",
+                            hintText: "Please input your name",
                           ),
                         ),
                         SizedBox(height: 12),
@@ -100,7 +100,7 @@ class _DaftarPageState extends State<DaftarPage> {
 
                             Expanded(
                               flex: 8,
-                              child: Text("Phone", style: styleText()),
+                              child: Text("Phone Number", style: styleText()),
                             ),
                           ],
                         ),
@@ -110,16 +110,16 @@ class _DaftarPageState extends State<DaftarPage> {
                           validator: (value) {
                             final phone = (value ?? '').trim();
                             if (phone.isEmpty) {
-                              return "Nomor telepon tidak boleh kosong";
+                              return "Phone number can't be empty";
                             }
                             if (!RegExp(r'^\d+$').hasMatch(phone)) {
-                              return "Nomor telepon hanya boleh angka";
+                              return "Phone number can only be numbers";
                             }
                             if (phone.length < 9) {
-                              return "Nomor telepon minimal 9 digit";
+                              return "Phone number must be at least 9 digits";
                             }
                             if (phone.length > 15) {
-                              return "Nomor telepon maksimal 15 digit";
+                              return "Phone number can't be more than 15 digits";
                             }
                             return null;
                           },
@@ -128,7 +128,7 @@ class _DaftarPageState extends State<DaftarPage> {
                             fontSize: 12,
                           ),
                           decoration: decorationConstant(
-                            hintText: "Masukkan nomor telepon",
+                            hintText: "Please input your phone number",
                           ),
                         ),
                         SizedBox(height: 12),
@@ -162,14 +162,14 @@ class _DaftarPageState extends State<DaftarPage> {
                               r'[!@#$%^&*(),.?":{}|<>_\-\\/\[\];\`~+=]',
                             ).hasMatch(password);
                             if (password.isEmpty) {
-                              return "Password wajib diisi";
+                              return "Password must be filled";
                             }
                             if (password.length < 8 ||
                                 !hasUppercase ||
                                 !hasLowercase ||
                                 !hasNumber ||
                                 !hasSpecialChar) {
-                              return "Password harus terdiri dari minimal 8 karakter, memiliki huruf besar, huruf kecil, nomor, dan special character";
+                              return "Password must have at least 8 characters, an uppercase, a lowercase, a number, and a special character";
                             }
                             return null;
                           },
@@ -181,7 +181,7 @@ class _DaftarPageState extends State<DaftarPage> {
                             fontSize: 12,
                           ),
                           decoration: decorationConstant(
-                            hintText: "Masukkan password",
+                            hintText: "Please input your password",
                             suffixIcon: IconButton(
                               onPressed: () {
                                 isVisible = !isVisible;
@@ -222,11 +222,11 @@ class _DaftarPageState extends State<DaftarPage> {
                           validator: (value) {
                             final confirmPassword = value ?? '';
                             if (confirmPassword.isEmpty) {
-                              return "Masukkan ulang password";
+                              return "Please re-input your password";
                             }
                             if (passwordController.text !=
                                 confirmPasswordController.text) {
-                              return "Password tidak sama";
+                              return "Password is not match";
                             }
 
                             return null;
@@ -239,7 +239,7 @@ class _DaftarPageState extends State<DaftarPage> {
                             fontSize: 12,
                           ),
                           decoration: decorationConstant(
-                            hintText: "Masukkan ulang password",
+                            hintText: "Please re-input your password",
                             suffixIcon: IconButton(
                               onPressed: () {
                                 isVisible = !isVisible;
@@ -261,7 +261,7 @@ class _DaftarPageState extends State<DaftarPage> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text("Daftar sebagai", style: styleText()),
+                            Text("Sign Up As", style: styleText()),
                             const SizedBox(height: 10),
 
                             RoleSelector(
@@ -280,7 +280,7 @@ class _DaftarPageState extends State<DaftarPage> {
                           icon: Icons.app_registration,
                           width: double.infinity,
                           height: 54,
-                          text: "Daftar",
+                          text: "Sign Up",
                           onPressed: () async {
                             if (_formKey.currentState!.validate()) {
                               bool exists = await UserController.isPhoneExists(
@@ -291,7 +291,7 @@ class _DaftarPageState extends State<DaftarPage> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                      "Nomor telepon sudah terdaftar",
+                                      "Phone number is already registered",
                                     ),
                                     behavior: SnackBarBehavior.floating,
                                   ),

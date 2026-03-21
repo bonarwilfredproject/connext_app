@@ -84,7 +84,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
 
       /// jika tidak ada QR di gambar
       if (!success) {
-        showErrorDialog("QR Code tidak ditemukan di gambar");
+        showErrorDialog("QR Code can't be found in picture");
         restartScanner();
         if (await Vibration.hasVibrator()) {
           Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
@@ -97,7 +97,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
       /// jika success → onDetect() akan terpanggil otomatis
       /// dan _handleQrScan() akan berjalan
     } catch (e) {
-      showErrorDialog("QR Code tidak bisa dibaca");
+      showErrorDialog("QR Code can't be read");
       restartScanner();
       if (await Vibration.hasVibrator()) {
         Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
@@ -113,7 +113,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
     return Scaffold(
       backgroundColor: AppTheme.primary,
       appBar: AppBar(
-        title: Text("Scan Peserta", style: styleText()),
+        title: Text("Scan Attendee", style: styleText()),
         backgroundColor: AppTheme.primary,
         elevation: 0,
       ),
@@ -125,7 +125,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
             child: Column(
               children: [
                 Text(
-                  "Arahkan QR Code peserta\nke dalam kotak",
+                  "Direct the attendee QR Code\ninside the box",
                   textAlign: TextAlign.center,
                   style: styleText(),
                 ),
@@ -237,14 +237,14 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
                 ),
 
                 const SizedBox(height: 20),
-                Text("QR akan terbaca otomatis", style: styleText()),
+                Text("QR will be read automatically", style: styleText()),
 
                 const SizedBox(height: 12),
 
                 TombolSementara(
                   onPressed: scanFromGallery,
                   icon: Icons.photo_library,
-                  text: "Upload dari Gallery",
+                  text: "Upload from Gallery",
                   width: 220,
                   height: 45,
                 ),
