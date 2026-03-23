@@ -186,7 +186,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    "$totalPeserta Attendee",
+                                    "$totalPeserta joined",
                                     style: styleText(),
                                   ),
                                 ],
@@ -342,7 +342,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                                       color: AppTheme.white,
                                     ),
                                     label: const Text(
-                                      "Leave",
+                                      "Leave Event",
                                       style: TextStyle(color: AppTheme.white),
                                     ),
                                     onPressed: () async {
@@ -351,7 +351,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                                         builder: (_) => AlertDialog(
                                           backgroundColor: AppTheme.third,
                                           title: Text(
-                                            "Leave",
+                                            "Leave Event",
                                             style: styleText(),
                                           ),
                                           content: Text.rich(

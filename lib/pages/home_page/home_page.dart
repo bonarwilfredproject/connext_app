@@ -757,7 +757,7 @@ class _HomePageState extends State<HomePage> {
                                           /// TOTAL PESERTA
                                           buildRow(
                                             Icons.people,
-                                            "${eventParticipantCount[event.id] ?? 0} Attendee",
+                                            "${eventParticipantCount[event.id] ?? 0} joined",
                                           ),
                                           const SizedBox(height: 8),
 
