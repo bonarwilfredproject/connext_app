@@ -487,7 +487,7 @@ class _HomePageState extends State<HomePage> {
 
                                             buildRow(
                                               Icons.people,
-                                              "${eventParticipantCount[event.id] ?? 0} Attendee",
+                                              "${eventParticipantCount[event.id] ?? 0} joined",
                                             ),
                                           ],
                                         ),

@@ -625,10 +625,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                           children: [
                             Icon(Icons.people, color: AppTheme.secondary),
                             SizedBox(width: 10),
-                            Text(
-                              "$totalPeserta registered",
-                              style: styleText(),
-                            ),
+                            Text("$totalPeserta joined", style: styleText()),
                             SizedBox(width: 6),
                             Icon(
                               Icons.chevron_right,
