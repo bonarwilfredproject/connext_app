@@ -668,7 +668,10 @@ class _DetailEventPageState extends State<DetailEventPage> {
                           ),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: Text(createdByName, style: styleText()),
+                            child: Text(
+                              "by $createdByName",
+                              style: styleText(),
+                            ),
                           ),
                         ],
                       ),
