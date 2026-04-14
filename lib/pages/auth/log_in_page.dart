@@ -1,14 +1,15 @@
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/constants/style_text.dart';
+import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/services/preferences_services.dart';
-import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/pages/home_page/home_page.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/custom_appbar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class LogInPage extends StatefulWidget {
@@ -20,18 +21,44 @@ class LogInPage extends StatefulWidget {
 
 class _LogInPageState extends State<LogInPage> {
   bool isVisible = true;
+  bool isLoadingLogin = false;
   GlobalKey<FormState> _formKey = GlobalKey();
   TextEditingController phoneController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   Future<void> login() async {
+    if (isLoadingLogin) return;
+
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    final UserModel? login = await UserController.loginUser(
-      phone: phoneController.text,
-      password: passwordController.text,
-    );
+    setState(() {
+      isLoadingLogin = true;
+    });
+
+    UserModel? login;
+    try {
+      login = await FirebaseServices.loginUser(
+        phone: phoneController.text.trim(),
+        password: passwordController.text,
+      );
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Login failed')));
+      return;
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login failed, please try again')),
+      );
+      return;
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoadingLogin = false;
+        });
+      }
+    }
 
     if (login == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -43,7 +70,7 @@ class _LogInPageState extends State<LogInPage> {
     final pref = PreferenceHandler();
     await pref.init();
 
-    await pref.saveUser(login.id!, login.nama, login.role);
+    await pref.saveUser(login.id ?? 0, login.nama, login.role);
 
     Navigator.pushAndRemoveUntil(
       context,
@@ -188,6 +215,7 @@ class _LogInPageState extends State<LogInPage> {
                           height: 54,
                           onPressed: login,
                           icon: Icons.login,
+                          isLoading: isLoadingLogin,
                           text: "Log In",
                         ),
                       ],

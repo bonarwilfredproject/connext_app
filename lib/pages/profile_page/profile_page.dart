@@ -4,8 +4,8 @@ import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/pages/landing_page/landing_page.dart';
+import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/services/preferences_services.dart';
-import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
@@ -14,9 +14,8 @@ import 'package:connext_app/models/user_model.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ProfilePage extends StatefulWidget {
-  final int userId;
   final String role;
-  const ProfilePage({super.key, required this.userId, required this.role});
+  const ProfilePage({super.key, required this.role});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -24,6 +23,8 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   String? phoneError;
+  bool isChangingRole = false;
+  bool isLoggingOut = false;
   final TextEditingController nameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -34,7 +35,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    userFuture = UserController.getUserById(widget.userId);
+    userFuture = FirebaseServices.getCurrentUserProfile();
     loadRole();
   }
 
@@ -103,6 +104,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void showEditProfileSheet(UserModel user) {
     nameController.text = user.nama;
     phoneController.text = user.phone;
+    bool isSavingProfile = false;
 
     showModalBottomSheet(
       context: context,
@@ -262,57 +264,78 @@ class _ProfilePageState extends State<ProfilePage> {
                                 text: "Save",
                                 width: double.infinity,
                                 height: 50,
+                                isLoading: isSavingProfile,
                                 onPressed: () async {
+                                  if (isSavingProfile) return;
                                   if (!_formKey.currentState!.validate())
                                     return;
 
-                                  String newName = nameController.text.trim();
-                                  String newPhone = phoneController.text.trim();
-
-                                  if (newPhone != user.phone) {
-                                    bool exists =
-                                        await UserController.isPhoneExists(
-                                          newPhone,
-                                        );
-
-                                    if (exists) {
-                                      setModalState(() {
-                                        phoneError =
-                                            "Phone number is already used";
-                                      });
-
-                                      _formKey.currentState!.validate();
-                                      return;
-                                    }
-                                  }
-
-                                  await UserController.updateProfile(
-                                    widget.userId,
-                                    newName,
-                                    newPhone,
-                                  );
-
-                                  final pref = PreferenceHandler();
-                                  await pref.init();
-                                  await pref.saveNamaUser(newName);
-
-                                  if (tempImage != null) {
-                                    await UserController.updateProfileImage(
-                                      widget.userId,
-                                      tempImage!,
-                                    );
-                                  }
-
-                                  setState(() {
-                                    tempImage = null;
-                                    userFuture = UserController.getUserById(
-                                      widget.userId,
-                                    );
+                                  setModalState(() {
+                                    isSavingProfile = true;
                                   });
 
-                                  if (!mounted) return;
+                                  try {
+                                    String newName = nameController.text.trim();
+                                    String newPhone = phoneController.text
+                                        .trim();
 
-                                  Navigator.pop(context);
+                                    if (newPhone != user.phone) {
+                                      bool exists =
+                                          await FirebaseServices.isPhoneExists(
+                                            newPhone,
+                                          );
+
+                                      if (exists) {
+                                        setModalState(() {
+                                          phoneError =
+                                              "Phone number is already used";
+                                        });
+
+                                        _formKey.currentState!.validate();
+                                        return;
+                                      }
+                                    }
+
+                                    await FirebaseServices.updateProfile(
+                                      name: newName,
+                                      phone: newPhone,
+                                    );
+
+                                    final pref = PreferenceHandler();
+                                    await pref.init();
+                                    await pref.saveNamaUser(newName);
+
+                                    if (tempImage != null) {
+                                      await FirebaseServices.updateProfileImage(
+                                        tempImage!,
+                                      );
+                                    }
+
+                                    setState(() {
+                                      tempImage = null;
+                                      userFuture =
+                                          FirebaseServices.getCurrentUserProfile();
+                                    });
+
+                                    if (!mounted) return;
+
+                                    Navigator.pop(context);
+                                  } catch (_) {
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          "Failed to update profile",
+                                        ),
+                                      ),
+                                    );
+                                  } finally {
+                                    if (mounted) {
+                                      setModalState(() {
+                                        isSavingProfile = false;
+                                      });
+                                    }
+                                  }
                                 },
                               ),
                             ],
@@ -344,26 +367,90 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> changeRole() async {
-    final pref = PreferenceHandler();
-    await pref.init();
-
-    String currentRole = role ?? "Attendee";
-    String newRole = currentRole == "Committee" ? "Attendee" : "Committee";
-
-    /// update database
-    await UserController.updateRole(widget.userId, newRole);
-
-    /// update preference
-    await pref.saveRole(newRole);
+    if (isChangingRole) return;
 
     setState(() {
-      role = newRole;
+      isChangingRole = true;
     });
 
-    if (!mounted) return;
+    try {
+      final pref = PreferenceHandler();
+      await pref.init();
 
-    /// kembali ke homepage dan refresh role
-    Navigator.pop(context, true);
+      String currentRole = role ?? "Attendee";
+      String newRole = currentRole == "Committee" ? "Attendee" : "Committee";
+
+      /// update database
+      await FirebaseServices.updateRole(newRole);
+
+      /// update preference
+      await pref.saveRole(newRole);
+
+      setState(() {
+        role = newRole;
+      });
+
+      if (!mounted) return;
+
+      /// kembali ke homepage dan refresh role
+      Navigator.pop(context, true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          isChangingRole = false;
+        });
+      }
+    }
+  }
+
+  Future<void> logout() async {
+    if (isLoggingOut) return;
+
+    setState(() {
+      isLoggingOut = true;
+    });
+
+    try {
+      final confirm = await showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: AppTheme.third,
+          title: Text("Log Out", style: styleText()),
+          content: Text("Are you sure want to log out?", style: styleText()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text("Cancel", style: styleText()),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text("Yes", style: styleText()),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm == true) {
+        final pref = PreferenceHandler();
+        await pref.init();
+        await FirebaseServices.logout();
+        await pref.logout();
+
+        if (!mounted) return;
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => LandingPage()),
+          (route) => false,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoggingOut = false;
+        });
+      }
+    }
   }
 
   Future<void> pickImage(UserModel user) async {
@@ -528,18 +615,30 @@ class _ProfilePageState extends State<ProfilePage> {
                               const SizedBox(width: 10),
 
                               GestureDetector(
-                                onTap: changeRole,
+                                onTap: isChangingRole ? null : changeRole,
                                 child: Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
                                     color: AppTheme.secondary,
                                     borderRadius: BorderRadius.circular(20),
                                   ),
-                                  child: const Icon(
-                                    Icons.swap_horiz,
-                                    size: 18,
-                                    color: Colors.white,
-                                  ),
+                                  child: isChangingRole
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                  Colors.white,
+                                                ),
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.swap_horiz,
+                                          size: 18,
+                                          color: Colors.white,
+                                        ),
                                 ),
                               ),
                             ],
@@ -555,43 +654,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       icon: Icons.logout,
                       height: 54,
                       width: double.infinity,
-                      onPressed: () async {
-                        final confirm = await showDialog(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            backgroundColor: AppTheme.third,
-                            title: Text("Log Out", style: styleText()),
-                            content: Text(
-                              "Are you sure want to log out?",
-                              style: styleText(),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: Text("Cancel", style: styleText()),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, true),
-                                child: Text("Yes", style: styleText()),
-                              ),
-                            ],
-                          ),
-                        );
-
-                        if (confirm == true) {
-                          final pref = PreferenceHandler();
-                          await pref.init();
-                          await pref.logout();
-
-                          if (!mounted) return;
-
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(builder: (_) => LandingPage()),
-                            (route) => false,
-                          );
-                        }
-                      },
+                      isLoading: isLoggingOut,
+                      onPressed: logout,
                       text: "Log Out",
                     ),
                   ],

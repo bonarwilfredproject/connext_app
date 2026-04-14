@@ -1,6 +1,6 @@
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/style_text.dart';
-import 'package:connext_app/services/user_controller.dart';
+import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/pages/auth/log_in_page.dart';
@@ -9,6 +9,7 @@ import 'package:connext_app/widgets/custom_appbar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/role_selector.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class DaftarPage extends StatefulWidget {
@@ -21,6 +22,7 @@ class DaftarPage extends StatefulWidget {
 class _DaftarPageState extends State<DaftarPage> {
   String role = "Committee";
   bool isVisible = true;
+  bool isLoadingSignUp = false;
   final GlobalKey<FormState> _formKey = GlobalKey();
   TextEditingController namaController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
@@ -280,38 +282,74 @@ class _DaftarPageState extends State<DaftarPage> {
                           icon: Icons.app_registration,
                           width: double.infinity,
                           height: 54,
+                          isLoading: isLoadingSignUp,
                           text: "Sign Up",
                           onPressed: () async {
-                            if (_formKey.currentState!.validate()) {
-                              bool exists = await UserController.isPhoneExists(
-                                phoneController.text,
-                              );
+                            if (isLoadingSignUp) return;
 
-                              if (exists) {
+                            if (_formKey.currentState!.validate()) {
+                              setState(() {
+                                isLoadingSignUp = true;
+                              });
+
+                              try {
+                                bool exists =
+                                    await FirebaseServices.isPhoneExists(
+                                      phoneController.text.trim(),
+                                    );
+
+                                if (exists) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        "Phone number is already registered",
+                                      ),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                await FirebaseServices.registerUser(
+                                  user: UserModel(
+                                    nama: namaController.text.trim(),
+                                    phone: phoneController.text.trim(),
+                                    password: passwordController.text,
+                                    role: role,
+                                  ),
+                                );
+
+                                if (!mounted) return;
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const LogInPage(),
+                                  ),
+                                );
+                              } on FirebaseAuthException catch (e) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
+                                  SnackBar(
                                     content: Text(
-                                      "Phone number is already registered",
+                                      e.message ?? "Failed to register user",
                                     ),
                                     behavior: SnackBarBehavior.floating,
                                   ),
                                 );
                                 return;
-                              } else {
-                                UserController.registerUser(
-                                  UserModel(
-                                    nama: namaController.text,
-                                    phone: phoneController.text,
-                                    password: passwordController.text,
-                                    role: role,
+                              } catch (_) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Failed to register user"),
+                                    behavior: SnackBarBehavior.floating,
                                   ),
                                 );
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => LogInPage(),
-                                  ),
-                                );
+                                return;
+                              } finally {
+                                if (mounted) {
+                                  setState(() {
+                                    isLoadingSignUp = false;
+                                  });
+                                }
                               }
                             }
                           },

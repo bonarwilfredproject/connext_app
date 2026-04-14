@@ -5,6 +5,7 @@ import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
 import 'package:connext_app/pages/profile_page/profile_page.dart';
 import 'package:connext_app/services/event_controller.dart';
 import 'package:connext_app/services/event_participant_controller.dart';
+import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/models/event_model.dart';
@@ -116,17 +117,15 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> getCurrentUser() async {
-    final pref = PreferenceHandler();
-    await pref.init();
-
-    int? userId = pref.getUserId();
-
-    final user = await UserController.getUserById(userId);
+    final user = await FirebaseServices.getCurrentUserProfile();
 
     if (!mounted) return;
 
     setState(() {
       currentUser = user;
+      if (user?.role != null) {
+        role = user!.role;
+      }
     });
   }
 
@@ -216,7 +215,7 @@ class _HomePageState extends State<HomePage> {
             children: [
               const TextSpan(text: "Welcome, "),
               TextSpan(
-                text: currentUser?.nama ?? "",
+                text: currentUser?.nama ?? namaUser ?? "",
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const TextSpan(text: " as "),
@@ -231,8 +230,7 @@ class _HomePageState extends State<HomePage> {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) =>
-                  ProfilePage(userId: currentUser!.id!, role: role!),
+              builder: (_) => ProfilePage(role: role ?? "Attendee"),
             ),
           );
 
