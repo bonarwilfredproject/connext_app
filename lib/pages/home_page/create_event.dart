@@ -1,7 +1,9 @@
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/services/event_controller.dart';
 import 'package:connext_app/models/event_model.dart';
+import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
+import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
@@ -78,14 +80,63 @@ class _CreateEventState extends State<CreateEvent> {
     _formKey.currentState!.validate();
     if (!_formKey.currentState!.validate()) return;
     if (timeError != null) return;
+
+    UserModel? profile;
+
+    int? creatorId = userId;
+    if (creatorId == null || creatorId <= 0) {
+      final pref = PreferenceHandler();
+      await pref.init();
+      final prefId = pref.getUserId();
+      if (prefId > 0) {
+        creatorId = prefId;
+      }
+    }
+
+    if (creatorId == null || creatorId <= 0) {
+      profile = await FirebaseServices.getCurrentUserProfile();
+      final profileId = profile?.id;
+      if (profileId != null && profileId > 0) {
+        creatorId = profileId;
+
+        final pref = PreferenceHandler();
+        await pref.init();
+        await pref.saveUser(profileId, profile!.nama, profile.role);
+      }
+    }
+
+    if (creatorId == null || creatorId <= 0) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to determine event creator. Please relogin.'),
+        ),
+      );
+      return;
+    }
+
+    profile ??= await FirebaseServices.getCurrentUserProfile();
+
+    final pref = PreferenceHandler();
+    await pref.init();
+    final fallbackName = pref.getNamaUser();
+    final creatorName = (profile?.nama.trim().isNotEmpty ?? false)
+        ? profile!.nama.trim()
+        : fallbackName;
+
+    final currentUid = FirebaseServices.currentUid;
+
     final event = EventModel(
       title: namaEventController.text.trim(),
       location: lokasiController.text.trim(),
       description: descriptionController.text.trim(),
-      createdBy: userId!,
+      createdBy: creatorId,
+      createdByName: creatorName,
+      createdByUid: currentUid,
       createdAt: DateTime.now().toIso8601String(),
       eventDate: selectedDate!.toIso8601String(),
-      eventTime: selectedTime!.format(context),
+      eventTime:
+          '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
     );
 
     await EventController.insertEvent(event);

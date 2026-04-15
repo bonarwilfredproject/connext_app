@@ -29,16 +29,33 @@ class UserModel {
     };
   }
 
+  static int? _toIntFlexible(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+
+    final text = value.toString().trim();
+    if (text.isEmpty) return null;
+
+    final asInt = int.tryParse(text);
+    if (asInt != null) return asInt;
+
+    final asDouble = double.tryParse(text);
+    if (asDouble != null) return asDouble.toInt();
+
+    return null;
+  }
+
   factory UserModel.fromMap(Map<String, dynamic> map) {
+    final rawProfile = map['profile_image'] ?? map['profileImage'];
+
     return UserModel(
-      id: map['id'] != null ? map['id'] as int : null,
-      nama: map['nama'] as String,
-      phone: map['phone'] as String,
-      password: map['password'] as String,
-      role: map['role'] as String,
-      profileImage: map['profile_image'] != null
-          ? map['profile_image'] as String
-          : null,
+      id: _toIntFlexible(map['id']),
+      nama: (map['nama'] ?? '').toString(),
+      phone: (map['phone'] ?? '').toString(),
+      password: (map['password'] ?? '').toString(),
+      role: (map['role'] ?? 'Attendee').toString(),
+      profileImage: rawProfile?.toString(),
     );
   }
 

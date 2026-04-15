@@ -1,22 +1,20 @@
-import 'package:connext_app/services/database_helper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connext_app/models/user_model.dart';
+import 'package:connext_app/services/firebase_services.dart';
 
 class UserController {
   static Future<void> registerUser(UserModel user) async {
-    final dbs = await DBHelper.db();
-    await dbs.insert('users', user.toMap());
+    await FirebaseServices.registerUser(user: user);
   }
 
   static Future<bool> isPhoneExists(String phone) async {
-    final db = await DBHelper.db();
+    final result = await FirebaseFirestore.instance
+        .collection('users')
+        .where('phone', isEqualTo: phone)
+        .limit(1)
+        .get();
 
-    final result = await db.query(
-      "users",
-      where: "phone = ?",
-      whereArgs: [phone],
-    );
-
-    return result.isNotEmpty;
+    return result.docs.isNotEmpty;
   }
 
   static Future<void> updateProfile(
@@ -24,69 +22,54 @@ class UserController {
     String name,
     String phone,
   ) async {
-    final db = await DBHelper.db();
+    final query = await FirebaseFirestore.instance
+        .collection('users')
+        .where('id', whereIn: [userId, userId.toString()])
+        .limit(1)
+        .get();
 
-    await db.update(
-      "users",
-      {"nama": name, "phone": phone},
-      where: "id = ?",
-      whereArgs: [userId],
-    );
+    if (query.docs.isEmpty) return;
+
+    await query.docs.first.reference.update({'nama': name, 'phone': phone});
   }
 
   static Future<void> updateProfileImage(int userId, String imagePath) async {
-    final db = await DBHelper.db();
+    final query = await FirebaseFirestore.instance
+        .collection('users')
+        .where('id', whereIn: [userId, userId.toString()])
+        .limit(1)
+        .get();
 
-    await db.update(
-      "users",
-      {"profile_image": imagePath},
-      where: "id = ?",
-      whereArgs: [userId],
-    );
+    if (query.docs.isEmpty) return;
+
+    await query.docs.first.reference.update({'profile_image': imagePath});
   }
 
   static Future<void> updateRole(int userId, String role) async {
-    final db = await DBHelper.db();
+    final query = await FirebaseFirestore.instance
+        .collection('users')
+        .where('id', whereIn: [userId, userId.toString()])
+        .limit(1)
+        .get();
 
-    await db.update(
-      "users",
-      {"role": role},
-      where: "id = ?",
-      whereArgs: [userId],
-    );
+    if (query.docs.isEmpty) return;
+
+    await query.docs.first.reference.update({'role': role});
   }
 
   static Future<UserModel?> loginUser({
     required String phone,
     required String password,
   }) async {
-    final dbs = await DBHelper.db();
-    final List<Map<String, dynamic>> results = await dbs.query(
-      "users",
-      where: 'phone = ? AND password = ?',
-      whereArgs: [phone, password],
-    );
-    if (results.isNotEmpty) {
-      return UserModel.fromMap(results.first);
-    }
-    return null;
+    return FirebaseServices.loginUser(phone: phone, password: password);
   }
 
   static Future<UserModel?> getUserById(int id) async {
-    final dbs = await DBHelper.db();
-
-    final result = await dbs.query("users", where: "id = ?", whereArgs: [id]);
-
-    if (result.isNotEmpty) {
-      return UserModel.fromMap(result.first);
-    }
-
-    return null;
+    return FirebaseServices.getUserByNumericId(id);
   }
 
   static Future<List<UserModel>> getAllUser() async {
-    final dbs = await DBHelper.db();
-    final List<Map<String, dynamic>> results = await dbs.query("users");
-    return results.map((e) => UserModel.fromMap(e)).toList();
+    final results = await FirebaseFirestore.instance.collection('users').get();
+    return results.docs.map((e) => UserModel.fromMap(e.data())).toList();
   }
 }

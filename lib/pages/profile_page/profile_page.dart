@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
@@ -8,6 +9,7 @@ import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
+import 'package:connext_app/widgets/profile_avatar.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:flutter/material.dart';
 import 'package:connext_app/models/user_model.dart';
@@ -22,6 +24,8 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  static const Duration _roleChangeTimeout = Duration(seconds: 8);
+  static const Duration _profileSaveTimeout = Duration(seconds: 25);
   String? phoneError;
   bool isChangingRole = false;
   bool isLoggingOut = false;
@@ -29,12 +33,16 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController phoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   String? tempImage;
+  Uint8List? tempImageBytes;
+  String? tempImageName;
   late Future<UserModel?> userFuture;
   final ImagePicker picker = ImagePicker();
   String? role;
+
   @override
   void initState() {
     super.initState();
+    role = widget.role;
     userFuture = FirebaseServices.getCurrentUserProfile();
     loadRole();
   }
@@ -71,8 +79,11 @@ class _ProfilePageState extends State<ProfilePage> {
                   );
 
                   if (image != null) {
+                    final bytes = await image.readAsBytes();
                     setModalState(() {
                       tempImage = image.path;
+                      tempImageBytes = bytes;
+                      tempImageName = image.name;
                     });
                   }
                 },
@@ -88,8 +99,11 @@ class _ProfilePageState extends State<ProfilePage> {
                   );
 
                   if (image != null) {
+                    final bytes = await image.readAsBytes();
                     setModalState(() {
                       tempImage = image.path;
+                      tempImageBytes = bytes;
+                      tempImageName = image.name;
                     });
                   }
                 },
@@ -105,6 +119,7 @@ class _ProfilePageState extends State<ProfilePage> {
     nameController.text = user.nama;
     phoneController.text = user.phone;
     bool isSavingProfile = false;
+    bool isSheetClosed = false;
 
     showModalBottomSheet(
       context: context,
@@ -160,21 +175,13 @@ class _ProfilePageState extends State<ProfilePage> {
                                 child: Stack(
                                   alignment: Alignment.bottomRight,
                                   children: [
-                                    CircleAvatar(
+                                    ProfileAvatar(
+                                      imagePath: tempImage != null
+                                          ? tempImage
+                                          : user.profileImage,
                                       radius: 45,
                                       backgroundColor: AppTheme.third,
-                                      backgroundImage: tempImage != null
-                                          ? FileImage(File(tempImage!))
-                                          : (user.profileImage != null &&
-                                                user.profileImage!.isNotEmpty)
-                                          ? FileImage(File(user.profileImage!))
-                                          : null,
-                                      child:
-                                          (tempImage == null &&
-                                              (user.profileImage == null ||
-                                                  user.profileImage!.isEmpty))
-                                          ? const Icon(Icons.person, size: 45)
-                                          : null,
+                                      iconSize: 45,
                                     ),
 
                                     Container(
@@ -299,38 +306,46 @@ class _ProfilePageState extends State<ProfilePage> {
                                     await FirebaseServices.updateProfile(
                                       name: newName,
                                       phone: newPhone,
-                                    );
+                                    ).timeout(_profileSaveTimeout);
 
                                     final pref = PreferenceHandler();
                                     await pref.init();
                                     await pref.saveNamaUser(newName);
 
-                                    if (tempImage != null) {
+                                    if (tempImageBytes != null) {
+                                      await FirebaseServices.updateProfileImageBytes(
+                                        tempImageBytes!,
+                                        fileName: tempImageName,
+                                      ).timeout(_profileSaveTimeout);
+                                    } else if (tempImage != null) {
                                       await FirebaseServices.updateProfileImage(
                                         tempImage!,
-                                      );
+                                      ).timeout(_profileSaveTimeout);
                                     }
 
                                     setState(() {
                                       tempImage = null;
+                                      tempImageBytes = null;
+                                      tempImageName = null;
                                       userFuture =
                                           FirebaseServices.getCurrentUserProfile();
                                     });
 
                                     if (!mounted) return;
 
+                                    isSheetClosed = true;
                                     Navigator.pop(context);
                                   } catch (_) {
                                     if (!mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text(
-                                          "Failed to update profile",
+                                          "Failed to update profile/photo. Please check your connection and Storage rules.",
                                         ),
                                       ),
                                     );
                                   } finally {
-                                    if (mounted) {
+                                    if (mounted && !isSheetClosed) {
                                       setModalState(() {
                                         isSavingProfile = false;
                                       });
@@ -353,6 +368,8 @@ class _ProfilePageState extends State<ProfilePage> {
     ).then((_) {
       setState(() {
         tempImage = null;
+        tempImageBytes = null;
+        tempImageName = null;
       });
     });
   }
@@ -361,9 +378,11 @@ class _ProfilePageState extends State<ProfilePage> {
     final pref = PreferenceHandler();
     await pref.init();
 
-    role = pref.getRole();
+    if (!mounted) return;
 
-    setState(() {});
+    setState(() {
+      role = pref.getRole() ?? widget.role;
+    });
   }
 
   Future<void> changeRole() async {
@@ -380,20 +399,49 @@ class _ProfilePageState extends State<ProfilePage> {
       String currentRole = role ?? "Attendee";
       String newRole = currentRole == "Committee" ? "Attendee" : "Committee";
 
-      /// update database
-      await FirebaseServices.updateRole(newRole);
-
-      /// update preference
+      /// Prioritize local role switch so UI never hangs on poor connection.
       await pref.saveRole(newRole);
 
-      setState(() {
-        role = newRole;
-      });
+      if (mounted) {
+        setState(() {
+          role = newRole;
+        });
+      }
+
+      try {
+        await FirebaseServices.updateRole(newRole).timeout(_roleChangeTimeout);
+      } on TimeoutException {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Role updated locally. Firebase sync will continue when connection is stable",
+              ),
+            ),
+          );
+        }
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Role updated locally. Firebase sync failed for now",
+              ),
+            ),
+          );
+        }
+      }
 
       if (!mounted) return;
 
-      /// kembali ke homepage dan refresh role
-      Navigator.pop(context, true);
+      /// kembali ke homepage dengan role terbaru
+      Navigator.pop(context, newRole);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Failed to change role")));
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -511,15 +559,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       child: Stack(
                         alignment: Alignment.bottomRight,
                         children: [
-                          CircleAvatar(
+                          ProfileAvatar(
+                            imagePath: user.profileImage,
                             radius: 50,
                             backgroundColor: AppTheme.third,
-                            backgroundImage: user.profileImage != null
-                                ? FileImage(File(user.profileImage!))
-                                : null,
-                            child: user.profileImage == null
-                                ? Icon(Icons.person, size: 50)
-                                : null,
+                            iconSize: 50,
                           ),
 
                           Container(

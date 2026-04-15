@@ -43,14 +43,27 @@ class _LogInPageState extends State<LogInPage> {
         password: passwordController.text,
       );
     } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message ?? 'Login failed')));
+      String errorMessage = 'Login failed';
+      if (e.code == 'user-not-found') {
+        errorMessage = 'Phone is not registered';
+      } else if (e.code == 'wrong-password') {
+        errorMessage = 'Incorrect password';
+      } else if (e.message != null) {
+        errorMessage = e.message!;
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(errorMessage)));
+      }
       return;
-    } catch (_) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login failed, please try again')),
-      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Login failed, please try again')),
+        );
+      }
       return;
     } finally {
       if (mounted) {
@@ -61,16 +74,37 @@ class _LogInPageState extends State<LogInPage> {
     }
 
     if (login == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Phone number or password is wrong")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Phone number or password is wrong")),
+        );
+      }
       return;
     }
 
     final pref = PreferenceHandler();
     await pref.init();
 
-    await pref.saveUser(login.id ?? 0, login.nama, login.role);
+    int? resolvedUserId = login.id;
+    if (resolvedUserId == null || resolvedUserId <= 0) {
+      final profile = await FirebaseServices.getCurrentUserProfile();
+      final profileId = profile?.id;
+      if (profileId != null && profileId > 0) {
+        resolvedUserId = profileId;
+      }
+    }
+
+    if (resolvedUserId == null || resolvedUserId <= 0) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Login succeeded but user profile ID is invalid.'),
+        ),
+      );
+      return;
+    }
+
+    await pref.saveUser(resolvedUserId, login.nama, login.role);
 
     Navigator.pushAndRemoveUntil(
       context,

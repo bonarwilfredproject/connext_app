@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/constants/app_theme.dart';
@@ -10,6 +9,7 @@ import 'package:connext_app/services/event_participant_controller.dart';
 import 'package:connext_app/widgets/app_list_card.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
+import 'package:connext_app/widgets/profile_avatar.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -48,15 +48,36 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
 
     try {
       final date = DateTime.parse(event!.eventDate!);
+      final timeText = event!.eventTime!.trim();
 
-      final timeParts = event!.eventTime!.split(":");
+      int hour;
+      int minute;
+
+      // Primary format: HH:mm
+      final hhmmParts = timeText.split(':');
+      if (hhmmParts.length == 2) {
+        final parsedHour = int.tryParse(hhmmParts[0]);
+        final parsedMinute = int.tryParse(hhmmParts[1]);
+        if (parsedHour != null && parsedMinute != null) {
+          hour = parsedHour;
+          minute = parsedMinute;
+        } else {
+          final parsed = DateFormat('h:mm a').parseStrict(timeText);
+          hour = parsed.hour;
+          minute = parsed.minute;
+        }
+      } else {
+        final parsed = DateFormat('h:mm a').parseStrict(timeText);
+        hour = parsed.hour;
+        minute = parsed.minute;
+      }
 
       final eventDateTime = DateTime(
         date.year,
         date.month,
         date.day,
-        int.parse(timeParts[0]),
-        int.parse(timeParts[1]),
+        hour,
+        minute,
       );
 
       final nowRaw = DateTime.now();
@@ -82,35 +103,42 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
   }
 
   Future<void> loadEvent() async {
-    /// ambil detail event
-    event = await EventController.getEventById(widget.eventId);
+    try {
+      /// ambil detail event
+      event = await EventController.getEventById(widget.eventId);
 
-    /// ambil data panitia
-    if (event != null) {
-      creator = await UserController.getUserById(event!.createdBy);
+      /// ambil data panitia
+      if (event != null) {
+        creator = await UserController.getUserById(event!.createdBy);
+      }
+
+      totalPeserta = await EventParticipantController.getTotalParticipants(
+        widget.eventId,
+      );
+
+      /// ambil token QR
+      qrToken = await EventParticipantController.getQrToken(
+        widget.userId,
+        widget.eventId,
+      );
+
+      final participant = await CheckinController.getParticipant(
+        widget.userId,
+        widget.eventId,
+      );
+      if (participant != null) {
+        isCheckedIn = await CheckinController.isAlreadyCheckin(
+          participant["id"],
+        );
+
+        /// ambil waktu check-in
+        waktuCheckin = participant["checkin_time"];
+      }
+    } catch (_) {
+      // Keep page responsive even if one of the requests fails.
     }
 
-    totalPeserta = await EventParticipantController.getTotalParticipants(
-      widget.eventId,
-    );
-
-    /// ambil token QR
-    qrToken = await EventParticipantController.getQrToken(
-      widget.userId,
-      widget.eventId,
-    );
-
-    final participant = await CheckinController.getParticipant(
-      widget.userId,
-      widget.eventId,
-    );
-    print(participant);
-    if (participant != null) {
-      isCheckedIn = await CheckinController.isAlreadyCheckin(participant["id"]);
-
-      /// ambil waktu check-in
-      waktuCheckin = participant["checkin_time"];
-    }
+    if (!mounted) return;
 
     setState(() {
       isLoading = false;
@@ -130,6 +158,17 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
           EllipseBackground(),
           isLoading
               ? const Center(child: CircularProgressIndicator())
+              : event == null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      "Event details can not be loaded",
+                      textAlign: TextAlign.center,
+                      style: styleText(),
+                    ),
+                  ),
+                )
               : Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
@@ -218,26 +257,11 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                               if (creator != null)
                                 Row(
                                   children: [
-                                    CircleAvatar(
+                                    ProfileAvatar(
+                                      imagePath: creator!.profileImage,
                                       radius: 12,
                                       backgroundColor: AppTheme.third,
-                                      backgroundImage:
-                                          creator!.profileImage != null &&
-                                              creator!
-                                                  .profileImage!
-                                                  .isNotEmpty &&
-                                              File(
-                                                creator!.profileImage!,
-                                              ).existsSync()
-                                          ? FileImage(
-                                              File(creator!.profileImage!),
-                                            )
-                                          : null,
-                                      child:
-                                          creator!.profileImage == null ||
-                                              creator!.profileImage!.isEmpty
-                                          ? const Icon(Icons.person, size: 16)
-                                          : null,
+                                      iconSize: 16,
                                     ),
 
                                     const SizedBox(width: 8),

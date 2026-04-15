@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:async';
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
@@ -13,6 +12,7 @@ import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/widgets/app_list_card.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
+import 'package:connext_app/widgets/profile_avatar.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:connext_app/pages/home_page/create_event.dart';
 import 'package:connext_app/pages/home_page/detail_event_page.dart';
@@ -46,6 +46,7 @@ class _HomePageState extends State<HomePage> {
   List<int> joinedEventIds = [];
   bool isLoadingAttendee = true;
   late List<UserModel> dataUser = [];
+
   @override
   void initState() {
     super.initState();
@@ -71,10 +72,29 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final date = DateTime.parse(event.eventDate!);
+      final timeText = event.eventTime!.trim();
 
-      final timeParts = event.eventTime!.split(":");
-      final hour = int.parse(timeParts[0]);
-      final minute = int.parse(timeParts[1]);
+      int hour;
+      int minute;
+
+      // Primary format: HH:mm
+      final hhmmParts = timeText.split(':');
+      if (hhmmParts.length == 2) {
+        final parsedHour = int.tryParse(hhmmParts[0]);
+        final parsedMinute = int.tryParse(hhmmParts[1]);
+        if (parsedHour != null && parsedMinute != null) {
+          hour = parsedHour;
+          minute = parsedMinute;
+        } else {
+          final parsed = DateFormat('h:mm a').parseStrict(timeText);
+          hour = parsed.hour;
+          minute = parsed.minute;
+        }
+      } else {
+        final parsed = DateFormat('h:mm a').parseStrict(timeText);
+        hour = parsed.hour;
+        minute = parsed.minute;
+      }
 
       final eventDateTime = DateTime(
         date.year,
@@ -123,30 +143,78 @@ class _HomePageState extends State<HomePage> {
 
     setState(() {
       currentUser = user;
-      if (user?.role != null) {
-        role = user!.role;
-      }
     });
   }
 
-  Future<void> loadCommitteeEvents() async {
+  Future<int?> _resolveCurrentUserId() async {
+    final inMemoryId = currentUser?.id;
+    if (inMemoryId != null && inMemoryId > 0) return inMemoryId;
+
     final pref = PreferenceHandler();
     await pref.init();
+    final prefId = pref.getUserId();
+    if (prefId > 0) return prefId;
 
-    int? userId = pref.getUserId();
+    final firebaseUser = await FirebaseServices.getCurrentUserProfile();
+    final firebaseId = firebaseUser?.id;
+    if (firebaseId != null && firebaseId > 0) {
+      final pref = PreferenceHandler();
+      await pref.init();
+      await pref.saveUser(firebaseId, firebaseUser!.nama, firebaseUser.role);
 
-    committeeEvents = await EventController.getEventByUser(userId);
-
-    for (var event in committeeEvents) {
-      int total = await EventParticipantController.getTotalParticipants(
-        event.id!,
-      );
-      eventParticipantCount[event.id!] = total;
+      if (mounted) {
+        setState(() {
+          currentUser = firebaseUser;
+        });
+      }
+      return firebaseId;
     }
 
+    return null;
+  }
+
+  Future<void> loadCommitteeEvents() async {
+    if (!mounted) return;
+
     setState(() {
-      isLoadingCommittee = false;
+      isLoadingCommittee = true;
     });
+
+    int userId = 0;
+    try {
+      userId = await _resolveCurrentUserId() ?? 0;
+    } catch (_) {
+      userId = 0;
+    }
+
+    try {
+      final events = await EventController.getEventByUser(userId);
+      final newParticipantCount = <int, int>{};
+
+      for (final event in events) {
+        final eventId = event.id;
+        if (eventId == null) continue;
+
+        final total = await EventParticipantController.getTotalParticipants(
+          eventId,
+        );
+        newParticipantCount[eventId] = total;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        committeeEvents = events;
+        eventParticipantCount = newParticipantCount;
+        isLoadingCommittee = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        committeeEvents = [];
+        eventParticipantCount = {};
+        isLoadingCommittee = false;
+      });
+    }
   }
 
   Widget buildRow(IconData icon, String text, {Widget? trailing}) {
@@ -161,47 +229,87 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> loadAttendeeEvents() async {
+    if (!mounted) return;
+
     setState(() {
       isLoadingAttendee = true;
     });
 
-    final pref = PreferenceHandler();
-    await pref.init();
+    int userId = 0;
+    try {
+      userId = await _resolveCurrentUserId() ?? 0;
+    } catch (_) {
+      userId = 0;
+    }
 
-    int? userId = pref.getUserId();
+    try {
+      /// ambil semua event
+      final events = await EventController.getAllEvent(userId);
 
-    /// ambil semua event
-    final events = await EventController.getAllEvent(userId);
-
-    /// ambil event yang diikuti user
-    final joinedEvents = await EventController.getEventByParticipant(userId);
-
-    /// reset state lama
-    List<int> newJoinedIds = joinedEvents.map((e) => e.id!).toList();
-    Map<int, int> newParticipantCount = {};
-
-    /// hitung jumlah peserta tiap event
-
-    for (var event in events) {
-      int total = await EventParticipantController.getTotalParticipants(
-        event.id!,
-      );
-      newParticipantCount[event.id!] = total;
-
-      /// ambil data panitia
-      if (!eventCreators.containsKey(event.createdBy)) {
-        final user = await UserController.getUserById(event.createdBy);
-        if (user != null) {
-          eventCreators[event.createdBy] = user;
+      /// ambil event yang diikuti user
+      final previousJoinedIds = List<int>.from(joinedEventIds);
+      List<EventModel> joinedEvents = [];
+      bool joinedFetchOk = false;
+      if (userId > 0) {
+        try {
+          joinedEvents = await EventController.getEventByParticipant(userId);
+          joinedFetchOk = true;
+        } catch (_) {
+          joinedEvents = [];
+          joinedFetchOk = false;
         }
       }
+
+      /// reset state lama
+      final newJoinedIds = joinedFetchOk
+          ? joinedEvents.where((e) => e.id != null).map((e) => e.id!).toList()
+          : previousJoinedIds;
+      final newParticipantCount = <int, int>{};
+
+      /// hitung jumlah peserta tiap event
+      for (final event in events) {
+        final eventId = event.id;
+        if (eventId == null) continue;
+
+        int total = 0;
+        try {
+          total = await EventParticipantController.getTotalParticipants(
+            eventId,
+          );
+        } catch (_) {
+          total = 0;
+        }
+        newParticipantCount[eventId] = total;
+
+        /// ambil data panitia
+        if (!eventCreators.containsKey(event.createdBy)) {
+          try {
+            final user = await UserController.getUserById(event.createdBy);
+            if (user != null) {
+              eventCreators[event.createdBy] = user;
+            }
+          } catch (_) {
+            // Ignore creator lookup errors so event cards still render.
+          }
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        attendeeEvents = events;
+        joinedEventIds = newJoinedIds;
+        eventParticipantCount = newParticipantCount;
+        isLoadingAttendee = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        attendeeEvents = [];
+        joinedEventIds = [];
+        eventParticipantCount = {};
+        isLoadingAttendee = false;
+      });
     }
-    setState(() {
-      attendeeEvents = events;
-      joinedEventIds = newJoinedIds;
-      eventParticipantCount = newParticipantCount;
-      isLoadingAttendee = false;
-    });
   }
 
   @override
@@ -234,21 +342,20 @@ class _HomePageState extends State<HomePage> {
             ),
           );
 
-          if (result == true) {
+          if (result is String) {
+            role = result;
+            await loadSession();
+          } else if (result == true) {
             await loadSession();
           }
           getCurrentUser(); // reload foto
         },
-        child: currentUser?.profileImage != null
-            ? ClipOval(
-                child: Image.file(
-                  File(currentUser!.profileImage!),
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.cover,
-                ),
-              )
-            : const Icon(Icons.person),
+        child: ProfileAvatar(
+          imagePath: currentUser?.profileImage,
+          radius: 24,
+          backgroundColor: AppTheme.third,
+          iconSize: 24,
+        ),
       ),
       backgroundColor: AppTheme.primary,
       body: Stack(
@@ -392,24 +499,52 @@ class _HomePageState extends State<HomePage> {
                                     },
 
                                     onDismissed: (direction) async {
-                                      await EventController.deleteEvent(
-                                        event.id!,
-                                      );
+                                      final removedIndex = committeeEvents
+                                          .indexWhere((e) => e.id == event.id);
+                                      if (removedIndex == -1) return;
 
                                       setState(() {
-                                        committeeEvents.removeAt(index);
+                                        committeeEvents.removeAt(removedIndex);
+                                        eventParticipantCount.remove(event.id!);
                                       });
 
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            "Event deleted succesfully",
-                                          ),
-                                          behavior: SnackBarBehavior.floating,
-                                        ),
-                                      );
+                                      try {
+                                        await EventController.deleteEvent(
+                                          event.id!,
+                                        ).timeout(const Duration(seconds: 10));
+
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                "Event deleted succesfully",
+                                              ),
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        }
+                                      } catch (_) {
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                "Failed to delete event. Check connection and try again",
+                                              ),
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        }
+                                      }
+
+                                      if (mounted) {
+                                        await loadCommitteeEvents();
+                                      }
                                     },
 
                                     child: InkWell(
@@ -419,6 +554,7 @@ class _HomePageState extends State<HomePage> {
                                           MaterialPageRoute(
                                             builder: (_) => DetailEventPage(
                                               eventId: event.id!,
+                                              initialEvent: event,
                                             ),
                                           ),
                                         );
@@ -502,9 +638,7 @@ class _HomePageState extends State<HomePage> {
                     child: AppSectionCard(
                       title: "Event Available",
                       icon: Icons.event,
-                      child: isLoadingAttendee
-                          ? const Center(child: CircularProgressIndicator())
-                          : attendeeEvents.isEmpty
+                      child: attendeeEvents.isEmpty
                           ? Column(
                               children: [
                                 Lottie.asset(
@@ -517,6 +651,8 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ],
                             )
+                          : isLoadingAttendee
+                          ? const Center(child: CircularProgressIndicator())
                           : Expanded(
                               child: ListView.separated(
                                 separatorBuilder: (_, __) =>
@@ -524,140 +660,216 @@ class _HomePageState extends State<HomePage> {
                                 itemCount: attendeeEvents.length,
                                 itemBuilder: (context, index) {
                                   final event = attendeeEvents[index];
+                                  final eventId = event.id;
                                   final creator =
                                       eventCreators[event.createdBy];
-                                  bool joined = joinedEventIds.contains(
-                                    event.id,
-                                  );
+                                  final joined =
+                                      eventId != null &&
+                                      joinedEventIds.contains(eventId);
 
                                   return AppListCard(
                                     child: InkWell(
                                       onTap: () async {
-                                        /// cek ulang status join dari database
-                                        final joinedEvents =
-                                            await EventController.getEventByParticipant(
-                                              currentUser!.id!,
+                                        try {
+                                          final activeUserId =
+                                              await _resolveCurrentUserId();
+                                          if (activeUserId == null ||
+                                              activeUserId <= 0) {
+                                            if (!mounted) return;
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  "User session is not ready. Please login again.",
+                                                ),
+                                              ),
+                                            );
+                                            return;
+                                          }
+
+                                          if (eventId == null) return;
+
+                                          // Use local joined state first so joined events open directly.
+                                          if (joined) {
+                                            final result = await Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    AttendeeEventPage(
+                                                      userId: activeUserId,
+                                                      eventId: eventId,
+                                                    ),
+                                              ),
                                             );
 
-                                        bool isJoined = joinedEvents.any(
-                                          (e) => e.id == event.id,
-                                        );
-
-                                        /// ✅ JIKA SUDAH JOIN → BOLEH MASUK (walaupun expired)
-                                        if (isJoined) {
-                                          final result = await Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => AttendeeEventPage(
-                                                userId: currentUser!.id!,
-                                                eventId: event.id!,
-                                              ),
-                                            ),
-                                          );
-
-                                          if (result == true) {
-                                            await loadAttendeeEvents();
+                                            if (result == true) {
+                                              await loadAttendeeEvents();
+                                            }
+                                            return;
                                           }
-                                          return;
-                                        }
 
-                                        /// ❌ JIKA BELUM JOIN & EVENT SUDAH LEWAT → BLOCK
-                                        if (isEventPassed(event)) {
-                                          await showDialog(
+                                          /// cek ulang status join dari database
+                                          bool isJoined = false;
+                                          try {
+                                            isJoined =
+                                                await EventParticipantController.isJoined(
+                                                  activeUserId,
+                                                  eventId,
+                                                );
+                                          } catch (_) {
+                                            isJoined = false;
+                                          }
+
+                                          /// ✅ JIKA SUDAH JOIN → BOLEH MASUK (walaupun expired)
+                                          if (isJoined) {
+                                            if (!joinedEventIds.contains(
+                                                  eventId,
+                                                ) &&
+                                                mounted) {
+                                              setState(() {
+                                                joinedEventIds.add(eventId);
+                                              });
+                                            }
+
+                                            final result = await Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    AttendeeEventPage(
+                                                      userId: activeUserId,
+                                                      eventId: eventId,
+                                                    ),
+                                              ),
+                                            );
+
+                                            if (result == true) {
+                                              await loadAttendeeEvents();
+                                            }
+                                            return;
+                                          }
+
+                                          /// ❌ JIKA BELUM JOIN & EVENT SUDAH LEWAT → BLOCK
+                                          if (isEventPassed(event)) {
+                                            await showDialog(
+                                              context: context,
+                                              builder: (_) => AlertDialog(
+                                                backgroundColor: AppTheme.third,
+                                                title: Text(
+                                                  "Event ended",
+                                                  style: styleText(),
+                                                ),
+                                                content: Text(
+                                                  "Can not join event, the event has ended",
+                                                  style: styleText(),
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(context),
+                                                    child: Text(
+                                                      "OK",
+                                                      style: styleText(),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                            if (mounted) setState(() {});
+                                            return;
+                                          }
+
+                                          /// ✅ JIKA BELUM JOIN & MASIH AKTIF → BISA JOIN
+                                          final confirm = await showDialog(
                                             context: context,
                                             builder: (_) => AlertDialog(
                                               backgroundColor: AppTheme.third,
                                               title: Text(
-                                                "Event ended",
+                                                "Join Event",
                                                 style: styleText(),
                                               ),
-                                              content: Text(
-                                                "Can not join event, the event has ended",
+                                              content: Text.rich(
                                                 style: styleText(),
+                                                TextSpan(
+                                                  children: [
+                                                    TextSpan(text: "Join to "),
+                                                    TextSpan(
+                                                      text: event.title,
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    TextSpan(text: "?"),
+                                                  ],
+                                                ),
                                               ),
                                               actions: [
                                                 TextButton(
                                                   onPressed: () =>
-                                                      Navigator.pop(context),
+                                                      Navigator.pop(
+                                                        context,
+                                                        false,
+                                                      ),
                                                   child: Text(
-                                                    "OK",
+                                                    "Cancel",
+                                                    style: styleText(),
+                                                  ),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                        context,
+                                                        true,
+                                                      ),
+                                                  child: Text(
+                                                    "Join",
                                                     style: styleText(),
                                                   ),
                                                 ),
                                               ],
                                             ),
                                           );
-                                          setState(() {});
-                                          return;
-                                        }
 
-                                        /// ✅ JIKA BELUM JOIN & MASIH AKTIF → BISA JOIN
-                                        final confirm = await showDialog(
-                                          context: context,
-                                          builder: (_) => AlertDialog(
-                                            backgroundColor: AppTheme.third,
-                                            title: Text(
-                                              "Join Event",
-                                              style: styleText(),
-                                            ),
-                                            content: Text.rich(
-                                              style: styleText(),
-                                              TextSpan(
-                                                children: [
-                                                  TextSpan(text: "Join to "),
-                                                  TextSpan(
-                                                    text: event.title,
-                                                    style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
+                                          if (confirm == true) {
+                                            await EventParticipantController.joinEvent(
+                                              activeUserId,
+                                              eventId,
+                                            );
+
+                                            if (!joinedEventIds.contains(
+                                                  eventId,
+                                                ) &&
+                                                mounted) {
+                                              setState(() {
+                                                joinedEventIds.add(eventId);
+                                              });
+                                            }
+
+                                            await Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    AttendeeEventPage(
+                                                      userId: activeUserId,
+                                                      eventId: eventId,
                                                     ),
-                                                  ),
-                                                  TextSpan(text: "?"),
-                                                ],
                                               ),
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  false,
-                                                ),
-                                                child: Text(
-                                                  "Cancel",
-                                                  style: styleText(),
-                                                ),
-                                              ),
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  true,
-                                                ),
-                                                child: Text(
-                                                  "Join",
-                                                  style: styleText(),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
+                                            );
 
-                                        if (confirm == true) {
-                                          await EventParticipantController.joinEvent(
-                                            currentUser!.id!,
-                                            event.id!,
-                                          );
-
-                                          await Navigator.push(
+                                            await loadAttendeeEvents();
+                                          }
+                                        } catch (_) {
+                                          if (!mounted) return;
+                                          ScaffoldMessenger.of(
                                             context,
-                                            MaterialPageRoute(
-                                              builder: (_) => AttendeeEventPage(
-                                                userId: currentUser!.id!,
-                                                eventId: event.id!,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                "Failed to open/join event. Please try again.",
                                               ),
                                             ),
                                           );
-
-                                          await loadAttendeeEvents();
                                         }
                                       },
                                       child: Column(
@@ -775,34 +987,14 @@ class _HomePageState extends State<HomePage> {
                                                   radius: 12,
                                                   backgroundColor:
                                                       AppTheme.third,
-                                                  backgroundImage:
-                                                      creator.profileImage !=
-                                                              null &&
-                                                          creator
-                                                              .profileImage!
-                                                              .isNotEmpty &&
-                                                          File(
-                                                            creator
-                                                                .profileImage!,
-                                                          ).existsSync()
-                                                      ? FileImage(
-                                                          File(
-                                                            creator
-                                                                .profileImage!,
-                                                          ),
-                                                        )
-                                                      : null,
-                                                  child:
-                                                      creator.profileImage ==
-                                                              null ||
-                                                          creator
-                                                              .profileImage!
-                                                              .isEmpty
-                                                      ? const Icon(
-                                                          Icons.person,
-                                                          size: 16,
-                                                        )
-                                                      : null,
+                                                  child: ProfileAvatar(
+                                                    imagePath:
+                                                        creator.profileImage,
+                                                    radius: 12,
+                                                    backgroundColor:
+                                                        AppTheme.third,
+                                                    iconSize: 16,
+                                                  ),
                                                 ),
                                                 const SizedBox(width: 8),
                                                 Expanded(
