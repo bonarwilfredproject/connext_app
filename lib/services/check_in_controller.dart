@@ -11,6 +11,16 @@ class CheckinController {
     await FirebaseEventService.checkinParticipant(participantId);
   }
 
+  static Future<void> checkinParticipantByDocId(
+    int eventId,
+    String participantDocId,
+  ) async {
+    await FirebaseEventService.checkinParticipantByDocId(
+      eventId,
+      participantDocId,
+    );
+  }
+
   /// GET PESERTA YANG SUDAH CHECKIN
   static Future<List<Map<String, dynamic>>> getCheckinByEvent(
     int eventId,
@@ -21,6 +31,13 @@ class CheckinController {
   /// DELETE CHECKIN (reset)
   static Future<void> deleteCheckin(int participantId) async {
     await FirebaseEventService.deleteCheckin(participantId);
+  }
+
+  static Future<void> deleteCheckinByDocId(
+    int eventId,
+    String participantDocId,
+  ) async {
+    await FirebaseEventService.deleteCheckinByDocId(eventId, participantDocId);
   }
 
   /// CARI PARTICIPANT BERDASARKAN USER DAN EVENT

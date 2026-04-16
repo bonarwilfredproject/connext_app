@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connext_app/models/event_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -172,6 +174,44 @@ class FirebaseEventService {
     return image?.toString();
   }
 
+  static String? _extractTokenFromPayload(dynamic raw) {
+    final text = raw?.toString().trim();
+    if (text == null || text.isEmpty) return null;
+
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is Map<String, dynamic>) {
+        final token = decoded['token']?.toString().trim();
+        if (token != null && token.isNotEmpty) return token;
+      }
+    } catch (_) {
+      // Not JSON payload, use plain value.
+    }
+
+    return text;
+  }
+
+  static EventModel _eventFromDoc(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = {...doc.data()};
+    data.putIfAbsent('id', () => _toIntFlexible(doc.id));
+    return EventModel.fromMap(data);
+  }
+
+  static EventModel _eventFromDocument(
+    DocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final data = doc.data();
+    if (data == null) {
+      return EventModel.fromMap({'id': _toIntFlexible(doc.id)});
+    }
+
+    final merged = {...data};
+    merged.putIfAbsent('id', () => _toIntFlexible(doc.id));
+    return EventModel.fromMap(merged);
+  }
+
   static Future<EventModel> insertEvent(EventModel event) async {
     final eventId = await _nextEventId();
     final currentUid = _auth.currentUser?.uid;
@@ -223,7 +263,7 @@ class FirebaseEventService {
       if (_isCreatedByUser(data, userId, ownerUids)) {
         continue;
       }
-      events.add(EventModel.fromMap(data));
+      events.add(_eventFromDoc(doc));
     }
 
     return events;
@@ -266,7 +306,7 @@ class FirebaseEventService {
     for (final doc in snapshot.docs) {
       final data = doc.data();
       if (_isCreatedByUser(data, userId, ownerUids)) {
-        events.add(EventModel.fromMap(data));
+        events.add(_eventFromDoc(doc));
       }
     }
 
@@ -275,8 +315,8 @@ class FirebaseEventService {
 
   static Future<EventModel?> getEventById(int id) async {
     final doc = await _eventsCollection.doc(id.toString()).get();
-    if (doc.exists && doc.data() != null) {
-      return EventModel.fromMap(doc.data()!);
+    if (doc.exists) {
+      return _eventFromDocument(doc);
     }
 
     final fallback = await _eventsCollection
@@ -287,31 +327,25 @@ class FirebaseEventService {
       return EventModel.fromMap(fallback.docs.first.data());
     }
 
+    final stringFallback = await _eventsCollection
+        .where('id', isEqualTo: id.toString())
+        .limit(1)
+        .get();
+    if (stringFallback.docs.isNotEmpty) {
+      return EventModel.fromMap(stringFallback.docs.first.data());
+    }
+
     return null;
   }
 
   static Future<List<EventModel>> getEventByParticipant(int userId) async {
-    QuerySnapshot<Map<String, dynamic>> participantDocs =
-        await _firebaseFirestore
-            .collectionGroup('participants')
-            .where('user_id', isEqualTo: userId)
-            .get();
-
-    if (participantDocs.docs.isEmpty) {
-      final uid = _auth.currentUser?.uid;
-      if (uid != null && uid.isNotEmpty) {
-        participantDocs = await _firebaseFirestore
-            .collectionGroup('participants')
-            .where('user_uid', isEqualTo: uid)
-            .get();
-      }
-    }
+    final participantDocs = await _participantDocsByUserAcrossEvents(userId);
 
     final events = <EventModel>[];
     final seenIds = <int>{};
 
-    for (final participant in participantDocs.docs) {
-      final eventId = (participant.data()['event_id'] as num?)?.toInt();
+    for (final participant in participantDocs) {
+      final eventId = _toIntFlexible(participant.data()['event_id']);
       if (eventId == null || seenIds.contains(eventId)) continue;
 
       final event = await getEventById(eventId);
@@ -380,7 +414,7 @@ class FirebaseEventService {
 
     if (result.docs.isEmpty) return null;
 
-    return result.docs.first.data()['qr_token'] as String?;
+    return _extractTokenFromPayload(result.docs.first.data()['qr_token']);
   }
 
   static Future<int?> getParticipantId(int userId, int eventId) async {
@@ -433,6 +467,12 @@ class FirebaseEventService {
 
     if (result.docs.isNotEmpty) return result;
 
+    result = await _participantsCollection(
+      eventId,
+    ).where('user_id', isEqualTo: userId.toString()).limit(1).get();
+
+    if (result.docs.isNotEmpty) return result;
+
     final uid = _auth.currentUser?.uid;
     if (uid == null || uid.isEmpty) return result;
 
@@ -443,12 +483,58 @@ class FirebaseEventService {
     return result;
   }
 
+  static Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+  _participantDocsByUserAcrossEvents(int userId) async {
+    final seen = <String>{};
+    final docs = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+
+    Future<void> collect(Query<Map<String, dynamic>> query) async {
+      final snapshot = await query.get();
+      for (final doc in snapshot.docs) {
+        if (seen.add(doc.reference.path)) {
+          docs.add(doc);
+        }
+      }
+    }
+
+    await collect(
+      _firebaseFirestore
+          .collectionGroup('participants')
+          .where('user_id', isEqualTo: userId),
+    );
+
+    await collect(
+      _firebaseFirestore
+          .collectionGroup('participants')
+          .where('user_id', isEqualTo: userId.toString()),
+    );
+
+    final uid = _auth.currentUser?.uid;
+    if (uid != null && uid.isNotEmpty) {
+      await collect(
+        _firebaseFirestore
+            .collectionGroup('participants')
+            .where('user_uid', isEqualTo: uid),
+      );
+    }
+
+    return docs;
+  }
+
   static Future<bool> isAlreadyCheckin(int participantId) async {
-    final result = await _firebaseFirestore
+    var result = await _firebaseFirestore
         .collectionGroup('participants')
         .where('id', isEqualTo: participantId)
         .limit(1)
         .get();
+
+    if (result.docs.isEmpty) {
+      result = await _firebaseFirestore
+          .collectionGroup('participants')
+          .where('id', isEqualTo: participantId.toString())
+          .limit(1)
+          .get();
+    }
 
     if (result.docs.isEmpty) return false;
 
@@ -456,11 +542,19 @@ class FirebaseEventService {
   }
 
   static Future<void> checkinParticipant(int participantId) async {
-    final result = await _firebaseFirestore
+    var result = await _firebaseFirestore
         .collectionGroup('participants')
         .where('id', isEqualTo: participantId)
         .limit(1)
         .get();
+
+    if (result.docs.isEmpty) {
+      result = await _firebaseFirestore
+          .collectionGroup('participants')
+          .where('id', isEqualTo: participantId.toString())
+          .limit(1)
+          .get();
+    }
 
     if (result.docs.isEmpty) return;
 
@@ -486,6 +580,7 @@ class FirebaseEventService {
           : await _getUserByNumericId(userId);
 
       result.add({
+        'doc_id': participant.id,
         'id': data['id'].toString(),
         'userId': data['user_id'].toString(),
         'namaUser': userData?['nama'] ?? '',
@@ -499,44 +594,131 @@ class FirebaseEventService {
   }
 
   static Future<void> deleteCheckin(int participantId) async {
-    final result = await _firebaseFirestore
+    var result = await _firebaseFirestore
         .collectionGroup('participants')
         .where('id', isEqualTo: participantId)
         .limit(1)
         .get();
+
+    if (result.docs.isEmpty) {
+      result = await _firebaseFirestore
+          .collectionGroup('participants')
+          .where('id', isEqualTo: participantId.toString())
+          .limit(1)
+          .get();
+    }
 
     if (result.docs.isEmpty) return;
 
     await result.docs.first.reference.update({'checkin_time': null});
   }
 
+  static Future<void> deleteCheckinByDocId(
+    int eventId,
+    String participantDocId,
+  ) async {
+    final docId = participantDocId.trim();
+    if (docId.isEmpty) return;
+
+    await _participantsCollection(
+      eventId,
+    ).doc(docId).update({'checkin_time': null});
+  }
+
   static Future<Map<String, dynamic>?> getParticipant(
     int userId,
     int eventId,
   ) async {
-    final result = await _participantsCollection(
+    var result = await _participantsCollection(
       eventId,
     ).where('user_id', isEqualTo: userId).limit(1).get();
 
+    if (result.docs.isEmpty) {
+      result = await _participantsCollection(
+        eventId,
+      ).where('user_id', isEqualTo: userId.toString()).limit(1).get();
+    }
+
+    if (result.docs.isEmpty) {
+      final uid = _auth.currentUser?.uid;
+      if (uid != null && uid.isNotEmpty) {
+        result = await _participantsCollection(
+          eventId,
+        ).where('user_uid', isEqualTo: uid).limit(1).get();
+      }
+    }
+
     if (result.docs.isEmpty) return null;
 
-    return result.docs.first.data();
+    final data = result.docs.first.data();
+    return {
+      ...data,
+      'id': _toIntFlexible(data['id']) ?? _toIntFlexible(result.docs.first.id),
+      'user_id': _toIntFlexible(data['user_id']),
+    };
   }
 
   static Future<Map<String, dynamic>?> getParticipantByToken(
     String token,
     int eventId,
   ) async {
-    final participant = await _participantsCollection(
+    final normalizedToken = token.trim();
+    if (normalizedToken.isEmpty) return null;
+
+    var participant = await _participantsCollection(
       eventId,
-    ).where('qr_token', isEqualTo: token).limit(1).get();
+    ).where('qr_token', isEqualTo: normalizedToken).limit(1).get();
+
+    if (participant.docs.isEmpty) {
+      final allParticipants = await _participantsCollection(eventId).get();
+      final matched = allParticipants.docs.where((doc) {
+        final storedToken = _extractTokenFromPayload(doc.data()['qr_token']);
+        return storedToken == normalizedToken;
+      }).toList();
+
+      if (matched.isNotEmpty) {
+        final data = matched.first.data();
+        final resolvedUserId = _toIntFlexible(data['user_id']);
+        final userData = resolvedUserId == null
+            ? null
+            : await _getUserByNumericId(resolvedUserId);
+
+        return {
+          ...data,
+          'doc_id': matched.first.id,
+          'id': _toIntFlexible(data['id']) ?? _toIntFlexible(matched.first.id),
+          'user_id': resolvedUserId,
+          'nama': userData?['nama'] ?? 'Peserta',
+        };
+      }
+    }
 
     if (participant.docs.isEmpty) return null;
 
     final data = participant.docs.first.data();
-    final userId = (data['user_id'] as num?)?.toInt();
+    final userId = _toIntFlexible(data['user_id']);
     final userData = userId == null ? null : await _getUserByNumericId(userId);
 
-    return {...data, 'nama': userData?['nama'] ?? 'Peserta'};
+    return {
+      ...data,
+      'doc_id': participant.docs.first.id,
+      'id':
+          _toIntFlexible(data['id']) ??
+          _toIntFlexible(participant.docs.first.id),
+      'user_id': userId,
+      'nama': userData?['nama'] ?? 'Peserta',
+    };
+  }
+
+  static Future<void> checkinParticipantByDocId(
+    int eventId,
+    String participantDocId,
+  ) async {
+    final docId = participantDocId.trim();
+    if (docId.isEmpty) return;
+
+    await _participantsCollection(
+      eventId,
+    ).doc(docId).update({'checkin_time': DateTime.now().toIso8601String()});
   }
 }

@@ -35,7 +35,6 @@ class _ProfilePageState extends State<ProfilePage> {
   String? tempImage;
   Uint8List? tempImageBytes;
   String? tempImageName;
-  late Future<UserModel?> userFuture;
   final ImagePicker picker = ImagePicker();
   String? role;
 
@@ -43,7 +42,6 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     role = widget.role;
-    userFuture = FirebaseServices.getCurrentUserProfile();
     loadRole();
   }
 
@@ -327,8 +325,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                       tempImage = null;
                                       tempImageBytes = null;
                                       tempImageName = null;
-                                      userFuture =
-                                          FirebaseServices.getCurrentUserProfile();
                                     });
 
                                     if (!mounted) return;
@@ -530,8 +526,8 @@ class _ProfilePageState extends State<ProfilePage> {
         centerTitle: true,
         backgroundColor: AppTheme.primary,
       ),
-      body: FutureBuilder<UserModel?>(
-        future: userFuture,
+      body: StreamBuilder<UserModel?>(
+        stream: FirebaseServices.currentUserProfileStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());

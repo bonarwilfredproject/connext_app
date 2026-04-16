@@ -241,6 +241,20 @@ class FirebaseServices {
     });
   }
 
+  static Stream<UserModel?> currentUserProfileStream() {
+    return _auth.authStateChanges().asyncExpand((firebaseUser) {
+      if (firebaseUser == null) {
+        return Stream<UserModel?>.value(null);
+      }
+
+      return _firebaseFirestore
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .snapshots()
+          .asyncMap((_) => getCurrentUserProfile());
+    });
+  }
+
   static Future<void> updateProfile({
     required String name,
     required String phone,

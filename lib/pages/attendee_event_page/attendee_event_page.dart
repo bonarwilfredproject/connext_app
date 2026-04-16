@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/constants/app_theme.dart';
@@ -28,7 +31,16 @@ class AttendeeEventPage extends StatefulWidget {
   State<AttendeeEventPage> createState() => _AttendeeEventPageState();
 }
 
-class _AttendeeEventPageState extends State<AttendeeEventPage> {
+class _AttendeeEventPageState extends State<AttendeeEventPage>
+    with WidgetsBindingObserver {
+  Timer? _checkinRefreshTimer;
+  Timer? _eventPassTicker;
+  Timer? _realtimeDebounceTimer;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _eventRealtimeSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+  _participantsRealtimeSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _creatorRealtimeSub;
+  int? _boundCreatorId;
   UserModel? creator;
   EventModel? event;
   String? qrToken;
@@ -36,11 +48,172 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
   bool isLoading = true;
   int totalPeserta = 0;
   String? waktuCheckin;
+  bool? _lastEventPassed;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _bindRealtimeListeners();
     loadEvent();
+    _startCheckinAutoRefresh();
+    _startEventPassTicker();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _checkinRefreshTimer?.cancel();
+    _eventPassTicker?.cancel();
+    _realtimeDebounceTimer?.cancel();
+    _eventRealtimeSub?.cancel();
+    _participantsRealtimeSub?.cancel();
+    _creatorRealtimeSub?.cancel();
+    super.dispose();
+  }
+
+  void _startEventPassTicker() {
+    _eventPassTicker?.cancel();
+    _eventPassTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || event == null) return;
+
+      final nowPassed = isEventPassed();
+      if (_lastEventPassed == null) {
+        _lastEventPassed = nowPassed;
+        return;
+      }
+
+      if (_lastEventPassed != nowPassed) {
+        setState(() {
+          _lastEventPassed = nowPassed;
+        });
+      }
+    });
+  }
+
+  void _bindCreatorRealtimeListener(int creatorId) {
+    if (_boundCreatorId == creatorId && _creatorRealtimeSub != null) {
+      return;
+    }
+
+    _boundCreatorId = creatorId;
+    _creatorRealtimeSub?.cancel();
+
+    _creatorRealtimeSub = FirebaseFirestore.instance
+        .collection('users')
+        .where('id', whereIn: [creatorId, creatorId.toString()])
+        .limit(1)
+        .snapshots()
+        .listen((snapshot) {
+          if (!mounted || snapshot.docs.isEmpty) return;
+
+          final latestUser = UserModel.fromMap(snapshot.docs.first.data());
+          setState(() {
+            creator = latestUser;
+          });
+        });
+  }
+
+  void _bindRealtimeListeners() {
+    final eventDocRef = FirebaseFirestore.instance
+        .collection('events')
+        .doc(widget.eventId.toString());
+
+    _eventRealtimeSub = eventDocRef.snapshots().listen(
+      (_) => _scheduleRealtimeRefresh(),
+    );
+
+    _participantsRealtimeSub = eventDocRef
+        .collection('participants')
+        .snapshots()
+        .listen((_) => _scheduleRealtimeRefresh());
+  }
+
+  void _scheduleRealtimeRefresh() {
+    if (!mounted) return;
+
+    _realtimeDebounceTimer?.cancel();
+    _realtimeDebounceTimer = Timer(const Duration(milliseconds: 350), () async {
+      if (!mounted) return;
+
+      await loadEvent();
+      await _refreshCheckinStatus();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshCheckinStatus();
+    }
+  }
+
+  void _startCheckinAutoRefresh() {
+    _checkinRefreshTimer?.cancel();
+    _checkinRefreshTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (!mounted) return;
+      _refreshCheckinStatus();
+    });
+  }
+
+  Future<void> _refreshCheckinStatus() async {
+    try {
+      final participant = await CheckinController.getParticipant(
+        widget.userId,
+        widget.eventId,
+      );
+
+      if (participant == null) {
+        String? latestQrToken = qrToken;
+        if (latestQrToken == null || latestQrToken.isEmpty) {
+          latestQrToken = await EventParticipantController.getQrToken(
+            widget.userId,
+            widget.eventId,
+          );
+        }
+
+        if (!mounted) return;
+
+        final shouldUpdateWhenMissing =
+            isCheckedIn || waktuCheckin != null || latestQrToken != qrToken;
+        if (shouldUpdateWhenMissing) {
+          setState(() {
+            isCheckedIn = false;
+            waktuCheckin = null;
+            qrToken = latestQrToken;
+          });
+        }
+        return;
+      }
+
+      final checkinTime = participant['checkin_time']?.toString();
+      final checkedIn = checkinTime != null && checkinTime.isNotEmpty;
+
+      String? latestQrToken = qrToken;
+      if (!checkedIn && (latestQrToken == null || latestQrToken.isEmpty)) {
+        latestQrToken = await EventParticipantController.getQrToken(
+          widget.userId,
+          widget.eventId,
+        );
+      }
+
+      if (!mounted) return;
+
+      final shouldUpdate =
+          checkedIn != isCheckedIn ||
+          waktuCheckin != checkinTime ||
+          latestQrToken != qrToken;
+
+      if (shouldUpdate) {
+        setState(() {
+          isCheckedIn = checkedIn;
+          waktuCheckin = checkedIn ? checkinTime : null;
+          qrToken = latestQrToken;
+        });
+      }
+    } catch (_) {
+      // Keep UI stable if network or parsing fails.
+    }
   }
 
   bool isEventPassed() {
@@ -48,29 +221,53 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
 
     try {
       final date = DateTime.parse(event!.eventDate!);
-      final timeText = event!.eventTime!.trim();
+      final normalized = event!.eventTime!
+          .trim()
+          .replaceAll('.', ':')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .toUpperCase();
 
-      int hour;
-      int minute;
+      int? hour;
+      int? minute;
 
-      // Primary format: HH:mm
-      final hhmmParts = timeText.split(':');
-      if (hhmmParts.length == 2) {
-        final parsedHour = int.tryParse(hhmmParts[0]);
-        final parsedMinute = int.tryParse(hhmmParts[1]);
+      final hmMatch = RegExp(
+        r'^(\d{1,2}):(\d{1,2})(?:\s*([AP]M))?$',
+      ).firstMatch(normalized);
+      if (hmMatch != null) {
+        var parsedHour = int.tryParse(hmMatch.group(1)!);
+        final parsedMinute = int.tryParse(hmMatch.group(2)!);
+        final ampm = hmMatch.group(3);
+
         if (parsedHour != null && parsedMinute != null) {
-          hour = parsedHour;
-          minute = parsedMinute;
-        } else {
-          final parsed = DateFormat('h:mm a').parseStrict(timeText);
-          hour = parsed.hour;
-          minute = parsed.minute;
+          if (ampm != null) {
+            if (parsedHour == 12) parsedHour = 0;
+            if (ampm == 'PM') parsedHour += 12;
+          }
+
+          if (parsedHour >= 0 &&
+              parsedHour <= 23 &&
+              parsedMinute >= 0 &&
+              parsedMinute <= 59) {
+            hour = parsedHour;
+            minute = parsedMinute;
+          }
         }
-      } else {
-        final parsed = DateFormat('h:mm a').parseStrict(timeText);
-        hour = parsed.hour;
-        minute = parsed.minute;
       }
+
+      if (hour == null || minute == null) {
+        for (final pattern in ['H:mm', 'HH:mm', 'h:mm a', 'hh:mm a']) {
+          try {
+            final parsed = DateFormat(pattern).parseStrict(normalized);
+            hour = parsed.hour;
+            minute = parsed.minute;
+            break;
+          } catch (_) {
+            // Try next pattern.
+          }
+        }
+      }
+
+      if (hour == null || minute == null) return false;
 
       final eventDateTime = DateTime(
         date.year,
@@ -81,7 +278,6 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
       );
 
       final nowRaw = DateTime.now();
-
       final now = DateTime(
         nowRaw.year,
         nowRaw.month,
@@ -90,6 +286,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
         nowRaw.minute,
       );
 
+      // Consider event passed only after the next minute bucket.
       return now.isAfter(eventDateTime);
     } catch (e) {
       return false;
@@ -110,6 +307,8 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
       /// ambil data panitia
       if (event != null) {
         creator = await UserController.getUserById(event!.createdBy);
+        _bindCreatorRealtimeListener(event!.createdBy);
+        _lastEventPassed = isEventPassed();
       }
 
       totalPeserta = await EventParticipantController.getTotalParticipants(
@@ -127,12 +326,14 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
         widget.eventId,
       );
       if (participant != null) {
-        isCheckedIn = await CheckinController.isAlreadyCheckin(
-          participant["id"],
-        );
+        final checkinTime = participant["checkin_time"]?.toString();
+        isCheckedIn = checkinTime != null && checkinTime.isNotEmpty;
 
         /// ambil waktu check-in
-        waktuCheckin = participant["checkin_time"];
+        waktuCheckin = checkinTime;
+      } else {
+        isCheckedIn = false;
+        waktuCheckin = null;
       }
     } catch (_) {
       // Keep page responsive even if one of the requests fails.
@@ -313,7 +514,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage> {
                               else if (qrToken != null && !isEventPassed())
                                 /// QR CODE
                                 QrImageView(
-                                  data: '{"token":"$qrToken"}',
+                                  data: qrToken!,
                                   version: QrVersions.auto,
                                   size: 200,
                                   backgroundColor: Colors.white,

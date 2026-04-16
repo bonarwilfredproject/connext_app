@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
 import 'package:connext_app/pages/profile_page/profile_page.dart';
@@ -31,6 +32,13 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   Timer? timer;
+  Timer? _realtimeDebounceTimer;
+  StreamSubscription<UserModel?>? _profileRealtimeSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _eventsRealtimeSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+  _participantsRealtimeSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _usersRealtimeSub;
+  String? _boundRealtimeRole;
   String? role;
   String? namaUser;
   UserModel? currentUser;
@@ -50,8 +58,8 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    getCurrentUser();
-    loadSession();
+    _bootstrap();
+    _bindProfileRealtimeListener();
 
     /// 🔥 AUTO REFRESH TIAP DETIK
     timer = Timer.periodic(const Duration(seconds: 1), (t) {
@@ -61,10 +69,88 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  Future<void> _bootstrap() async {
+    await getCurrentUser();
+    await loadSession();
+  }
+
   @override
   void dispose() {
     timer?.cancel();
+    _realtimeDebounceTimer?.cancel();
+    _profileRealtimeSub?.cancel();
+    _eventsRealtimeSub?.cancel();
+    _participantsRealtimeSub?.cancel();
+    _usersRealtimeSub?.cancel();
     super.dispose();
+  }
+
+  void _bindProfileRealtimeListener() {
+    _profileRealtimeSub?.cancel();
+    _profileRealtimeSub = FirebaseServices.currentUserProfileStream().listen((
+      user,
+    ) {
+      if (!mounted || user == null) return;
+
+      setState(() {
+        currentUser = user;
+        if (user.nama.isNotEmpty) {
+          namaUser = user.nama;
+        }
+        if (user.role.isNotEmpty) {
+          role = user.role;
+        }
+      });
+
+      _bindRealtimeListeners();
+    });
+  }
+
+  void _scheduleRealtimeSync() {
+    if (!mounted) return;
+
+    _realtimeDebounceTimer?.cancel();
+    _realtimeDebounceTimer = Timer(const Duration(milliseconds: 400), () async {
+      if (!mounted) return;
+
+      if (role == "Committee") {
+        await loadCommitteeEvents();
+      } else {
+        await loadAttendeeEvents();
+      }
+    });
+  }
+
+  void _bindRealtimeListeners() {
+    final currentRole = role;
+    if (currentRole == null || currentRole.isEmpty) return;
+
+    if (_boundRealtimeRole == currentRole &&
+        _eventsRealtimeSub != null &&
+        _participantsRealtimeSub != null &&
+        _usersRealtimeSub != null) {
+      return;
+    }
+
+    _eventsRealtimeSub?.cancel();
+    _participantsRealtimeSub?.cancel();
+    _usersRealtimeSub?.cancel();
+    _boundRealtimeRole = currentRole;
+
+    _eventsRealtimeSub = FirebaseFirestore.instance
+        .collection('events')
+        .snapshots()
+        .listen((_) => _scheduleRealtimeSync());
+
+    _participantsRealtimeSub = FirebaseFirestore.instance
+        .collectionGroup('participants')
+        .snapshots()
+        .listen((_) => _scheduleRealtimeSync());
+
+    _usersRealtimeSub = FirebaseFirestore.instance
+        .collection('users')
+        .snapshots()
+        .listen((_) => _scheduleRealtimeSync());
   }
 
   bool isEventPassed(EventModel event) {
@@ -132,6 +218,8 @@ class _HomePageState extends State<HomePage> {
     } else {
       await loadAttendeeEvents();
     }
+
+    _bindRealtimeListeners();
 
     setState(() {});
   }
@@ -250,21 +338,46 @@ class _HomePageState extends State<HomePage> {
       final previousJoinedIds = List<int>.from(joinedEventIds);
       List<EventModel> joinedEvents = [];
       bool joinedFetchOk = false;
-      if (userId > 0) {
-        try {
-          joinedEvents = await EventController.getEventByParticipant(userId);
-          joinedFetchOk = true;
-        } catch (_) {
-          joinedEvents = [];
-          joinedFetchOk = false;
-        }
+      try {
+        // Allow UID-based fallback in Firebase layer when numeric userId is not ready yet.
+        joinedEvents = await EventController.getEventByParticipant(userId);
+        joinedFetchOk = true;
+      } catch (_) {
+        joinedEvents = [];
+        joinedFetchOk = false;
       }
 
       /// reset state lama
-      final newJoinedIds = joinedFetchOk
-          ? joinedEvents.where((e) => e.id != null).map((e) => e.id!).toList()
-          : previousJoinedIds;
+      List<int> newJoinedIds;
+      if (joinedFetchOk && joinedEvents.isNotEmpty) {
+        newJoinedIds = joinedEvents
+            .where((e) => e.id != null)
+            .map((e) => e.id!)
+            .toList();
+      } else if (userId > 0 && events.isNotEmpty) {
+        final joinedChecks = await Future.wait(
+          events.map((event) async {
+            final eventId = event.id;
+            if (eventId == null) return null;
+
+            try {
+              final joined = await EventParticipantController.isJoined(
+                userId,
+                eventId,
+              );
+              return joined ? eventId : null;
+            } catch (_) {
+              return null;
+            }
+          }),
+        );
+
+        newJoinedIds = joinedChecks.whereType<int>().toList();
+      } else {
+        newJoinedIds = previousJoinedIds;
+      }
       final newParticipantCount = <int, int>{};
+      final newEventCreators = <int, UserModel>{...eventCreators};
 
       /// hitung jumlah peserta tiap event
       for (final event in events) {
@@ -282,15 +395,13 @@ class _HomePageState extends State<HomePage> {
         newParticipantCount[eventId] = total;
 
         /// ambil data panitia
-        if (!eventCreators.containsKey(event.createdBy)) {
-          try {
-            final user = await UserController.getUserById(event.createdBy);
-            if (user != null) {
-              eventCreators[event.createdBy] = user;
-            }
-          } catch (_) {
-            // Ignore creator lookup errors so event cards still render.
+        try {
+          final user = await UserController.getUserById(event.createdBy);
+          if (user != null) {
+            newEventCreators[event.createdBy] = user;
           }
+        } catch (_) {
+          // Ignore creator lookup errors so event cards still render.
         }
       }
 
@@ -299,6 +410,7 @@ class _HomePageState extends State<HomePage> {
         attendeeEvents = events;
         joinedEventIds = newJoinedIds;
         eventParticipantCount = newParticipantCount;
+        eventCreators = newEventCreators;
         isLoadingAttendee = false;
       });
     } catch (_) {

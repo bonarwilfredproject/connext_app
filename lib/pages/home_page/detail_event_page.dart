@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
@@ -31,6 +32,13 @@ class DetailEventPage extends StatefulWidget {
 
 class _DetailEventPageState extends State<DetailEventPage> {
   static const Duration _requestTimeout = Duration(seconds: 8);
+  Timer? _realtimeDebounceTimer;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _eventRealtimeSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>?
+  _participantsRealtimeSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _usersRealtimeSub;
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _creatorRealtimeSub;
+  int? _boundCreatorId;
 
   EventModel? event;
   String createdByName = 'Unknown user';
@@ -56,17 +64,85 @@ class _DetailEventPageState extends State<DetailEventPage> {
     super.initState();
     event = widget.initialEvent;
     initializeDateFormatting('id');
+    _bindRealtimeListeners();
     initializeData();
   }
 
   @override
   void dispose() {
+    _realtimeDebounceTimer?.cancel();
+    _eventRealtimeSub?.cancel();
+    _participantsRealtimeSub?.cancel();
+    _usersRealtimeSub?.cancel();
+    _creatorRealtimeSub?.cancel();
     dateControllerEdit.dispose();
     timeControllerEdit.dispose();
     titleController.dispose();
     locationController.dispose();
     descriptionController.dispose();
     super.dispose();
+  }
+
+  void _scheduleRealtimeRefresh() {
+    if (!mounted) return;
+
+    _realtimeDebounceTimer?.cancel();
+    _realtimeDebounceTimer = Timer(const Duration(milliseconds: 400), () async {
+      if (!mounted) return;
+
+      await loadEvent();
+      await loadPeserta();
+    });
+  }
+
+  void _bindRealtimeListeners() {
+    final eventDocRef = FirebaseFirestore.instance
+        .collection('events')
+        .doc(widget.eventId.toString());
+
+    _eventRealtimeSub = eventDocRef.snapshots().listen(
+      (_) => _scheduleRealtimeRefresh(),
+    );
+
+    _participantsRealtimeSub = eventDocRef
+        .collection('participants')
+        .snapshots()
+        .listen((_) => _scheduleRealtimeRefresh());
+
+    _usersRealtimeSub = FirebaseFirestore.instance
+        .collection('users')
+        .snapshots()
+        .listen((_) => _scheduleRealtimeRefresh());
+  }
+
+  void _bindCreatorRealtimeListener(int creatorId) {
+    if (_boundCreatorId == creatorId && _creatorRealtimeSub != null) {
+      return;
+    }
+
+    _boundCreatorId = creatorId;
+    _creatorRealtimeSub?.cancel();
+
+    _creatorRealtimeSub = FirebaseFirestore.instance
+        .collection('users')
+        .where('id', whereIn: [creatorId, creatorId.toString()])
+        .limit(1)
+        .snapshots()
+        .listen((snapshot) {
+          if (!mounted || snapshot.docs.isEmpty) return;
+
+          final data = snapshot.docs.first.data();
+          final latestName = (data['nama'] ?? '').toString().trim();
+          final latestImage = (data['profile_image'] ?? data['profileImage'])
+              ?.toString();
+
+          setState(() {
+            if (latestName.isNotEmpty) {
+              createdByName = latestName;
+            }
+            createdByImage = latestImage;
+          });
+        });
   }
 
   String? requiredValidator(String? value, String label) {
@@ -143,6 +219,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
 
       if (loadedEvent != null) {
         event = loadedEvent;
+        _bindCreatorRealtimeListener(loadedEvent.createdBy);
       } else if (event == null) {
         loadError = 'Event data could not be loaded';
         return;
@@ -181,11 +258,11 @@ class _DetailEventPageState extends State<DetailEventPage> {
   }
 
   Future<void> loadPeserta() async {
-    if (event?.id == null) return;
+    final targetEventId = event?.id ?? widget.eventId;
 
     try {
       final data = await CheckinController.getCheckinByEvent(
-        event!.id!,
+        targetEventId,
       ).timeout(_requestTimeout, onTimeout: () => []);
 
       if (!mounted) return;
@@ -744,7 +821,9 @@ class _DetailEventPageState extends State<DetailEventPage> {
                     final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ScanPesertaPage(eventId: event!.id!),
+                        builder: (_) => ScanPesertaPage(
+                          eventId: event?.id ?? widget.eventId,
+                        ),
                       ),
                     );
 
@@ -763,11 +842,11 @@ class _DetailEventPageState extends State<DetailEventPage> {
                   child: AppSectionCard(
                     title: 'Present Attendee',
                     icon: Icons.people,
-                    child: scannedPeserta.isEmpty
-                        ? Center(
-                            child: SingleChildScrollView(
+                    child: Expanded(
+                      child: scannedPeserta.isEmpty
+                          ? Center(
                               child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Lottie.asset(
                                     'assets/lottie/yawn_emoji_animation.json',
@@ -780,175 +859,191 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                   ),
                                 ],
                               ),
-                            ),
-                          )
-                        : ListView.separated(
-                            separatorBuilder: (context, index) =>
-                                const SizedBox(height: 20),
-                            itemCount: scannedPeserta.length,
-                            itemBuilder: (context, index) {
-                              final p = scannedPeserta[index];
-                              return Dismissible(
-                                key: Key('${p['id']}'),
-                                direction: DismissDirection.endToStart,
-                                background: Container(
-                                  alignment: Alignment.centerRight,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red,
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      Icon(
-                                        Icons.delete_outline,
-                                        color: Colors.white,
-                                      ),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        'Delete',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                confirmDismiss: (_) async {
-                                  return await showDialog<bool>(
-                                        context: context,
-                                        builder: (_) => AlertDialog(
-                                          backgroundColor: AppTheme.third,
-                                          title: Text(
-                                            'Delete Attendee',
-                                            style: styleText(),
-                                          ),
-                                          content: Text(
-                                            'Are you sure want to delete ${p['namaUser']}?',
-                                            style: styleText(),
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context, false),
-                                              child: Text(
-                                                'Cancel',
-                                                style: styleText(),
-                                              ),
-                                            ),
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context, true),
-                                              child: Text(
-                                                'Delete',
-                                                style: styleText(),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ) ??
-                                      false;
-                                },
-                                onDismissed: (_) async {
-                                  await CheckinController.deleteCheckin(
-                                    int.parse(p['id'].toString()),
-                                  );
-                                  if (!mounted) return;
-                                  setState(() {
-                                    scannedPeserta.removeWhere(
-                                      (item) =>
-                                          item['id'].toString() ==
-                                          p['id'].toString(),
-                                    );
-                                    totalHadir = scannedPeserta.length;
-                                  });
-                                },
-                                child: SizedBox(
-                                  width: double.infinity,
-                                  child: AppListCard(
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                            )
+                          : ListView.separated(
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(height: 20),
+                              itemCount: scannedPeserta.length,
+                              itemBuilder: (context, index) {
+                                final p = scannedPeserta[index];
+                                return Dismissible(
+                                  key: Key('${p['id']}'),
+                                  direction: DismissDirection.endToStart,
+                                  background: Container(
+                                    alignment: Alignment.centerRight,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: const Row(
+                                      mainAxisAlignment: MainAxisAlignment.end,
                                       children: [
-                                        ProfileAvatar(
-                                          imagePath: p['profileImage']
-                                              ?.toString(),
-                                          radius: 22,
-                                          backgroundColor: AppTheme.third,
-                                          iconSize: 22,
+                                        Icon(
+                                          Icons.delete_outline,
+                                          color: Colors.white,
                                         ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Expanded(
-                                                    child: Text(
-                                                      p['namaUser'] ?? '',
-                                                      style: styleText()
-                                                          .copyWith(
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 3,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.green,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            8,
-                                                          ),
-                                                    ),
-                                                    child: Text(
-                                                      'Present',
-                                                      style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 6),
-                                              Row(
-                                                children: [
-                                                  const Icon(
-                                                    Icons.phone,
-                                                    size: 18,
-                                                    color: AppTheme.secondary,
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Text(
-                                                    p['phone'] ?? '',
-                                                    style: styleText(),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
+                                        SizedBox(width: 6),
+                                        Text(
+                                          'Delete',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                ),
-                              );
-                            },
-                          ),
+                                  confirmDismiss: (_) async {
+                                    return await showDialog<bool>(
+                                          context: context,
+                                          builder: (_) => AlertDialog(
+                                            backgroundColor: AppTheme.third,
+                                            title: Text(
+                                              'Delete Attendee',
+                                              style: styleText(),
+                                            ),
+                                            content: Text(
+                                              'Are you sure want to delete ${p['namaUser']}?',
+                                              style: styleText(),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  false,
+                                                ),
+                                                child: Text(
+                                                  'Cancel',
+                                                  style: styleText(),
+                                                ),
+                                              ),
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  true,
+                                                ),
+                                                child: Text(
+                                                  'Delete',
+                                                  style: styleText(),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ) ??
+                                        false;
+                                  },
+                                  onDismissed: (_) async {
+                                    final participantDocId = p['doc_id']
+                                        ?.toString()
+                                        .trim();
+                                    if (participantDocId != null &&
+                                        participantDocId.isNotEmpty) {
+                                      await CheckinController.deleteCheckinByDocId(
+                                        event?.id ?? widget.eventId,
+                                        participantDocId,
+                                      );
+                                    } else {
+                                      await CheckinController.deleteCheckin(
+                                        int.parse(p['id'].toString()),
+                                      );
+                                    }
+                                    if (!mounted) return;
+                                    setState(() {
+                                      scannedPeserta.removeWhere(
+                                        (item) =>
+                                            item['id'].toString() ==
+                                            p['id'].toString(),
+                                      );
+                                      totalHadir = scannedPeserta.length;
+                                    });
+                                  },
+                                  child: SizedBox(
+                                    width: double.infinity,
+                                    child: AppListCard(
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          ProfileAvatar(
+                                            imagePath: p['profileImage']
+                                                ?.toString(),
+                                            radius: 22,
+                                            backgroundColor: AppTheme.third,
+                                            iconSize: 22,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: Text(
+                                                        p['namaUser'] ?? '',
+                                                        style: styleText()
+                                                            .copyWith(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 8,
+                                                            vertical: 3,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.green,
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              8,
+                                                            ),
+                                                      ),
+                                                      child: Text(
+                                                        'Present',
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 11,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 6),
+                                                Row(
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.phone,
+                                                      size: 18,
+                                                      color: AppTheme.secondary,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      p['phone'] ?? '',
+                                                      style: styleText(),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
                   ),
                 ),
               ],

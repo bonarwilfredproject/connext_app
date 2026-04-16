@@ -69,6 +69,17 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
     controller.start();
   }
 
+  Future<void> _safeVibrate() async {
+    try {
+      final hasVibrator = await Vibration.hasVibrator() ?? false;
+      if (!hasVibrator) return;
+
+      await Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
+    } catch (_) {
+      // Ignore vibration failures; scanning/check-in should still proceed.
+    }
+  }
+
   Future<void> scanFromGallery() async {
     final ImagePicker picker = ImagePicker();
 
@@ -86,9 +97,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
       if (!success) {
         showErrorDialog("QR Code can't be found in picture");
         restartScanner();
-        if (await Vibration.hasVibrator()) {
-          Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
-        }
+        await _safeVibrate();
         Future.delayed(const Duration(seconds: 1), () {
           Navigator.pop(context, "error");
         });
@@ -99,9 +108,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
     } catch (e) {
       showErrorDialog("QR Code can't be read");
       restartScanner();
-      if (await Vibration.hasVibrator()) {
-        Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
-      }
+      await _safeVibrate();
       Future.delayed(const Duration(seconds: 1), () {
         Navigator.pop(context, "error");
       });
@@ -268,7 +275,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
             ShakeX(child: Icon(Icons.cancel, color: Colors.red, size: 80)),
             const SizedBox(height: 16),
             const Text(
-              "Scan Gagal",
+              "Scan Failed",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -300,7 +307,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
             ),
             const SizedBox(height: 16),
             const Text(
-              "Check-in Berhasil!",
+              "Check-in Successful!",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -319,6 +326,34 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
   }
 
   /// HANDLE SCAN
+  String? _extractToken(String code) {
+    final raw = code.trim();
+    if (raw.isEmpty) return null;
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic>) {
+        final token = decoded['token']?.toString().trim();
+        if (token != null && token.isNotEmpty) return token;
+      }
+    } catch (_) {
+      // Ignore JSON parse errors and fall back to plain payload handling.
+    }
+
+    return raw;
+  }
+
+  int? _toIntFlexible(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+
+    final text = value.toString().trim();
+    if (text.isEmpty) return null;
+
+    return int.tryParse(text);
+  }
+
   Future<void> _handleQrScan(String code) async {
     if (isProcessing) return;
 
@@ -326,10 +361,15 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
     controller.stop();
 
     try {
-      final data = jsonDecode(code.trim());
-
-      /// ✅ ambil token dari QR
-      String token = data["token"];
+      final token = _extractToken(code);
+      if (token == null || token.isEmpty) {
+        showErrorDialog("Invalid QR code");
+        await _safeVibrate();
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.pop(context, "invalid");
+        });
+        return;
+      }
 
       int eventId = widget.eventId;
 
@@ -340,51 +380,59 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
       );
 
       if (participant == null) {
-        showErrorDialog("Peserta tidak terdaftar di event ini");
-        if (await Vibration.hasVibrator()) {
-          Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
-        }
+        showErrorDialog("Participant is not registered for this event");
+        await _safeVibrate();
         Future.delayed(const Duration(seconds: 1), () {
           Navigator.pop(context, "error");
         });
         return;
       }
 
-      int participantId = participant["id"];
-      String nama = participant["nama"];
+      final participantId = _toIntFlexible(participant["id"]);
+      final nama = participant["nama"]?.toString() ?? "Peserta";
+      final participantDocId = participant["doc_id"]?.toString().trim();
+      final alreadyCheckedIn = participant["checkin_time"] != null;
+
+      if (participantId == null || participantId <= 0) {
+        showErrorDialog("Participant data is invalid");
+        await _safeVibrate();
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.pop(context, "error");
+        });
+        return;
+      }
 
       /// cek sudah checkin
-      bool already = await CheckinController.isAlreadyCheckin(participantId);
-
-      if (already) {
-        showErrorDialog("Peserta sudah melakukan check-in");
-        if (await Vibration.hasVibrator()) {
-          Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
-        }
+      if (alreadyCheckedIn) {
+        showErrorDialog("Participant has already checked in");
+        await _safeVibrate();
         Future.delayed(const Duration(seconds: 1), () {
-          Navigator.pop(context, "sudah check-in");
+          Navigator.pop(context, "already checked in");
         });
         return;
       }
 
       /// update checkin
-      await CheckinController.checkinParticipant(participantId);
-
-      if (await Vibration.hasVibrator()) {
-        Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
+      if (participantDocId != null && participantDocId.isNotEmpty) {
+        await CheckinController.checkinParticipantByDocId(
+          eventId,
+          participantDocId,
+        );
+      } else {
+        await CheckinController.checkinParticipant(participantId);
       }
+
+      await _safeVibrate();
 
       showSuccessDialog(nama);
       Future.delayed(const Duration(seconds: 1), () {
         Navigator.pop(context, "success");
       });
     } catch (e) {
-      showErrorDialog("QR Code tidak valid");
-      if (await Vibration.hasVibrator()) {
-        Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
-      }
+      showErrorDialog("Failed to process QR, please try again");
+      await _safeVibrate();
       Future.delayed(const Duration(seconds: 1), () {
-        Navigator.pop(context, "tidak valid");
+        Navigator.pop(context, "error");
       });
     }
   }

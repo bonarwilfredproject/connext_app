@@ -29,6 +29,7 @@ class _CreateEventState extends State<CreateEvent> {
   TimeOfDay? selectedTime;
   String? timeError;
   int? userId;
+  bool isCreatingEvent = false;
   void validateTime() {
     if (selectedDate == null || selectedTime == null) return;
 
@@ -76,72 +77,85 @@ class _CreateEventState extends State<CreateEvent> {
   }
 
   Future<void> createEvent() async {
+    if (isCreatingEvent) return;
+
     validateTime();
-    _formKey.currentState!.validate();
     if (!_formKey.currentState!.validate()) return;
     if (timeError != null) return;
 
-    UserModel? profile;
+    setState(() {
+      isCreatingEvent = true;
+    });
 
-    int? creatorId = userId;
-    if (creatorId == null || creatorId <= 0) {
-      final pref = PreferenceHandler();
-      await pref.init();
-      final prefId = pref.getUserId();
-      if (prefId > 0) {
-        creatorId = prefId;
-      }
-    }
+    try {
+      UserModel? profile;
 
-    if (creatorId == null || creatorId <= 0) {
-      profile = await FirebaseServices.getCurrentUserProfile();
-      final profileId = profile?.id;
-      if (profileId != null && profileId > 0) {
-        creatorId = profileId;
-
+      int? creatorId = userId;
+      if (creatorId == null || creatorId <= 0) {
         final pref = PreferenceHandler();
         await pref.init();
-        await pref.saveUser(profileId, profile!.nama, profile.role);
+        final prefId = pref.getUserId();
+        if (prefId > 0) {
+          creatorId = prefId;
+        }
+      }
+
+      if (creatorId == null || creatorId <= 0) {
+        profile = await FirebaseServices.getCurrentUserProfile();
+        final profileId = profile?.id;
+        if (profileId != null && profileId > 0) {
+          creatorId = profileId;
+
+          final pref = PreferenceHandler();
+          await pref.init();
+          await pref.saveUser(profileId, profile!.nama, profile.role);
+        }
+      }
+
+      if (creatorId == null || creatorId <= 0) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to determine event creator. Please relogin.'),
+          ),
+        );
+        return;
+      }
+
+      profile ??= await FirebaseServices.getCurrentUserProfile();
+
+      final pref = PreferenceHandler();
+      await pref.init();
+      final fallbackName = pref.getNamaUser();
+      final creatorName = (profile?.nama.trim().isNotEmpty ?? false)
+          ? profile!.nama.trim()
+          : fallbackName;
+
+      final currentUid = FirebaseServices.currentUid;
+
+      final event = EventModel(
+        title: namaEventController.text.trim(),
+        location: lokasiController.text.trim(),
+        description: descriptionController.text.trim(),
+        createdBy: creatorId,
+        createdByName: creatorName,
+        createdByUid: currentUid,
+        createdAt: DateTime.now().toIso8601String(),
+        eventDate: selectedDate!.toIso8601String(),
+        eventTime:
+            '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
+      );
+
+      await EventController.insertEvent(event);
+
+      if (mounted) Navigator.pop(context, true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          isCreatingEvent = false;
+        });
       }
     }
-
-    if (creatorId == null || creatorId <= 0) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to determine event creator. Please relogin.'),
-        ),
-      );
-      return;
-    }
-
-    profile ??= await FirebaseServices.getCurrentUserProfile();
-
-    final pref = PreferenceHandler();
-    await pref.init();
-    final fallbackName = pref.getNamaUser();
-    final creatorName = (profile?.nama.trim().isNotEmpty ?? false)
-        ? profile!.nama.trim()
-        : fallbackName;
-
-    final currentUid = FirebaseServices.currentUid;
-
-    final event = EventModel(
-      title: namaEventController.text.trim(),
-      location: lokasiController.text.trim(),
-      description: descriptionController.text.trim(),
-      createdBy: creatorId,
-      createdByName: creatorName,
-      createdByUid: currentUid,
-      createdAt: DateTime.now().toIso8601String(),
-      eventDate: selectedDate!.toIso8601String(),
-      eventTime:
-          '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
-    );
-
-    await EventController.insertEvent(event);
-
-    if (mounted) Navigator.pop(context, true);
   }
 
   @override
@@ -356,8 +370,17 @@ class _CreateEventState extends State<CreateEvent> {
                           style: IconButton.styleFrom(
                             backgroundColor: const Color(0XFF424874),
                           ),
-                          onPressed: createEvent,
-                          icon: const Icon(Icons.add, color: Color(0xFFF4EEFF)),
+                          onPressed: isCreatingEvent ? null : createEvent,
+                          icon: isCreatingEvent
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFFF4EEFF),
+                                  ),
+                                )
+                              : const Icon(Icons.add, color: Color(0xFFF4EEFF)),
                         ),
                       ),
                     ],
