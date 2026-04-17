@@ -444,7 +444,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
                                                   fontWeight: FontWeight.w700,
                                                 ),
                                                 overflow: TextOverflow.ellipsis,
-                                                maxLines: 1,
+                                                maxLines: 2,
                                               ),
                                             if ((event!.locationName
                                                         ?.trim()

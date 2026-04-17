@@ -52,6 +52,7 @@ class _HomePageState extends State<HomePage> {
   /// EVENT ATTENDEE
   List<EventModel> attendeeEvents = [];
   List<int> joinedEventIds = [];
+  final Set<int> _joiningEventIds = <int>{};
   bool isLoadingAttendee = true;
   int _attendeeLoadVersion = 0;
   late List<UserModel> dataUser = [];
@@ -887,377 +888,454 @@ class _HomePageState extends State<HomePage> {
                                   final joined =
                                       eventId != null &&
                                       joinedEventIds.contains(eventId);
+                                  final isJoiningEvent =
+                                      eventId != null &&
+                                      _joiningEventIds.contains(eventId);
 
                                   return AppListCard(
                                     child: InkWell(
-                                      onTap: () async {
-                                        try {
-                                          final activeUserId =
-                                              await _resolveCurrentUserId();
-                                          if (activeUserId == null ||
-                                              activeUserId <= 0) {
-                                            if (!mounted) return;
-                                            try {
-                                              ScaffoldMessenger.of(
-                                                this.context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    "User session is not ready. Please login again.",
+                                      onTap: isJoiningEvent
+                                          ? null
+                                          : () async {
+                                              try {
+                                                final activeUserId =
+                                                    await _resolveCurrentUserId();
+                                                if (activeUserId == null ||
+                                                    activeUserId <= 0) {
+                                                  if (!mounted) return;
+                                                  try {
+                                                    ScaffoldMessenger.of(
+                                                      this.context,
+                                                    ).showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                          "User session is not ready. Please login again.",
+                                                        ),
+                                                      ),
+                                                    );
+                                                  } catch (_) {}
+                                                  return;
+                                                }
+
+                                                if (eventId == null) return;
+                                                if (_joiningEventIds.contains(
+                                                  eventId,
+                                                )) {
+                                                  return;
+                                                }
+
+                                                // Use local joined state first so joined events open directly.
+                                                if (joined) {
+                                                  await _openAttendeeEventPage(
+                                                    userId: activeUserId,
+                                                    eventId: eventId,
+                                                  );
+                                                  return;
+                                                }
+
+                                                /// ❌ JIKA BELUM JOIN & EVENT SUDAH LEWAT → BLOCK
+                                                if (isEventPassed(event)) {
+                                                  bool serverJoined = false;
+                                                  try {
+                                                    serverJoined =
+                                                        await EventParticipantController.isJoined(
+                                                          activeUserId,
+                                                          eventId,
+                                                        );
+                                                  } catch (_) {
+                                                    serverJoined = false;
+                                                  }
+
+                                                  if (serverJoined) {
+                                                    if (mounted &&
+                                                        !joinedEventIds
+                                                            .contains(
+                                                              eventId,
+                                                            )) {
+                                                      setState(() {
+                                                        joinedEventIds.add(
+                                                          eventId,
+                                                        );
+                                                      });
+                                                    }
+
+                                                    await _openAttendeeEventPage(
+                                                      userId: activeUserId,
+                                                      eventId: eventId,
+                                                    );
+                                                    return;
+                                                  }
+
+                                                  await showDialog(
+                                                    context: context,
+                                                    builder: (_) => AlertDialog(
+                                                      backgroundColor:
+                                                          AppTheme.third,
+                                                      title: Text(
+                                                        "Event ended",
+                                                        style: styleText(),
+                                                      ),
+                                                      content: Text(
+                                                        "Can not join event, the event has ended",
+                                                        style: styleText(),
+                                                      ),
+                                                      actions: [
+                                                        TextButton(
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                context,
+                                                              ),
+                                                          child: Text(
+                                                            "OK",
+                                                            style: styleText(),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                  if (mounted) setState(() {});
+                                                  return;
+                                                }
+
+                                                /// ✅ JIKA BELUM JOIN & MASIH AKTIF → BISA JOIN
+                                                final confirm = await showDialog(
+                                                  context: context,
+                                                  builder: (_) => AlertDialog(
+                                                    backgroundColor:
+                                                        AppTheme.third,
+                                                    title: Text(
+                                                      "Join Event",
+                                                      style: styleText(),
+                                                    ),
+                                                    content: Text.rich(
+                                                      style: styleText(),
+                                                      TextSpan(
+                                                        children: [
+                                                          TextSpan(
+                                                            text: "Join to ",
+                                                          ),
+                                                          TextSpan(
+                                                            text: event.title,
+                                                            style: TextStyle(
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                          ),
+                                                          TextSpan(text: "?"),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                              context,
+                                                              false,
+                                                            ),
+                                                        child: Text(
+                                                          "Cancel",
+                                                          style: styleText(),
+                                                        ),
+                                                      ),
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.pop(
+                                                              context,
+                                                              true,
+                                                            ),
+                                                        child: Text(
+                                                          "Join",
+                                                          style: styleText(),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                );
+
+                                                if (confirm == true) {
+                                                  if (mounted) {
+                                                    setState(() {
+                                                      _joiningEventIds.add(
+                                                        eventId,
+                                                      );
+                                                    });
+                                                  }
+
+                                                  try {
+                                                    await EventParticipantController.joinEvent(
+                                                      activeUserId,
+                                                      eventId,
+                                                    );
+
+                                                    if (mounted) {
+                                                      setState(() {
+                                                        if (!joinedEventIds
+                                                            .contains(
+                                                              eventId,
+                                                            )) {
+                                                          joinedEventIds.add(
+                                                            eventId,
+                                                          );
+                                                        }
+
+                                                        final currentCount =
+                                                            eventParticipantCount[eventId] ??
+                                                            0;
+                                                        eventParticipantCount[eventId] =
+                                                            currentCount + 1;
+                                                      });
+                                                    }
+
+                                                    await _openAttendeeEventPage(
+                                                      userId: activeUserId,
+                                                      eventId: eventId,
+                                                    );
+                                                  } catch (e) {
+                                                    bool serverJoined = false;
+                                                    try {
+                                                      serverJoined =
+                                                          await EventParticipantController.isJoined(
+                                                            activeUserId,
+                                                            eventId,
+                                                          );
+                                                    } catch (_) {
+                                                      serverJoined = false;
+                                                    }
+
+                                                    if (serverJoined) {
+                                                      if (mounted &&
+                                                          !joinedEventIds
+                                                              .contains(
+                                                                eventId,
+                                                              )) {
+                                                        setState(() {
+                                                          joinedEventIds.add(
+                                                            eventId,
+                                                          );
+                                                        });
+                                                      }
+
+                                                      await _openAttendeeEventPage(
+                                                        userId: activeUserId,
+                                                        eventId: eventId,
+                                                      );
+                                                      return;
+                                                    }
+
+                                                    if (mounted) {
+                                                      try {
+                                                        ScaffoldMessenger.of(
+                                                          context,
+                                                        ).showSnackBar(
+                                                          SnackBar(
+                                                            content: Text(
+                                                              'Error: $e',
+                                                            ),
+                                                          ),
+                                                        );
+                                                      } catch (_) {}
+                                                    }
+                                                  } finally {
+                                                    if (mounted) {
+                                                      setState(() {
+                                                        _joiningEventIds.remove(
+                                                          eventId,
+                                                        );
+                                                      });
+                                                    }
+                                                  }
+                                                }
+                                              } catch (_) {
+                                                // Silently handle top-level errors
+                                              }
+                                            },
+                                      child: AnimatedOpacity(
+                                        opacity: isJoiningEvent ? 0.55 : 1,
+                                        duration: const Duration(
+                                          milliseconds: 150,
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            /// TITLE
+                                            Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Icon(
+                                                  Icons.event,
+                                                  color: AppTheme.secondary,
+                                                  size: 20,
+                                                ),
+
+                                                const SizedBox(width: 8),
+
+                                                /// TITLE EVENT
+                                                Expanded(
+                                                  child: Text(
+                                                    event.title,
+                                                    style: styleText().copyWith(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    maxLines: 2,
                                                   ),
                                                 ),
-                                              );
-                                            } catch (_) {}
-                                            return;
-                                          }
 
-                                          if (eventId == null) return;
+                                                /// STATUS JOIN
+                                                if (isJoiningEvent) ...[
+                                                  const SizedBox(width: 8),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 10,
+                                                          vertical: 4,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: AppTheme.secondary,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            12,
+                                                          ),
+                                                    ),
+                                                    child: const Row(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        SizedBox(
+                                                          width: 10,
+                                                          height: 10,
+                                                          child: CircularProgressIndicator(
+                                                            strokeWidth: 2,
+                                                            valueColor:
+                                                                AlwaysStoppedAnimation<
+                                                                  Color
+                                                                >(Colors.white),
+                                                          ),
+                                                        ),
+                                                        SizedBox(width: 6),
+                                                        Text(
+                                                          "JOINING...",
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 11,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ] else if (joined) ...[
+                                                  const SizedBox(width: 8),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 10,
+                                                          vertical: 4,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.green,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            12,
+                                                          ),
+                                                    ),
+                                                    child: const Text(
+                                                      "JOINED",
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                                if (isEventPassed(event)) ...[
+                                                  const SizedBox(width: 8),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 10,
+                                                          vertical: 4,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.grey,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            12,
+                                                          ),
+                                                    ),
+                                                    child: const Text(
+                                                      "EXPIRED",
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
 
-                                          // Use local joined state first so joined events open directly.
-                                          if (joined) {
-                                            await _openAttendeeEventPage(
-                                              userId: activeUserId,
-                                              eventId: eventId,
-                                            );
-                                            return;
-                                          }
+                                            const SizedBox(height: 8),
 
-                                          /// ❌ JIKA BELUM JOIN & EVENT SUDAH LEWAT → BLOCK
-                                          if (isEventPassed(event)) {
-                                            bool serverJoined = false;
-                                            try {
-                                              serverJoined =
-                                                  await EventParticipantController.isJoined(
-                                                    activeUserId,
-                                                    eventId,
-                                                  );
-                                            } catch (_) {
-                                              serverJoined = false;
-                                            }
+                                            /// LOCATION
+                                            buildRow(
+                                              Icons.location_pin,
+                                              event.location,
+                                            ),
 
-                                            if (serverJoined) {
-                                              if (mounted &&
-                                                  !joinedEventIds.contains(
-                                                    eventId,
-                                                  )) {
-                                                setState(() {
-                                                  joinedEventIds.add(eventId);
-                                                });
-                                              }
+                                            const SizedBox(height: 8),
 
-                                              await _openAttendeeEventPage(
-                                                userId: activeUserId,
-                                                eventId: eventId,
-                                              );
-                                              return;
-                                            }
+                                            /// TOTAL PESERTA
+                                            buildRow(
+                                              Icons.people,
+                                              "${eventParticipantCount[event.id] ?? 0} joined",
+                                            ),
+                                            const SizedBox(height: 8),
 
-                                            await showDialog(
-                                              context: context,
-                                              builder: (_) => AlertDialog(
-                                                backgroundColor: AppTheme.third,
-                                                title: Text(
-                                                  "Event ended",
-                                                  style: styleText(),
-                                                ),
-                                                content: Text(
-                                                  "Can not join event, the event has ended",
-                                                  style: styleText(),
-                                                ),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(context),
+                                            buildRow(
+                                              Icons.event_available,
+                                              event.eventDate != null
+                                                  ? "${DateFormat('EE, d MMMM yyyy').format(DateTime.parse(event.eventDate!))} • ${event.eventTime ?? '-'}"
+                                                  : "-",
+                                            ),
+                                            const SizedBox(height: 8),
+
+                                            /// PANITIA PEMBUAT EVENT
+                                            if (creator != null)
+                                              Row(
+                                                children: [
+                                                  CircleAvatar(
+                                                    radius: 12,
+                                                    backgroundColor:
+                                                        AppTheme.third,
+                                                    child: ProfileAvatar(
+                                                      imagePath:
+                                                          creator.profileImage,
+                                                      radius: 12,
+                                                      backgroundColor:
+                                                          AppTheme.third,
+                                                      iconSize: 16,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
                                                     child: Text(
-                                                      "OK",
+                                                      "by ${creator.nama}",
                                                       style: styleText(),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                     ),
                                                   ),
                                                 ],
                                               ),
-                                            );
-                                            if (mounted) setState(() {});
-                                            return;
-                                          }
-
-                                          /// ✅ JIKA BELUM JOIN & MASIH AKTIF → BISA JOIN
-                                          final confirm = await showDialog(
-                                            context: context,
-                                            builder: (_) => AlertDialog(
-                                              backgroundColor: AppTheme.third,
-                                              title: Text(
-                                                "Join Event",
-                                                style: styleText(),
-                                              ),
-                                              content: Text.rich(
-                                                style: styleText(),
-                                                TextSpan(
-                                                  children: [
-                                                    TextSpan(text: "Join to "),
-                                                    TextSpan(
-                                                      text: event.title,
-                                                      style: TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    TextSpan(text: "?"),
-                                                  ],
-                                                ),
-                                              ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(
-                                                        context,
-                                                        false,
-                                                      ),
-                                                  child: Text(
-                                                    "Cancel",
-                                                    style: styleText(),
-                                                  ),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.pop(
-                                                        context,
-                                                        true,
-                                                      ),
-                                                  child: Text(
-                                                    "Join",
-                                                    style: styleText(),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-
-                                          if (confirm == true) {
-                                            try {
-                                              if (mounted) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                      'Joining event...',
-                                                    ),
-                                                    duration: Duration(
-                                                      seconds: 1,
-                                                    ),
-                                                  ),
-                                                );
-                                              }
-
-                                              await EventParticipantController.joinEvent(
-                                                activeUserId,
-                                                eventId,
-                                              );
-
-                                              if (mounted) {
-                                                setState(() {
-                                                  if (!joinedEventIds.contains(
-                                                    eventId,
-                                                  )) {
-                                                    joinedEventIds.add(eventId);
-                                                  }
-
-                                                  final currentCount =
-                                                      eventParticipantCount[eventId] ??
-                                                      0;
-                                                  eventParticipantCount[eventId] =
-                                                      currentCount + 1;
-                                                });
-                                              }
-
-                                              await _openAttendeeEventPage(
-                                                userId: activeUserId,
-                                                eventId: eventId,
-                                              );
-                                            } catch (e) {
-                                              bool serverJoined = false;
-                                              try {
-                                                serverJoined =
-                                                    await EventParticipantController.isJoined(
-                                                      activeUserId,
-                                                      eventId,
-                                                    );
-                                              } catch (_) {
-                                                serverJoined = false;
-                                              }
-
-                                              if (serverJoined) {
-                                                if (mounted &&
-                                                    !joinedEventIds.contains(
-                                                      eventId,
-                                                    )) {
-                                                  setState(() {
-                                                    joinedEventIds.add(eventId);
-                                                  });
-                                                }
-
-                                                await _openAttendeeEventPage(
-                                                  userId: activeUserId,
-                                                  eventId: eventId,
-                                                );
-                                                return;
-                                              }
-
-                                              if (mounted) {
-                                                try {
-                                                  ScaffoldMessenger.of(
-                                                    context,
-                                                  ).showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                        'Error: $e',
-                                                      ),
-                                                    ),
-                                                  );
-                                                } catch (_) {}
-                                              }
-                                            }
-                                          }
-                                        } catch (_) {
-                                          // Silently handle top-level errors
-                                        }
-                                      },
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          /// TITLE
-                                          Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Icon(
-                                                Icons.event,
-                                                color: AppTheme.secondary,
-                                                size: 20,
-                                              ),
-
-                                              const SizedBox(width: 8),
-
-                                              /// TITLE EVENT
-                                              Expanded(
-                                                child: Text(
-                                                  event.title,
-                                                  style: styleText().copyWith(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  maxLines: 2,
-                                                ),
-                                              ),
-
-                                              /// STATUS JOIN
-                                              if (joined) ...[
-                                                const SizedBox(width: 8),
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 4,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.green,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                  ),
-                                                  child: const Text(
-                                                    "JOINED",
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                              if (isEventPassed(event)) ...[
-                                                const SizedBox(width: 8),
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 4,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.grey,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                  ),
-                                                  child: const Text(
-                                                    "EXPIRED",
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
-
-                                          const SizedBox(height: 8),
-
-                                          /// LOCATION
-                                          buildRow(
-                                            Icons.location_pin,
-                                            event.location,
-                                          ),
-
-                                          const SizedBox(height: 8),
-
-                                          /// TOTAL PESERTA
-                                          buildRow(
-                                            Icons.people,
-                                            "${eventParticipantCount[event.id] ?? 0} joined",
-                                          ),
-                                          const SizedBox(height: 8),
-
-                                          buildRow(
-                                            Icons.event_available,
-                                            event.eventDate != null
-                                                ? "${DateFormat('EE, d MMMM yyyy').format(DateTime.parse(event.eventDate!))} • ${event.eventTime ?? '-'}"
-                                                : "-",
-                                          ),
-                                          const SizedBox(height: 8),
-
-                                          /// PANITIA PEMBUAT EVENT
-                                          if (creator != null)
-                                            Row(
-                                              children: [
-                                                CircleAvatar(
-                                                  radius: 12,
-                                                  backgroundColor:
-                                                      AppTheme.third,
-                                                  child: ProfileAvatar(
-                                                    imagePath:
-                                                        creator.profileImage,
-                                                    radius: 12,
-                                                    backgroundColor:
-                                                        AppTheme.third,
-                                                    iconSize: 16,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    "by ${creator.nama}",
-                                                    style: styleText(),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   );

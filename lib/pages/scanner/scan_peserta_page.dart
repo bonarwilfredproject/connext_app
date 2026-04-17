@@ -29,6 +29,18 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
   late Animation<double> scanPosition;
 
   bool isProcessing = false;
+  String processingMessage = 'Processing QR code...';
+
+  void _setProcessing(bool value, {String? message}) {
+    if (!mounted) return;
+
+    setState(() {
+      isProcessing = value;
+      if (message != null && message.trim().isNotEmpty) {
+        processingMessage = message;
+      }
+    });
+  }
 
   Widget buildCorner() {
     return SizedBox(
@@ -65,7 +77,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
   void restartScanner() {
     if (!mounted) return;
 
-    isProcessing = false;
+    _setProcessing(false);
     controller.start();
   }
 
@@ -249,15 +261,58 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
                 const SizedBox(height: 12),
 
                 TombolSementara(
-                  onPressed: scanFromGallery,
+                  onPressed: isProcessing ? null : scanFromGallery,
                   icon: Icons.photo_library,
                   text: "Upload from Gallery",
                   width: 220,
                   height: 45,
+                  isLoading: isProcessing,
                 ),
               ],
             ),
           ),
+          if (isProcessing)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.45),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.third,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(
+                          width: 26,
+                          height: 26,
+                          child: CircularProgressIndicator(strokeWidth: 3),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Processing...',
+                          style: styleText().copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          processingMessage,
+                          style: styleText().copyWith(fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -357,7 +412,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
   Future<void> _handleQrScan(String code) async {
     if (isProcessing) return;
 
-    isProcessing = true;
+    _setProcessing(true, message: 'Validating attendee QR...');
     controller.stop();
 
     try {
@@ -374,6 +429,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
       int eventId = widget.eventId;
 
       /// cari participant berdasarkan token
+      _setProcessing(true, message: 'Checking attendee data...');
       final participant = await CheckinController.getParticipantByToken(
         token,
         eventId,
@@ -413,6 +469,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
       }
 
       /// update checkin
+      _setProcessing(true, message: 'Saving attendee check-in...');
       if (participantDocId != null && participantDocId.isNotEmpty) {
         await CheckinController.checkinParticipantByDocId(
           eventId,
