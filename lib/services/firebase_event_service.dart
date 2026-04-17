@@ -427,15 +427,31 @@ class FirebaseEventService {
 
   static Future<List<Map<String, dynamic>>> getParticipants(int eventId) async {
     final participantData = await _participantsCollection(eventId).get();
+    final uniqueUserIds = <int>{};
+
+    for (final participant in participantData.docs) {
+      final userId = _toIntFlexible(participant.data()['user_id']);
+      if (userId != null) {
+        uniqueUserIds.add(userId);
+      }
+    }
+
+    final usersById = <int, Map<String, dynamic>?>{};
+    await Future.wait(
+      uniqueUserIds.map((userId) async {
+        usersById[userId] = await _getUserByNumericId(userId);
+      }),
+      eagerError: false,
+    );
 
     final participants = <Map<String, dynamic>>[];
 
     for (final participant in participantData.docs) {
       final data = participant.data();
-      final userId = (data['user_id'] as num?)?.toInt();
+      final userId = _toIntFlexible(data['user_id']);
       if (userId == null) continue;
 
-      final userData = await _getUserByNumericId(userId);
+      final userData = usersById[userId];
       if (userData == null) continue;
 
       participants.add({
@@ -569,15 +585,29 @@ class FirebaseEventService {
     final participants = await _participantsCollection(
       eventId,
     ).where('checkin_time', isNull: false).get();
+    final uniqueUserIds = <int>{};
+
+    for (final participant in participants.docs) {
+      final userId = _toIntFlexible(participant.data()['user_id']);
+      if (userId != null) {
+        uniqueUserIds.add(userId);
+      }
+    }
+
+    final usersById = <int, Map<String, dynamic>?>{};
+    await Future.wait(
+      uniqueUserIds.map((userId) async {
+        usersById[userId] = await _getUserByNumericId(userId);
+      }),
+      eagerError: false,
+    );
 
     final result = <Map<String, dynamic>>[];
 
     for (final participant in participants.docs) {
       final data = participant.data();
-      final userId = (data['user_id'] as num?)?.toInt();
-      final userData = userId == null
-          ? null
-          : await _getUserByNumericId(userId);
+      final userId = _toIntFlexible(data['user_id']);
+      final userData = userId == null ? null : usersById[userId];
 
       result.add({
         'doc_id': participant.id,

@@ -5,6 +5,9 @@ class EventModel {
   final int? id;
   final String title;
   final String location;
+  final String? locationName;
+  final String? locationUrl;
+  final String? locationPlaceId;
   final String description;
   final int createdBy;
   final String? createdByName;
@@ -17,6 +20,9 @@ class EventModel {
     this.id,
     required this.title,
     required this.location,
+    this.locationName,
+    this.locationUrl,
+    this.locationPlaceId,
     required this.description,
     required this.createdBy,
     this.createdByName,
@@ -37,6 +43,21 @@ class EventModel {
       'event_date': eventDate,
       'event_time': eventTime,
     };
+
+    final safeLocationName = locationName?.trim();
+    if (safeLocationName != null && safeLocationName.isNotEmpty) {
+      map['location_name'] = safeLocationName;
+    }
+
+    final safeLocationUrl = locationUrl?.trim();
+    if (safeLocationUrl != null && safeLocationUrl.isNotEmpty) {
+      map['location_url'] = safeLocationUrl;
+    }
+
+    final safeLocationPlaceId = locationPlaceId?.trim();
+    if (safeLocationPlaceId != null && safeLocationPlaceId.isNotEmpty) {
+      map['location_place_id'] = safeLocationPlaceId;
+    }
 
     final safeCreatorName = createdByName?.trim();
     if (safeCreatorName != null && safeCreatorName.isNotEmpty) {
@@ -65,11 +86,20 @@ class EventModel {
         map['created_by_name'] ?? map['createdByName'] ?? map['creator_name'];
     final createdByUidRaw =
         map['created_by_uid'] ?? map['createdByUid'] ?? map['creator_uid'];
+    final locationNameRaw =
+        map['location_name'] ?? map['locationName'] ?? map['place_name'];
+    final locationUrlRaw =
+        map['location_url'] ?? map['locationUrl'] ?? map['maps_url'];
+    final locationPlaceIdRaw =
+        map['location_place_id'] ?? map['locationPlaceId'] ?? map['place_id'];
 
     return EventModel(
       id: map['id'] == null ? null : _toInt(map['id']),
       title: map['title'] ?? "",
       location: map['location'] ?? "",
+      locationName: locationNameRaw?.toString(),
+      locationUrl: locationUrlRaw?.toString(),
+      locationPlaceId: locationPlaceIdRaw?.toString(),
       description: map['description'] ?? "",
       createdBy: _toInt(createdByRaw),
       createdByName: createdByNameRaw?.toString(),
@@ -84,4 +114,23 @@ class EventModel {
 
   factory EventModel.fromJson(String source) =>
       EventModel.fromMap(json.decode(source));
+
+  String get resolvedLocationUrl {
+    final safeLocationUrl = locationUrl?.trim();
+    if (safeLocationUrl != null && safeLocationUrl.isNotEmpty) {
+      return safeLocationUrl;
+    }
+
+    final safeLocationPlaceId = locationPlaceId?.trim();
+    if (safeLocationPlaceId != null && safeLocationPlaceId.isNotEmpty) {
+      final safeLocation = location.trim();
+      final query = safeLocation.isEmpty ? safeLocationPlaceId : safeLocation;
+      return 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}&query_place_id=${Uri.encodeComponent(safeLocationPlaceId)}';
+    }
+
+    final safeLocation = location.trim();
+    if (safeLocation.isEmpty) return '';
+
+    return 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(safeLocation)}';
+  }
 }

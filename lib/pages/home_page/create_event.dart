@@ -3,10 +3,12 @@ import 'package:connext_app/services/event_controller.dart';
 import 'package:connext_app/models/event_model.dart';
 import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
+import 'package:connext_app/services/google_maps_service.dart';
 import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
+import 'package:connext_app/widgets/google_places_autocomplete_field.dart';
 import 'package:connext_app/constants/style_text.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -25,6 +27,8 @@ class _CreateEventState extends State<CreateEvent> {
   TextEditingController namaEventController = TextEditingController();
   TextEditingController lokasiController = TextEditingController();
   TextEditingController descriptionController = TextEditingController();
+  String? selectedLocationPlaceId;
+  String? selectedLocationName;
   DateTime? selectedDate;
   TimeOfDay? selectedTime;
   String? timeError;
@@ -136,6 +140,12 @@ class _CreateEventState extends State<CreateEvent> {
       final event = EventModel(
         title: namaEventController.text.trim(),
         location: lokasiController.text.trim(),
+        locationName: selectedLocationName,
+        locationUrl: buildGoogleMapsSearchUrl(
+          lokasiController.text,
+          placeId: selectedLocationPlaceId,
+        ),
+        locationPlaceId: selectedLocationPlaceId,
         description: descriptionController.text.trim(),
         createdBy: creatorId,
         createdByName: creatorName,
@@ -205,22 +215,33 @@ class _CreateEventState extends State<CreateEvent> {
                       const SizedBox(height: 20),
 
                       /// LOKASI
-                      Text("Location", style: styleText()),
-                      TextFormField(
-                        style: TextStyle(
-                          color: AppTheme.secondary,
-                          fontSize: 12,
-                        ),
+                      GooglePlacesAutocompleteField(
                         controller: lokasiController,
+                        labelText: 'Location',
+                        hintText: 'Search event location on Google Maps',
+                        showKeySourceInfo: false,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return "Location can't be empty";
                           }
                           return null;
                         },
-                        decoration: decorationConstant(
-                          hintText: "Please input event location",
-                        ),
+                        onSelected: (details) {
+                          setState(() {
+                            selectedLocationPlaceId = details.placeId;
+                            selectedLocationName =
+                                details.name?.trim().isNotEmpty ?? false
+                                ? details.name!.trim()
+                                : details.description.trim();
+                          });
+                        },
+                        onTextChanged: (value) {
+                          if (selectedLocationPlaceId != null ||
+                              selectedLocationName != null) {
+                            selectedLocationPlaceId = null;
+                            selectedLocationName = null;
+                          }
+                        },
                       ),
 
                       const SizedBox(height: 20),

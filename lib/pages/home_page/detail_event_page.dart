@@ -9,6 +9,7 @@ import 'package:connext_app/pages/scanner/scan_peserta_page.dart';
 import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/services/event_controller.dart';
 import 'package:connext_app/services/event_participant_controller.dart';
+import 'package:connext_app/services/google_maps_service.dart';
 import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/widgets/app_list_card.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
@@ -16,6 +17,7 @@ import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/profile_avatar.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:flutter/material.dart';
+import 'package:connext_app/widgets/google_places_autocomplete_field.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:lottie/lottie.dart';
@@ -90,8 +92,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
     _realtimeDebounceTimer = Timer(const Duration(milliseconds: 400), () async {
       if (!mounted) return;
 
-      await loadEvent();
-      await loadPeserta();
+      await Future.wait([loadEvent(), loadPeserta()], eagerError: false);
     });
   }
 
@@ -186,6 +187,26 @@ class _DetailEventPageState extends State<DetailEventPage> {
     return DateFormat('dd MMM yyyy, HH:mm').format(date);
   }
 
+  DateTime? _parseCheckinDateTime(dynamic waktuRaw) {
+    if (waktuRaw is Timestamp) {
+      return waktuRaw.toDate();
+    }
+
+    if (waktuRaw is DateTime) {
+      return waktuRaw;
+    }
+
+    return DateTime.tryParse(waktuRaw?.toString() ?? '');
+  }
+
+  String formatCheckinDateTime(dynamic waktuRaw) {
+    final dateTime = _parseCheckinDateTime(waktuRaw);
+
+    if (dateTime == null) return '-';
+
+    return DateFormat('EEEE, dd MMM yyyy, HH:mm', 'id').format(dateTime);
+  }
+
   Future<void> initializeData() async {
     if (!mounted) return;
 
@@ -194,11 +215,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
       loadError = null;
     });
 
-    await loadEvent();
-
-    if (event != null) {
-      unawaited(loadPeserta());
-    }
+    await Future.wait([loadEvent(), loadPeserta()], eagerError: false);
 
     if (mounted) {
       setState(() {
@@ -265,11 +282,24 @@ class _DetailEventPageState extends State<DetailEventPage> {
         targetEventId,
       ).timeout(_requestTimeout, onTimeout: () => []);
 
+      final sortedData = List<Map<String, dynamic>>.from(data)
+        ..sort((a, b) {
+          final aTime = _parseCheckinDateTime(a['waktu']);
+          final bTime = _parseCheckinDateTime(b['waktu']);
+
+          if (aTime == null && bTime == null) return 0;
+          if (aTime == null) return 1;
+          if (bTime == null) return -1;
+
+          // Latest check-in should appear first.
+          return bTime.compareTo(aTime);
+        });
+
       if (!mounted) return;
 
       setState(() {
-        scannedPeserta = data;
-        totalHadir = data.length;
+        scannedPeserta = sortedData;
+        totalHadir = sortedData.length;
       });
     } catch (_) {
       if (!mounted) return;
@@ -281,12 +311,34 @@ class _DetailEventPageState extends State<DetailEventPage> {
     }
   }
 
+  Future<void> _openEventLocation() async {
+    if (event == null) return;
+
+    final opened = await openGoogleMapsLocation(
+      location: event!.location,
+      locationUrl: event!.locationUrl,
+      placeId: event!.locationPlaceId,
+    );
+
+    if (!opened && mounted) {
+      try {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to open location in Google Maps'),
+          ),
+        );
+      } catch (_) {}
+    }
+  }
+
   void showEditEventDialog() {
     if (event == null) return;
 
     titleController.text = event!.title;
     locationController.text = event!.location;
     descriptionController.text = event!.description;
+    String? selectedLocationPlaceId = event!.locationPlaceId;
+    String? selectedLocationName = event!.locationName;
 
     selectedDateEdit = DateTime.tryParse(event!.eventDate ?? event!.createdAt);
     selectedDateEdit ??= DateTime.now();
@@ -340,18 +392,29 @@ class _DetailEventPageState extends State<DetailEventPage> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        TextFormField(
+                        GooglePlacesAutocompleteField(
                           controller: locationController,
-                          style: TextStyle(
-                            color: AppTheme.secondary,
-                            fontSize: 14,
-                          ),
+                          labelText: 'Location',
+                          hintText: 'Search event location on Google Maps',
+                          showKeySourceInfo: false,
                           validator: (value) =>
                               requiredValidator(value, 'Location'),
-                          decoration: decorationConstant(
-                            hintText: 'Location',
-                            labelText: 'Location',
-                          ),
+                          onSelected: (details) {
+                            setStateDialog(() {
+                              selectedLocationPlaceId = details.placeId;
+                              selectedLocationName =
+                                  details.name?.trim().isNotEmpty ?? false
+                                  ? details.name!.trim()
+                                  : details.description.trim();
+                            });
+                          },
+                          onTextChanged: (value) {
+                            if (selectedLocationPlaceId != null ||
+                                selectedLocationName != null) {
+                              selectedLocationPlaceId = null;
+                              selectedLocationName = null;
+                            }
+                          },
                         ),
                         const SizedBox(height: 16),
                         Row(
@@ -486,6 +549,12 @@ class _DetailEventPageState extends State<DetailEventPage> {
                       id: event!.id,
                       title: titleController.text,
                       location: locationController.text,
+                      locationName: selectedLocationName,
+                      locationUrl: buildGoogleMapsSearchUrl(
+                        locationController.text,
+                        placeId: selectedLocationPlaceId,
+                      ),
+                      locationPlaceId: selectedLocationPlaceId,
                       description: descriptionController.text,
                       createdBy: event!.createdBy,
                       createdAt: event!.createdAt,
@@ -675,6 +744,399 @@ class _DetailEventPageState extends State<DetailEventPage> {
       return _buildErrorState();
     }
 
+    final eventInfoSection = AppSectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.numbers, color: AppTheme.secondary),
+              const SizedBox(width: 10),
+              Text('${event!.id}', style: styleText()),
+            ],
+          ),
+          const SizedBox(height: 16),
+          InkWell(
+            onTap: _openEventLocation,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.location_pin, color: AppTheme.secondary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          event!.location,
+                          style: styleText().copyWith(
+                            decoration: TextDecoration.underline,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(Icons.open_in_new, size: 16, color: AppTheme.secondary),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.description, color: AppTheme.secondary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  event!.description.isEmpty
+                      ? 'There is no description'
+                      : event!.description,
+                  style: styleText(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          InkWell(
+            onTap: showParticipants,
+            child: Row(
+              children: [
+                Icon(Icons.people, color: AppTheme.secondary),
+                const SizedBox(width: 10),
+                Text('$totalPeserta joined', style: styleText()),
+                const SizedBox(width: 6),
+                Icon(Icons.chevron_right, size: 18, color: AppTheme.secondary),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Icon(Icons.verified, color: AppTheme.secondary),
+              const SizedBox(width: 10),
+              Text('$totalHadir present', style: styleText()),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              ProfileAvatar(
+                imagePath: createdByImage,
+                radius: 12,
+                backgroundColor: AppTheme.third,
+                iconSize: 16,
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text('By $createdByName', style: styleText())),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Icon(Icons.history, color: AppTheme.secondary),
+              const SizedBox(width: 10),
+              Text(formatCreatedAt(event!.createdAt), style: styleText()),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Icon(Icons.event_available, color: AppTheme.secondary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  event!.eventDate != null
+                      ? "${DateFormat('EEEE, d MMMM yyyy').format(DateTime.parse(event!.eventDate!))} • ${event!.eventTime ?? '-'}"
+                      : '-',
+                  style: styleText(),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    final scanButton = TombolSementara(
+      onPressed: () async {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                ScanPesertaPage(eventId: event?.id ?? widget.eventId),
+          ),
+        );
+
+        if (result != null) {
+          await loadEvent();
+          await loadPeserta();
+        }
+      },
+      text: 'Scan Attendee',
+      height: 54,
+      width: double.infinity,
+      icon: Icons.qr_code_scanner,
+    );
+
+    final presentAttendeeEmptySection = AppSectionCard(
+      title: 'Present Attendee',
+      icon: Icons.people,
+      child: Expanded(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Lottie.asset(
+                'assets/lottie/yawn_emoji_animation.json',
+                height: 80,
+                width: double.infinity,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'There is no present attendee',
+                style: styleText(),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final presentAttendeeListSection = AppSectionCard(
+      title: 'Present Attendee',
+      icon: Icons.people,
+      child: Column(
+        children: [
+          for (int index = 0; index < scannedPeserta.length; index++) ...[
+            if (index > 0) const SizedBox(height: 20),
+            Builder(
+              builder: (context) {
+                final p = scannedPeserta[index];
+                return Dismissible(
+                  key: Key('${p['doc_id'] ?? p['id']}'),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Icon(Icons.delete_outline, color: Colors.white),
+                        SizedBox(width: 6),
+                        Text(
+                          'Delete',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  confirmDismiss: (_) async {
+                    return await showDialog<bool>(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            backgroundColor: AppTheme.third,
+                            title: Text('Delete Attendee', style: styleText()),
+                            content: Text(
+                              'Are you sure want to delete ${p['namaUser']}?',
+                              style: styleText(),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: Text('Cancel', style: styleText()),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: Text('Delete', style: styleText()),
+                              ),
+                            ],
+                          ),
+                        ) ??
+                        false;
+                  },
+                  onDismissed: (_) async {
+                    final participantDocId = p['doc_id']?.toString().trim();
+                    final participantId = int.tryParse(p['id'].toString());
+                    final participantIdText = p['id'].toString();
+
+                    Map<String, dynamic>? removedItem;
+                    int removedIndex = -1;
+
+                    if (mounted) {
+                      setState(() {
+                        removedIndex = scannedPeserta.indexWhere((item) {
+                          final itemDocId = item['doc_id']?.toString().trim();
+                          if (participantDocId != null &&
+                              participantDocId.isNotEmpty &&
+                              itemDocId == participantDocId) {
+                            return true;
+                          }
+
+                          return item['id'].toString() == participantIdText;
+                        });
+
+                        if (removedIndex != -1) {
+                          removedItem = Map<String, dynamic>.from(
+                            scannedPeserta.removeAt(removedIndex),
+                          );
+                        }
+
+                        totalHadir = scannedPeserta.length;
+                      });
+                    }
+
+                    try {
+                      if (participantDocId != null &&
+                          participantDocId.isNotEmpty) {
+                        await CheckinController.deleteCheckinByDocId(
+                          event?.id ?? widget.eventId,
+                          participantDocId,
+                        );
+                      } else if (participantId != null) {
+                        await CheckinController.deleteCheckin(participantId);
+                      }
+                    } catch (_) {
+                      if (!mounted) return;
+
+                      if (removedItem != null) {
+                        setState(() {
+                          var safeInsertIndex = removedIndex;
+                          if (safeInsertIndex < 0 ||
+                              safeInsertIndex > scannedPeserta.length) {
+                            safeInsertIndex = scannedPeserta.length;
+                          }
+
+                          scannedPeserta.insert(safeInsertIndex, removedItem!);
+                          totalHadir = scannedPeserta.length;
+                        });
+                      }
+
+                      try {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Failed to delete attendee'),
+                          ),
+                        );
+                      } catch (_) {}
+                    }
+                  },
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: AppListCard(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ProfileAvatar(
+                            imagePath: p['profileImage']?.toString(),
+                            radius: 22,
+                            backgroundColor: AppTheme.third,
+                            iconSize: 22,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        p['namaUser'] ?? '',
+                                        style: styleText().copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Text(
+                                        'Present',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.phone,
+                                      size: 18,
+                                      color: AppTheme.secondary,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        p['phone'] ?? '',
+                                        style: styleText(),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(
+                                      Icons.access_time,
+                                      size: 18,
+                                      color: AppTheme.secondary,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Check in: ${formatCheckinDateTime(p['waktu'])}',
+                                        style: styleText().copyWith(
+                                          fontSize: 12,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: AppTheme.primary,
@@ -698,356 +1160,32 @@ class _DetailEventPageState extends State<DetailEventPage> {
       body: Stack(
         children: [
           EllipseBackground(),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AppSectionCard(
+          CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                sliver: SliverToBoxAdapter(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Icon(Icons.numbers, color: AppTheme.secondary),
-                          const SizedBox(width: 10),
-                          Text('${event!.id}', style: styleText()),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Icon(Icons.location_pin, color: AppTheme.secondary),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(event!.location, style: styleText()),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(Icons.description, color: AppTheme.secondary),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              event!.description.isEmpty
-                                  ? 'There is no description'
-                                  : event!.description,
-                              style: styleText(),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      InkWell(
-                        onTap: showParticipants,
-                        child: Row(
-                          children: [
-                            Icon(Icons.people, color: AppTheme.secondary),
-                            const SizedBox(width: 10),
-                            Text('$totalPeserta joined', style: styleText()),
-                            const SizedBox(width: 6),
-                            Icon(
-                              Icons.chevron_right,
-                              size: 18,
-                              color: AppTheme.secondary,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Icon(Icons.verified, color: AppTheme.secondary),
-                          const SizedBox(width: 10),
-                          Text('$totalHadir present', style: styleText()),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          ProfileAvatar(
-                            imagePath: createdByImage,
-                            radius: 12,
-                            backgroundColor: AppTheme.third,
-                            iconSize: 16,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'By $createdByName',
-                              style: styleText(),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Icon(Icons.history, color: AppTheme.secondary),
-                          const SizedBox(width: 10),
-                          Text(
-                            formatCreatedAt(event!.createdAt),
-                            style: styleText(),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.event_available,
-                            color: AppTheme.secondary,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              event!.eventDate != null
-                                  ? "${DateFormat('EEEE, d MMMM yyyy').format(DateTime.parse(event!.eventDate!))} • ${event!.eventTime ?? '-'}"
-                                  : '-',
-                              style: styleText(),
-                            ),
-                          ),
-                        ],
-                      ),
+                      eventInfoSection,
+                      const SizedBox(height: 20),
+                      scanButton,
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
-                TombolSementara(
-                  onPressed: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ScanPesertaPage(
-                          eventId: event?.id ?? widget.eventId,
-                        ),
-                      ),
-                    );
-
-                    if (result != null) {
-                      await loadEvent();
-                      await loadPeserta();
-                    }
-                  },
-                  text: 'Scan Attendee',
-                  height: 54,
-                  width: double.infinity,
-                  icon: Icons.qr_code_scanner,
-                ),
-                const SizedBox(height: 20),
-                Expanded(
-                  child: AppSectionCard(
-                    title: 'Present Attendee',
-                    icon: Icons.people,
-                    child: Expanded(
-                      child: scannedPeserta.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Lottie.asset(
-                                    'assets/lottie/yawn_emoji_animation.json',
-                                    height: 120,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'There is no present attendee',
-                                    style: styleText(),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : ListView.separated(
-                              separatorBuilder: (context, index) =>
-                                  const SizedBox(height: 20),
-                              itemCount: scannedPeserta.length,
-                              itemBuilder: (context, index) {
-                                final p = scannedPeserta[index];
-                                return Dismissible(
-                                  key: Key('${p['id']}'),
-                                  direction: DismissDirection.endToStart,
-                                  background: Container(
-                                    alignment: Alignment.centerRight,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 24,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red,
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: const Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        Icon(
-                                          Icons.delete_outline,
-                                          color: Colors.white,
-                                        ),
-                                        SizedBox(width: 6),
-                                        Text(
-                                          'Delete',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  confirmDismiss: (_) async {
-                                    return await showDialog<bool>(
-                                          context: context,
-                                          builder: (_) => AlertDialog(
-                                            backgroundColor: AppTheme.third,
-                                            title: Text(
-                                              'Delete Attendee',
-                                              style: styleText(),
-                                            ),
-                                            content: Text(
-                                              'Are you sure want to delete ${p['namaUser']}?',
-                                              style: styleText(),
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  false,
-                                                ),
-                                                child: Text(
-                                                  'Cancel',
-                                                  style: styleText(),
-                                                ),
-                                              ),
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(
-                                                  context,
-                                                  true,
-                                                ),
-                                                child: Text(
-                                                  'Delete',
-                                                  style: styleText(),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ) ??
-                                        false;
-                                  },
-                                  onDismissed: (_) async {
-                                    final participantDocId = p['doc_id']
-                                        ?.toString()
-                                        .trim();
-                                    if (participantDocId != null &&
-                                        participantDocId.isNotEmpty) {
-                                      await CheckinController.deleteCheckinByDocId(
-                                        event?.id ?? widget.eventId,
-                                        participantDocId,
-                                      );
-                                    } else {
-                                      await CheckinController.deleteCheckin(
-                                        int.parse(p['id'].toString()),
-                                      );
-                                    }
-                                    if (!mounted) return;
-                                    setState(() {
-                                      scannedPeserta.removeWhere(
-                                        (item) =>
-                                            item['id'].toString() ==
-                                            p['id'].toString(),
-                                      );
-                                      totalHadir = scannedPeserta.length;
-                                    });
-                                  },
-                                  child: SizedBox(
-                                    width: double.infinity,
-                                    child: AppListCard(
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          ProfileAvatar(
-                                            imagePath: p['profileImage']
-                                                ?.toString(),
-                                            radius: 22,
-                                            backgroundColor: AppTheme.third,
-                                            iconSize: 22,
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: Text(
-                                                        p['namaUser'] ?? '',
-                                                        style: styleText()
-                                                            .copyWith(
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                            ),
-                                                      ),
-                                                    ),
-                                                    Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 8,
-                                                            vertical: 3,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.green,
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              8,
-                                                            ),
-                                                      ),
-                                                      child: Text(
-                                                        'Present',
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 11,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 6),
-                                                Row(
-                                                  children: [
-                                                    const Icon(
-                                                      Icons.phone,
-                                                      size: 18,
-                                                      color: AppTheme.secondary,
-                                                    ),
-                                                    const SizedBox(width: 8),
-                                                    Text(
-                                                      p['phone'] ?? '',
-                                                      style: styleText(),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                sliver: scannedPeserta.isEmpty
+                    ? SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: presentAttendeeEmptySection,
+                      )
+                    : SliverToBoxAdapter(child: presentAttendeeListSection),
+              ),
+            ],
           ),
         ],
       ),

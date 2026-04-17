@@ -53,6 +53,7 @@ class _HomePageState extends State<HomePage> {
   List<EventModel> attendeeEvents = [];
   List<int> joinedEventIds = [];
   bool isLoadingAttendee = true;
+  int _attendeeLoadVersion = 0;
   late List<UserModel> dataUser = [];
 
   @override
@@ -154,7 +155,23 @@ class _HomePageState extends State<HomePage> {
   }
 
   bool isEventPassed(EventModel event) {
-    if (event.eventDate == null || event.eventTime == null) return false;
+    final eventDateTime = _resolveEventDateTime(event);
+    if (eventDateTime == null) return false;
+
+    final nowRaw = DateTime.now();
+    final now = DateTime(
+      nowRaw.year,
+      nowRaw.month,
+      nowRaw.day,
+      nowRaw.hour,
+      nowRaw.minute,
+    );
+
+    return now.isAfter(eventDateTime);
+  }
+
+  DateTime? _resolveEventDateTime(EventModel event) {
+    if (event.eventDate == null || event.eventTime == null) return null;
 
     try {
       final date = DateTime.parse(event.eventDate!);
@@ -182,27 +199,56 @@ class _HomePageState extends State<HomePage> {
         minute = parsed.minute;
       }
 
-      final eventDateTime = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        hour,
-        minute,
-      );
+      return DateTime(date.year, date.month, date.day, hour, minute);
+    } catch (_) {
+      return null;
+    }
+  }
 
-      final nowRaw = DateTime.now();
+  DateTime _eventSortKey(EventModel event) {
+    return _resolveEventDateTime(event) ??
+        DateTime.tryParse(event.createdAt) ??
+        DateTime.fromMillisecondsSinceEpoch(0);
+  }
 
-      final now = DateTime(
-        nowRaw.year,
-        nowRaw.month,
-        nowRaw.day,
-        nowRaw.hour,
-        nowRaw.minute,
-      );
+  int? _extractLeftEventId(dynamic result) {
+    if (result is! Map) return null;
 
-      return now.isAfter(eventDateTime);
-    } catch (e) {
-      return false;
+    final raw = result['leftEventId'];
+    if (raw is int) return raw;
+    return int.tryParse(raw?.toString() ?? '');
+  }
+
+  Future<void> _openAttendeeEventPage({
+    required int userId,
+    required int eventId,
+  }) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AttendeeEventPage(userId: userId, eventId: eventId),
+      ),
+    );
+
+    if (!mounted) return;
+
+    final leftEventId = _extractLeftEventId(result);
+    if (leftEventId != null) {
+      setState(() {
+        joinedEventIds.remove(leftEventId);
+
+        final currentCount = eventParticipantCount[leftEventId] ?? 0;
+        eventParticipantCount[leftEventId] = currentCount > 0
+            ? currentCount - 1
+            : 0;
+      });
+
+      unawaited(loadAttendeeEvents());
+      return;
+    }
+
+    if (result == true) {
+      unawaited(loadAttendeeEvents());
     }
   }
 
@@ -319,9 +365,14 @@ class _HomePageState extends State<HomePage> {
   Future<void> loadAttendeeEvents() async {
     if (!mounted) return;
 
-    setState(() {
-      isLoadingAttendee = true;
-    });
+    final loadVersion = ++_attendeeLoadVersion;
+    final shouldShowFullLoading = attendeeEvents.isEmpty;
+
+    if (shouldShowFullLoading) {
+      setState(() {
+        isLoadingAttendee = true;
+      });
+    }
 
     int userId = 0;
     try {
@@ -376,52 +427,106 @@ class _HomePageState extends State<HomePage> {
       } else {
         newJoinedIds = previousJoinedIds;
       }
-      final newParticipantCount = <int, int>{};
-      final newEventCreators = <int, UserModel>{...eventCreators};
 
-      /// hitung jumlah peserta tiap event
-      for (final event in events) {
-        final eventId = event.id;
-        if (eventId == null) continue;
+      final sortedEvents = List<EventModel>.from(events)
+        ..sort((a, b) => _eventSortKey(b).compareTo(_eventSortKey(a)));
 
-        int total = 0;
-        try {
-          total = await EventParticipantController.getTotalParticipants(
-            eventId,
-          );
-        } catch (_) {
-          total = 0;
-        }
-        newParticipantCount[eventId] = total;
-
-        /// ambil data panitia
-        try {
-          final user = await UserController.getUserById(event.createdBy);
-          if (user != null) {
-            newEventCreators[event.createdBy] = user;
-          }
-        } catch (_) {
-          // Ignore creator lookup errors so event cards still render.
-        }
-      }
-
-      if (!mounted) return;
+      if (!mounted || loadVersion != _attendeeLoadVersion) return;
       setState(() {
-        attendeeEvents = events;
+        attendeeEvents = sortedEvents;
         joinedEventIds = newJoinedIds;
-        eventParticipantCount = newParticipantCount;
-        eventCreators = newEventCreators;
         isLoadingAttendee = false;
       });
+
+      unawaited(_hydrateAttendeeEventMetadata(sortedEvents, loadVersion));
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || loadVersion != _attendeeLoadVersion) return;
       setState(() {
-        attendeeEvents = [];
-        joinedEventIds = [];
-        eventParticipantCount = {};
+        if (attendeeEvents.isEmpty) {
+          joinedEventIds = [];
+          eventParticipantCount = {};
+          eventCreators = {};
+        }
         isLoadingAttendee = false;
       });
     }
+  }
+
+  Future<void> _hydrateAttendeeEventMetadata(
+    List<EventModel> events,
+    int loadVersion,
+  ) async {
+    if (events.isEmpty) {
+      if (!mounted || loadVersion != _attendeeLoadVersion) return;
+      setState(() {
+        eventParticipantCount = {};
+        eventCreators = {};
+      });
+      return;
+    }
+
+    final eventIds = events
+        .where((e) => e.id != null)
+        .map((e) => e.id!)
+        .toList();
+    final creatorIds = events.map((e) => e.createdBy).toSet();
+
+    final nextParticipantCount = <int, int>{};
+    for (final eventId in eventIds) {
+      final previousCount = eventParticipantCount[eventId];
+      if (previousCount != null) {
+        nextParticipantCount[eventId] = previousCount;
+      }
+    }
+
+    final participantCountResults = await Future.wait(
+      eventIds.map((eventId) async {
+        try {
+          final total = await EventParticipantController.getTotalParticipants(
+            eventId,
+          );
+          return (eventId, total);
+        } catch (_) {
+          return (eventId, nextParticipantCount[eventId] ?? 0);
+        }
+      }),
+      eagerError: false,
+    );
+
+    for (final result in participantCountResults) {
+      nextParticipantCount[result.$1] = result.$2;
+    }
+
+    final nextEventCreators = <int, UserModel>{};
+
+    // Always re-fetch creator profiles so avatar/name changes reflect in realtime.
+    final creatorResults = await Future.wait(
+      creatorIds.map((creatorId) async {
+        try {
+          final user = await UserController.getUserById(creatorId);
+          if (user != null) return (creatorId, user);
+
+          final fallback = eventCreators[creatorId];
+          return fallback != null ? (creatorId, fallback) : null;
+        } catch (_) {
+          final fallback = eventCreators[creatorId];
+          return fallback != null ? (creatorId, fallback) : null;
+        }
+      }),
+      eagerError: false,
+    );
+
+    for (final result in creatorResults) {
+      if (result != null) {
+        nextEventCreators[result.$1] = result.$2;
+      }
+    }
+
+    if (!mounted || loadVersion != _attendeeLoadVersion) return;
+    setState(() {
+      eventParticipantCount = nextParticipantCount;
+      eventCreators = nextEventCreators;
+    });
   }
 
   @override
@@ -626,31 +731,35 @@ class _HomePageState extends State<HomePage> {
                                         ).timeout(const Duration(seconds: 10));
 
                                         if (mounted) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                "Event deleted succesfully",
+                                          try {
+                                            ScaffoldMessenger.of(
+                                              this.context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  "Event deleted succesfully",
+                                                ),
+                                                behavior:
+                                                    SnackBarBehavior.floating,
                                               ),
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                            ),
-                                          );
+                                            );
+                                          } catch (_) {}
                                         }
                                       } catch (_) {
                                         if (mounted) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                "Failed to delete event. Check connection and try again",
+                                          try {
+                                            ScaffoldMessenger.of(
+                                              this.context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  "Failed to delete event. Check connection and try again",
+                                                ),
+                                                behavior:
+                                                    SnackBarBehavior.floating,
                                               ),
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                            ),
-                                          );
+                                            );
+                                          } catch (_) {}
                                         }
                                       }
 
@@ -750,7 +859,9 @@ class _HomePageState extends State<HomePage> {
                     child: AppSectionCard(
                       title: "Event Available",
                       icon: Icons.event,
-                      child: attendeeEvents.isEmpty
+                      child: isLoadingAttendee && attendeeEvents.isEmpty
+                          ? const Center(child: CircularProgressIndicator())
+                          : attendeeEvents.isEmpty
                           ? Column(
                               children: [
                                 Lottie.asset(
@@ -763,8 +874,6 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ],
                             )
-                          : isLoadingAttendee
-                          ? const Center(child: CircularProgressIndicator())
                           : Expanded(
                               child: ListView.separated(
                                 separatorBuilder: (_, __) =>
@@ -788,15 +897,17 @@ class _HomePageState extends State<HomePage> {
                                           if (activeUserId == null ||
                                               activeUserId <= 0) {
                                             if (!mounted) return;
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  "User session is not ready. Please login again.",
+                                            try {
+                                              ScaffoldMessenger.of(
+                                                this.context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    "User session is not ready. Please login again.",
+                                                  ),
                                                 ),
-                                              ),
-                                            );
+                                              );
+                                            } catch (_) {}
                                             return;
                                           }
 
@@ -804,65 +915,43 @@ class _HomePageState extends State<HomePage> {
 
                                           // Use local joined state first so joined events open directly.
                                           if (joined) {
-                                            final result = await Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    AttendeeEventPage(
-                                                      userId: activeUserId,
-                                                      eventId: eventId,
-                                                    ),
-                                              ),
+                                            await _openAttendeeEventPage(
+                                              userId: activeUserId,
+                                              eventId: eventId,
                                             );
-
-                                            if (result == true) {
-                                              await loadAttendeeEvents();
-                                            }
-                                            return;
-                                          }
-
-                                          /// cek ulang status join dari database
-                                          bool isJoined = false;
-                                          try {
-                                            isJoined =
-                                                await EventParticipantController.isJoined(
-                                                  activeUserId,
-                                                  eventId,
-                                                );
-                                          } catch (_) {
-                                            isJoined = false;
-                                          }
-
-                                          /// ✅ JIKA SUDAH JOIN → BOLEH MASUK (walaupun expired)
-                                          if (isJoined) {
-                                            if (!joinedEventIds.contains(
-                                                  eventId,
-                                                ) &&
-                                                mounted) {
-                                              setState(() {
-                                                joinedEventIds.add(eventId);
-                                              });
-                                            }
-
-                                            final result = await Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    AttendeeEventPage(
-                                                      userId: activeUserId,
-                                                      eventId: eventId,
-                                                    ),
-                                              ),
-                                            );
-
-                                            if (result == true) {
-                                              await loadAttendeeEvents();
-                                            }
                                             return;
                                           }
 
                                           /// ❌ JIKA BELUM JOIN & EVENT SUDAH LEWAT → BLOCK
                                           if (isEventPassed(event)) {
+                                            bool serverJoined = false;
+                                            try {
+                                              serverJoined =
+                                                  await EventParticipantController.isJoined(
+                                                    activeUserId,
+                                                    eventId,
+                                                  );
+                                            } catch (_) {
+                                              serverJoined = false;
+                                            }
+
+                                            if (serverJoined) {
+                                              if (mounted &&
+                                                  !joinedEventIds.contains(
+                                                    eventId,
+                                                  )) {
+                                                setState(() {
+                                                  joinedEventIds.add(eventId);
+                                                });
+                                              }
+
+                                              await _openAttendeeEventPage(
+                                                userId: activeUserId,
+                                                eventId: eventId,
+                                              );
+                                              return;
+                                            }
+
                                             await showDialog(
                                               context: context,
                                               builder: (_) => AlertDialog(
@@ -944,44 +1033,93 @@ class _HomePageState extends State<HomePage> {
                                           );
 
                                           if (confirm == true) {
-                                            await EventParticipantController.joinEvent(
-                                              activeUserId,
-                                              eventId,
-                                            );
-
-                                            if (!joinedEventIds.contains(
-                                                  eventId,
-                                                ) &&
-                                                mounted) {
-                                              setState(() {
-                                                joinedEventIds.add(eventId);
-                                              });
-                                            }
-
-                                            await Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) =>
-                                                    AttendeeEventPage(
-                                                      userId: activeUserId,
-                                                      eventId: eventId,
+                                            try {
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Joining event...',
                                                     ),
-                                              ),
-                                            );
+                                                    duration: Duration(
+                                                      seconds: 1,
+                                                    ),
+                                                  ),
+                                                );
+                                              }
 
-                                            await loadAttendeeEvents();
+                                              await EventParticipantController.joinEvent(
+                                                activeUserId,
+                                                eventId,
+                                              );
+
+                                              if (mounted) {
+                                                setState(() {
+                                                  if (!joinedEventIds.contains(
+                                                    eventId,
+                                                  )) {
+                                                    joinedEventIds.add(eventId);
+                                                  }
+
+                                                  final currentCount =
+                                                      eventParticipantCount[eventId] ??
+                                                      0;
+                                                  eventParticipantCount[eventId] =
+                                                      currentCount + 1;
+                                                });
+                                              }
+
+                                              await _openAttendeeEventPage(
+                                                userId: activeUserId,
+                                                eventId: eventId,
+                                              );
+                                            } catch (e) {
+                                              bool serverJoined = false;
+                                              try {
+                                                serverJoined =
+                                                    await EventParticipantController.isJoined(
+                                                      activeUserId,
+                                                      eventId,
+                                                    );
+                                              } catch (_) {
+                                                serverJoined = false;
+                                              }
+
+                                              if (serverJoined) {
+                                                if (mounted &&
+                                                    !joinedEventIds.contains(
+                                                      eventId,
+                                                    )) {
+                                                  setState(() {
+                                                    joinedEventIds.add(eventId);
+                                                  });
+                                                }
+
+                                                await _openAttendeeEventPage(
+                                                  userId: activeUserId,
+                                                  eventId: eventId,
+                                                );
+                                                return;
+                                              }
+
+                                              if (mounted) {
+                                                try {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        'Error: $e',
+                                                      ),
+                                                    ),
+                                                  );
+                                                } catch (_) {}
+                                              }
+                                            }
                                           }
                                         } catch (_) {
-                                          if (!mounted) return;
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                "Failed to open/join event. Please try again.",
-                                              ),
-                                            ),
-                                          );
+                                          // Silently handle top-level errors
                                         }
                                       },
                                       child: Column(

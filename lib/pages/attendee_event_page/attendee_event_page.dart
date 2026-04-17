@@ -9,6 +9,7 @@ import 'package:connext_app/models/event_model.dart';
 import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/services/event_controller.dart';
 import 'package:connext_app/services/event_participant_controller.dart';
+import 'package:connext_app/services/google_maps_service.dart';
 import 'package:connext_app/widgets/app_list_card.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
@@ -346,6 +347,24 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
     });
   }
 
+  Future<void> _openEventLocation() async {
+    if (event == null) return;
+
+    final opened = await openGoogleMapsLocation(
+      location: event!.location,
+      locationUrl: event!.resolvedLocationUrl,
+      placeId: event!.locationPlaceId,
+    );
+
+    if (!opened && mounted) {
+      try {
+        ScaffoldMessenger.of(this.context).showSnackBar(
+          const SnackBar(content: Text('Google Maps could not be opened')),
+        );
+      } catch (_) {}
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -395,20 +414,87 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
                               const SizedBox(height: 8),
 
                               /// LOCATION
+                              InkWell(
+                                onTap: _openEventLocation,
+                                borderRadius: BorderRadius.circular(8),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 4,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.location_pin,
+                                        size: 18,
+                                        color: AppTheme.secondary,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            if ((event!.locationName
+                                                    ?.trim()
+                                                    .isNotEmpty ??
+                                                false))
+                                              Text(
+                                                event!.locationName!.trim(),
+                                                style: styleText().copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
+                                              ),
+                                            if ((event!.locationName
+                                                        ?.trim()
+                                                        .isEmpty ??
+                                                    true) ||
+                                                event!.locationName!.trim() !=
+                                                    event!.location.trim())
+                                              Text(
+                                                event!.location,
+                                                style: styleText().copyWith(
+                                                  decoration:
+                                                      TextDecoration.underline,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 2,
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(
+                                        Icons.open_in_new,
+                                        size: 16,
+                                        color: AppTheme.secondary,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 8),
+
+                              /// DESCRIPTION
                               Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Icon(
-                                    Icons.location_pin,
+                                    Icons.description,
                                     size: 18,
                                     color: AppTheme.secondary,
                                   ),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
-                                      event!.location,
+                                      event!.description.isEmpty
+                                          ? 'There is no description'
+                                          : event!.description,
                                       style: styleText(),
+                                      maxLines: 4,
                                       overflow: TextOverflow.ellipsis,
-                                      maxLines: 2,
                                     ),
                                   ),
                                 ],
@@ -624,7 +710,9 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
                                           widget.eventId,
                                         );
 
-                                        Navigator.pop(context, true);
+                                        Navigator.pop(context, {
+                                          'leftEventId': widget.eventId,
+                                        });
                                       }
                                     },
                                   ),
