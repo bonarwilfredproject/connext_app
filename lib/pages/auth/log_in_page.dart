@@ -12,6 +12,13 @@ import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+class _CountryDialOption {
+  final String label;
+  final String dialCode;
+
+  const _CountryDialOption({required this.label, required this.dialCode});
+}
+
 class LogInPage extends StatefulWidget {
   const LogInPage({super.key});
 
@@ -20,11 +27,38 @@ class LogInPage extends StatefulWidget {
 }
 
 class _LogInPageState extends State<LogInPage> {
+  static const List<_CountryDialOption> _countryOptions = [
+    _CountryDialOption(label: 'Indonesia', dialCode: '+62'),
+    _CountryDialOption(label: 'Singapore', dialCode: '+65'),
+    _CountryDialOption(label: 'Malaysia', dialCode: '+60'),
+    _CountryDialOption(label: 'Thailand', dialCode: '+66'),
+    _CountryDialOption(label: 'Philippines', dialCode: '+63'),
+    _CountryDialOption(label: 'United States', dialCode: '+1'),
+    _CountryDialOption(label: 'United Kingdom', dialCode: '+44'),
+    _CountryDialOption(label: 'Australia', dialCode: '+61'),
+    _CountryDialOption(label: 'India', dialCode: '+91'),
+  ];
+
   bool isVisible = true;
   bool isLoadingLogin = false;
-  GlobalKey<FormState> _formKey = GlobalKey();
-  TextEditingController phoneController = TextEditingController();
-  TextEditingController passwordController = TextEditingController();
+  final GlobalKey<FormState> _formKey = GlobalKey();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  late _CountryDialOption _selectedCountry;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCountry = _countryOptions.first;
+  }
+
+  @override
+  void dispose() {
+    phoneController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
   Future<void> login() async {
     if (isLoadingLogin) return;
 
@@ -38,8 +72,13 @@ class _LogInPageState extends State<LogInPage> {
 
     UserModel? login;
     try {
+      final normalizedPhone = FirebaseServices.normalizePhoneToE164(
+        phoneController.text.trim(),
+        countryDialCode: _selectedCountry.dialCode,
+      );
+
       login = await FirebaseServices.loginUser(
-        phone: phoneController.text.trim(),
+        phone: normalizedPhone,
         password: passwordController.text,
       );
     } on FirebaseAuthException catch (e) {
@@ -151,32 +190,84 @@ class _LogInPageState extends State<LogInPage> {
                             Text("Phone Number", style: styleText()),
                           ],
                         ),
-                        TextFormField(
-                          keyboardType: TextInputType.numberWithOptions(),
-                          validator: (value) {
-                            final phone = (value ?? '').trim();
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 4,
+                              child: DropdownButtonFormField<_CountryDialOption>(
+                                value: _selectedCountry,
+                                isExpanded: true,
+                                decoration: decorationConstant(
+                                  hintText: 'Country',
+                                ),
+                                items: _countryOptions.map((option) {
+                                  return DropdownMenuItem<_CountryDialOption>(
+                                    value: option,
+                                    child: Text(
+                                      '${option.label} (${option.dialCode})',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: AppTheme.secondary,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value == null) return;
+                                  setState(() {
+                                    _selectedCountry = value;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 6,
+                              child: TextFormField(
+                                keyboardType: TextInputType.number,
+                                validator: (value) {
+                                  final phone = (value ?? '').trim();
 
-                            if (phone.isEmpty) {
-                              return "Phone number can't be empty";
-                            }
+                                  if (phone.isEmpty) {
+                                    return "Phone number can't be empty";
+                                  }
 
-                            if (!RegExp(r'^\d+$').hasMatch(phone)) {
-                              return "Phone number must be numbers";
-                            }
+                                  if (!RegExp(r'^\d+$').hasMatch(phone)) {
+                                    return "Phone number must contain digits only";
+                                  }
 
-                            if (phone.length < 9) {
-                              return "Phone number must at least 9 digits";
-                            }
+                                  if (phone.length < 4) {
+                                    return "Phone number is too short";
+                                  }
 
-                            return null;
-                          },
-                          controller: phoneController,
-                          style: TextStyle(
-                            color: AppTheme.secondary,
-                            fontSize: 12,
-                          ),
-                          decoration: decorationConstant(
-                            hintText: "Please input your phone number",
+                                  if (phone.length > 15) {
+                                    return "Phone number is too long";
+                                  }
+
+                                  return null;
+                                },
+                                controller: phoneController,
+                                style: TextStyle(
+                                  color: AppTheme.secondary,
+                                  fontSize: 12,
+                                ),
+                                decoration: decorationConstant(
+                                  hintText: 'Local phone number',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Enter your local number without country code. Example: 8123456789',
+                            style: TextStyle(
+                              color: AppTheme.secondary.withOpacity(0.7),
+                              fontSize: 11,
+                            ),
                           ),
                         ),
                         SizedBox(height: 12),

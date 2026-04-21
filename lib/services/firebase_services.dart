@@ -21,6 +21,72 @@ class FirebaseServices {
     return '$normalized@connext.app';
   }
 
+  static String normalizePhoneToE164(String phone, {String? countryDialCode}) {
+    final raw = phone.trim();
+    if (raw.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'invalid-phone-number',
+        message: 'Phone number cannot be empty',
+      );
+    }
+
+    final hasPlusPrefix = raw.startsWith('+');
+    final digitsOnly = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digitsOnly.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'invalid-phone-number',
+        message: 'Phone number format is invalid',
+      );
+    }
+
+    String normalizedDigits;
+    if (hasPlusPrefix) {
+      normalizedDigits = digitsOnly;
+    } else if (raw.startsWith('00')) {
+      normalizedDigits = digitsOnly.substring(2);
+    } else {
+      final dialDigits = (countryDialCode ?? '').replaceAll(
+        RegExp(r'[^0-9]'),
+        '',
+      );
+      if (dialDigits.isEmpty) {
+        throw FirebaseAuthException(
+          code: 'invalid-phone-number',
+          message: 'Country dialing code is required for local phone numbers',
+        );
+      }
+
+      var localDigits = digitsOnly;
+
+      if (localDigits.startsWith(dialDigits) &&
+          localDigits.length >= dialDigits.length + 6) {
+        normalizedDigits = localDigits;
+      } else {
+        if (localDigits.startsWith('0')) {
+          localDigits = localDigits.substring(1);
+        }
+
+        if (localDigits.isEmpty) {
+          throw FirebaseAuthException(
+            code: 'invalid-phone-number',
+            message: 'Phone number format is invalid',
+          );
+        }
+
+        normalizedDigits = '$dialDigits$localDigits';
+      }
+    }
+
+    if (normalizedDigits.length < 8 || normalizedDigits.length > 15) {
+      throw FirebaseAuthException(
+        code: 'invalid-phone-number',
+        message: 'Phone number length is invalid',
+      );
+    }
+
+    return '+$normalizedDigits';
+  }
+
   static String? _profileImageFromMap(Map<String, dynamic>? data) {
     if (data == null) return null;
     final image = data['profile_image'] ?? data['profileImage'];
@@ -64,6 +130,11 @@ class FirebaseServices {
     required DocumentReference<Map<String, dynamic>> docRef,
   }) async {
     final raw = _profileImageFromMap(data)?.trim();
+    final rawLooksLikeStorageRef =
+        raw != null &&
+        raw.isNotEmpty &&
+        !_isRemoteImage(raw) &&
+        (raw.startsWith('gs://') || _looksLikeStoragePath(raw));
 
     if (raw != null && raw.isNotEmpty) {
       if (_isRemoteImage(raw)) return raw;
@@ -98,6 +169,15 @@ class FirebaseServices {
       }
     } catch (_) {
       // Ignore and return existing value if any.
+    }
+
+    // Avoid repeated getDownloadURL attempts and noisy 404 logs on invalid
+    // legacy storage references by clearing the field once fallback also fails.
+    if (rawLooksLikeStorageRef) {
+      await docRef.set({
+        'profile_image': FieldValue.delete(),
+      }, SetOptions(merge: true));
+      return null;
     }
 
     return raw;
@@ -200,13 +280,154 @@ class FirebaseServices {
     );
   }
 
-  static Future<bool> isPhoneExists(String phone) async {
-    final query = await _firebaseFirestore
+  static Future<UserModel> registerUserWithPhoneCredential({
+    required UserModel user,
+    required PhoneAuthCredential credential,
+  }) async {
+    final email = _emailFromPhone(user.phone);
+    final e164Phone = normalizePhoneToE164(user.phone);
+
+    bool shouldSignOut = false;
+
+    try {
+      final phoneSignIn = await _auth.signInWithCredential(credential);
+      final firebaseUser = phoneSignIn.user;
+
+      if (firebaseUser == null) {
+        throw FirebaseAuthException(
+          code: 'user-not-found',
+          message: 'Phone verification did not produce a valid user',
+        );
+      }
+
+      shouldSignOut = true;
+
+      final existingProfile = await _firebaseFirestore
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .get();
+
+      if (existingProfile.exists) {
+        throw FirebaseAuthException(
+          code: 'phone-already-registered',
+          message: 'Phone number is already registered',
+        );
+      }
+
+      final userId = await _nextUserId();
+
+      final emailCredential = EmailAuthProvider.credential(
+        email: email,
+        password: user.password,
+      );
+
+      try {
+        await firebaseUser.linkWithCredential(emailCredential);
+      } on FirebaseAuthException catch (e) {
+        if (e.code != 'provider-already-linked') {
+          rethrow;
+        }
+      }
+
+      await _firebaseFirestore.collection('users').doc(firebaseUser.uid).set({
+        ...user.toMap(),
+        'id': userId,
+        'uid': firebaseUser.uid,
+        'email': email,
+        'phone': user.phone.trim(),
+        'phone_e164': e164Phone,
+        'created_at': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      return UserModel(
+        id: userId,
+        nama: user.nama,
+        phone: user.phone,
+        password: user.password,
+        role: user.role,
+        profileImage: user.profileImage,
+      );
+    } finally {
+      if (shouldSignOut) {
+        await _auth.signOut();
+      }
+    }
+  }
+
+  static Future<QueryDocumentSnapshot<Map<String, dynamic>>?>
+  _findPhoneConflict(String phone, {String? excludeUid}) async {
+    final rawPhone = phone.trim();
+    if (rawPhone.isEmpty) return null;
+
+    String? normalizedPhone;
+    try {
+      normalizedPhone = normalizePhoneToE164(rawPhone);
+    } on FirebaseAuthException {
+      normalizedPhone = null;
+    }
+
+    final canonicalPhone = normalizedPhone ?? rawPhone;
+    final expectedEmail = _emailFromPhone(canonicalPhone);
+
+    final phoneMatches = await _firebaseFirestore
         .collection('users')
-        .where('phone', isEqualTo: phone)
-        .limit(1)
+        .where('phone', isEqualTo: canonicalPhone)
+        .limit(10)
         .get();
-    return query.docs.isNotEmpty;
+
+    final e164Matches = await _firebaseFirestore
+        .collection('users')
+        .where('phone_e164', isEqualTo: canonicalPhone)
+        .limit(10)
+        .get();
+
+    final effectiveExcludeUid = (excludeUid != null && excludeUid.isNotEmpty)
+        ? excludeUid
+        : _auth.currentUser?.uid;
+
+    final seenPaths = <String>{};
+    for (final doc in [...phoneMatches.docs, ...e164Matches.docs]) {
+      // Use document ID as the primary UID source because legacy `uid` fields
+      // may contain stale values and can break self-exclusion checks.
+      final docUid = doc.id.toString();
+      if (effectiveExcludeUid != null && docUid == effectiveExcludeUid) {
+        continue;
+      }
+
+      // Ignore legacy rows where phone fields are stale and do not map to
+      // the canonical email derived from this phone number.
+      final docEmail = (doc.data()['email'] ?? '').toString().trim();
+      if (docEmail.isEmpty || docEmail != expectedEmail) {
+        continue;
+      }
+
+      if (seenPaths.add(doc.reference.path)) {
+        return doc;
+      }
+    }
+
+    return null;
+  }
+
+  static Future<bool> isPhoneExists(String phone, {String? excludeUid}) async {
+    final conflict = await _findPhoneConflict(phone, excludeUid: excludeUid);
+    return conflict != null;
+  }
+
+  static Future<Map<String, String>?> getPhoneConflictDebugInfo(
+    String phone, {
+    String? excludeUid,
+  }) async {
+    final conflict = await _findPhoneConflict(phone, excludeUid: excludeUid);
+    if (conflict == null) return null;
+
+    final data = conflict.data();
+    return {
+      'uid': conflict.id,
+      'email': (data['email'] ?? '').toString(),
+      'phone': (data['phone'] ?? '').toString(),
+      'phone_e164': (data['phone_e164'] ?? '').toString(),
+    };
   }
 
   static Future<UserModel?> getCurrentUserProfile() async {
@@ -262,9 +483,12 @@ class FirebaseServices {
     final firebaseUser = _auth.currentUser;
     if (firebaseUser == null) return;
 
+    final normalizedPhone = normalizePhoneToE164(phone);
+
     await _firebaseFirestore.collection('users').doc(firebaseUser.uid).update({
       'nama': name,
-      'phone': phone,
+      'phone': normalizedPhone,
+      'phone_e164': normalizedPhone,
     });
   }
 
@@ -380,17 +604,100 @@ class FirebaseServices {
     });
   }
 
+  static Future<void> updateCurrentUserPhoneWithCredential({
+    required PhoneAuthCredential credential,
+  }) async {
+    final firebaseUser = _auth.currentUser;
+    if (firebaseUser == null) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'User is not logged in',
+      );
+    }
+
+    try {
+      await firebaseUser.updatePhoneNumber(credential);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'credential-already-in-use' ||
+          e.code == 'phone-number-already-exists') {
+        throw FirebaseAuthException(
+          code: 'phone-already-registered',
+          message: 'Phone number is already used',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  static Future<String?> _resolveEmailByPhone(String phone) async {
+    final rawPhone = phone.trim();
+    if (rawPhone.isEmpty) return null;
+
+    String canonicalPhone = rawPhone;
+    try {
+      canonicalPhone = normalizePhoneToE164(rawPhone);
+    } on FirebaseAuthException {
+      canonicalPhone = rawPhone;
+    }
+
+    final byE164 = await _firebaseFirestore
+        .collection('users')
+        .where('phone_e164', isEqualTo: canonicalPhone)
+        .limit(1)
+        .get();
+
+    if (byE164.docs.isNotEmpty) {
+      final email = (byE164.docs.first.data()['email'] ?? '').toString().trim();
+      if (email.isNotEmpty) return email;
+    }
+
+    final byPhone = await _firebaseFirestore
+        .collection('users')
+        .where('phone', isEqualTo: canonicalPhone)
+        .limit(1)
+        .get();
+
+    if (byPhone.docs.isNotEmpty) {
+      final email = (byPhone.docs.first.data()['email'] ?? '')
+          .toString()
+          .trim();
+      if (email.isNotEmpty) return email;
+    }
+
+    return null;
+  }
+
   static Future<UserModel?> loginUser({
     required String phone,
     required String password,
   }) async {
-    final email = _emailFromPhone(phone);
+    String email = _emailFromPhone(phone);
+    bool resolvedFromPhoneRecord = false;
 
     try {
-      final cred = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      UserCredential cred;
+      try {
+        cred = await _auth.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      } on FirebaseAuthException catch (e) {
+        if (e.code != 'invalid-credential' && e.code != 'user-not-found') {
+          rethrow;
+        }
+
+        final resolvedEmail = await _resolveEmailByPhone(phone);
+        if (resolvedEmail == null) {
+          rethrow;
+        }
+
+        resolvedFromPhoneRecord = true;
+        email = resolvedEmail;
+        cred = await _auth.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      }
 
       final firebaseUser = cred.user;
       if (firebaseUser == null) return null;
@@ -422,27 +729,30 @@ class FirebaseServices {
         'profile_image': normalizedProfileImage,
       });
     } on FirebaseAuthException catch (e) {
-      // Firebase returns 'invalid-credential' for both user-not-found and wrong-password
-      if (e.code == 'invalid-credential') {
-        // Check if phone exists in database
-        final query = await _firebaseFirestore
-            .collection('users')
-            .where('phone', isEqualTo: phone)
-            .limit(1)
-            .get();
+      final errorCode = e.code.toLowerCase();
 
-        if (query.docs.isEmpty) {
-          throw FirebaseAuthException(
-            code: 'user-not-found',
-            message: 'Phone is not registered',
-          );
-        } else {
-          throw FirebaseAuthException(
-            code: 'wrong-password',
-            message: 'Incorrect password',
-          );
-        }
+      // Keep login validation based on Firebase Auth only.
+      if (errorCode == 'wrong-password') {
+        throw FirebaseAuthException(
+          code: 'wrong-password',
+          message: 'Incorrect password',
+        );
       }
+
+      if (resolvedFromPhoneRecord && errorCode == 'invalid-credential') {
+        throw FirebaseAuthException(
+          code: 'wrong-password',
+          message: 'Incorrect password',
+        );
+      }
+
+      if (errorCode == 'invalid-credential' || errorCode == 'user-not-found') {
+        throw FirebaseAuthException(
+          code: 'user-not-found',
+          message: 'Phone is not registered',
+        );
+      }
+
       rethrow;
     }
   }

@@ -21,6 +21,8 @@ class CreateEvent extends StatefulWidget {
 }
 
 class _CreateEventState extends State<CreateEvent> {
+  static const String _eventTermsVersion = 'event_tnc_v1_2026-04';
+
   final GlobalKey<FormState> _formKey = GlobalKey();
   final TextEditingController dateController = TextEditingController();
   final TextEditingController timeController = TextEditingController();
@@ -34,6 +36,81 @@ class _CreateEventState extends State<CreateEvent> {
   String? timeError;
   int? userId;
   bool isCreatingEvent = false;
+  bool hasAcceptedTerms = false;
+
+  Future<void> _showTermsAndConditions() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.78,
+          decoration: const BoxDecoration(
+            color: Color(0xFFF4EEFF),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFB8B0C9),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Terms and Conditions - Event Organizer',
+                    style: styleText().copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Text(
+                        '1. Committee members must ensure that all event content and activities comply with applicable laws and regulations.\n\n'
+                        '2. Connext, as the application provider, is not liable for any legal violations committed by committee members through events they create.\n\n'
+                        '3. Attendee phone numbers are confidential personal data and may only be used for event operational purposes.\n\n'
+                        '4. Committee members are strictly prohibited from sharing attendee phone numbers with third parties for any purpose outside the event.\n\n'
+                        '5. If any phone number disclosure or misuse of attendee data occurs, full responsibility rests with the respective committee member.\n\n'
+                        '6. Connext reserves the right to impose sanctions, including restricting or banning committee access, if a violation of these terms is proven.',
+                        style: styleText().copyWith(height: 1.5, fontSize: 13),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0XFF424874),
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.check),
+                      label: const Text('I Understand'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void validateTime() {
     if (selectedDate == null || selectedTime == null) return;
 
@@ -86,6 +163,15 @@ class _CreateEventState extends State<CreateEvent> {
     validateTime();
     if (!_formKey.currentState!.validate()) return;
     if (timeError != null) return;
+    if (!hasAcceptedTerms) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You must agree to Terms and Conditions first.'),
+        ),
+      );
+      return;
+    }
 
     setState(() {
       isCreatingEvent = true;
@@ -154,6 +240,9 @@ class _CreateEventState extends State<CreateEvent> {
         eventDate: selectedDate!.toIso8601String(),
         eventTime:
             '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
+        termsAccepted: true,
+        termsAcceptedAt: DateTime.now().toIso8601String(),
+        termsVersion: _eventTermsVersion,
       );
 
       await EventController.insertEvent(event);
@@ -381,6 +470,67 @@ class _CreateEventState extends State<CreateEvent> {
                                 horizontal: 8,
                               ),
                             ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.75),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: hasAcceptedTerms
+                                ? const Color(0xFF424874)
+                                : const Color(0xFFD0C6E6),
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Checkbox(
+                                    value: hasAcceptedTerms,
+                                    activeColor: const Color(0XFF424874),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        hasAcceptedTerms = value ?? false;
+                                      });
+                                    },
+                                  ),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 10),
+                                      child: Text(
+                                        'I agree that event content must comply with applicable laws, and attendee phone numbers are confidential and cannot be shared.',
+                                        style: styleText().copyWith(
+                                          fontSize: 12,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton.icon(
+                                  onPressed: _showTermsAndConditions,
+                                  icon: const Icon(Icons.gavel_outlined),
+                                  label: const Text(
+                                    'View full Terms and Conditions',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
 
                       const SizedBox(height: 30),

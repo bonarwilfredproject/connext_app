@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/services/firebase_services.dart';
@@ -12,6 +14,20 @@ import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+class _PhoneVerificationState {
+  final String? verificationId;
+  final PhoneAuthCredential? autoCredential;
+
+  const _PhoneVerificationState({this.verificationId, this.autoCredential});
+}
+
+class _CountryDialOption {
+  final String label;
+  final String dialCode;
+
+  const _CountryDialOption({required this.label, required this.dialCode});
+}
+
 class DaftarPage extends StatefulWidget {
   const DaftarPage({super.key});
 
@@ -20,14 +36,335 @@ class DaftarPage extends StatefulWidget {
 }
 
 class _DaftarPageState extends State<DaftarPage> {
+  static const List<_CountryDialOption> _countryOptions = [
+    _CountryDialOption(label: 'Indonesia', dialCode: '+62'),
+    _CountryDialOption(label: 'Singapore', dialCode: '+65'),
+    _CountryDialOption(label: 'Malaysia', dialCode: '+60'),
+    _CountryDialOption(label: 'Thailand', dialCode: '+66'),
+    _CountryDialOption(label: 'Philippines', dialCode: '+63'),
+    _CountryDialOption(label: 'United States', dialCode: '+1'),
+    _CountryDialOption(label: 'United Kingdom', dialCode: '+44'),
+    _CountryDialOption(label: 'Australia', dialCode: '+61'),
+    _CountryDialOption(label: 'India', dialCode: '+91'),
+  ];
+
   String role = "Committee";
   bool isVisible = true;
   bool isLoadingSignUp = false;
+  DateTime? _otpBlockedUntil;
+  String? _pendingOtpTargetPhone;
+  String? _pendingOtpVerificationId;
+  DateTime? _pendingOtpExpiresAt;
+  late _CountryDialOption _selectedCountry;
   final GlobalKey<FormState> _formKey = GlobalKey();
   TextEditingController namaController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   TextEditingController confirmPasswordController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCountry = _countryOptions.first;
+  }
+
+  @override
+  void dispose() {
+    namaController.dispose();
+    phoneController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  String _friendlyAuthError(FirebaseAuthException e) {
+    final code = e.code.toLowerCase();
+    final message = (e.message ?? '').toLowerCase();
+
+    if (code == 'otp-timeout' ||
+        message.contains('timed out') ||
+        message.contains('timeout')) {
+      return 'OTP request timed out. Please tap Sign Up again.';
+    }
+
+    if (code == 'too-many-requests' ||
+        message.contains('unusual activity') ||
+        message.contains('blocked all requests')) {
+      return 'This device is temporarily blocked due to too many OTP attempts. Please try again in 30-60 minutes and switch your internet connection.';
+    }
+
+    if (code == 'captcha-check-failed' || message.contains('recaptcha')) {
+      return 'reCAPTCHA verification failed. Please ensure a stable connection, active Google Play Services, and try again.';
+    }
+
+    if (code == 'invalid-app-credential' ||
+        message.contains('missing a valid app identifier') ||
+        message.contains('play integrity')) {
+      return 'Android app verification with Firebase failed. Ensure debug SHA-1 and SHA-256 are added in Firebase Console.';
+    }
+
+    return e.message ?? 'Failed to register user';
+  }
+
+  Future<_PhoneVerificationState> _requestOtpVerification(
+    String e164Phone,
+  ) async {
+    final completer = Completer<_PhoneVerificationState>();
+    Timer? failSafeTimer;
+
+    void completeWithState(_PhoneVerificationState state) {
+      if (completer.isCompleted) return;
+      failSafeTimer?.cancel();
+      completer.complete(state);
+    }
+
+    void completeWithError(FirebaseAuthException exception) {
+      if (completer.isCompleted) return;
+      failSafeTimer?.cancel();
+      completer.completeError(exception);
+    }
+
+    failSafeTimer = Timer(const Duration(seconds: 75), () {
+      completeWithError(
+        FirebaseAuthException(
+          code: 'otp-timeout',
+          message: 'OTP request timed out. Please try again.',
+        ),
+      );
+    });
+
+    await FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: e164Phone,
+      timeout: const Duration(seconds: 60),
+      verificationCompleted: (credential) {
+        completeWithState(_PhoneVerificationState(autoCredential: credential));
+      },
+      verificationFailed: (exception) {
+        completeWithError(exception);
+      },
+      codeSent: (verificationId, _) {
+        completeWithState(
+          _PhoneVerificationState(verificationId: verificationId),
+        );
+      },
+      codeAutoRetrievalTimeout: (verificationId) {
+        completeWithState(
+          _PhoneVerificationState(verificationId: verificationId),
+        );
+      },
+    );
+
+    return completer.future;
+  }
+
+  Future<String?> _showOtpDialog(String phoneNumber) async {
+    String enteredOtp = '';
+
+    final smsCode = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Verify Phone Number', style: styleText()),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'OTP code has been sent to $phoneNumber',
+                style: styleText(),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                onChanged: (value) {
+                  enteredOtp = value.trim();
+                },
+                decoration: decorationConstant(
+                  hintText: 'Input 6-digit OTP code',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final code = enteredOtp;
+                if (!RegExp(r'^\d{6}$').hasMatch(code)) {
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    const SnackBar(content: Text('OTP code must be 6 digits')),
+                  );
+                  return;
+                }
+
+                Navigator.pop(context, code);
+              },
+              child: const Text('Verify'),
+            ),
+          ],
+        );
+      },
+    );
+
+    return smsCode;
+  }
+
+  Future<void> _registerWithOtp() async {
+    if (isLoadingSignUp) return;
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      isLoadingSignUp = true;
+    });
+
+    try {
+      final rawPhone = phoneController.text.trim();
+
+      final e164Phone = FirebaseServices.normalizePhoneToE164(
+        rawPhone,
+        countryDialCode: _selectedCountry.dialCode,
+      );
+
+      final hasReusableSession =
+          _pendingOtpTargetPhone == e164Phone &&
+          (_pendingOtpVerificationId ?? '').isNotEmpty &&
+          _pendingOtpExpiresAt != null &&
+          DateTime.now().isBefore(_pendingOtpExpiresAt!);
+
+      final now = DateTime.now();
+      if (!hasReusableSession &&
+          _otpBlockedUntil != null &&
+          now.isBefore(_otpBlockedUntil!)) {
+        final wait = _otpBlockedUntil!.difference(now).inMinutes + 1;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'OTP is temporarily limited. Please try again in about $wait minutes.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            hasReusableSession
+                ? 'Using previously sent OTP for $e164Phone...'
+                : 'Sending OTP to $e164Phone...',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      final verification = hasReusableSession
+          ? _PhoneVerificationState(verificationId: _pendingOtpVerificationId)
+          : await _requestOtpVerification(e164Phone);
+
+      PhoneAuthCredential? credential = verification.autoCredential;
+
+      if (credential == null) {
+        final verificationId = verification.verificationId;
+        if (verificationId == null || verificationId.isEmpty) {
+          throw FirebaseAuthException(
+            code: 'otp-missing-verification-id',
+            message: 'Failed to get OTP verification session',
+          );
+        }
+
+        final smsCode = await _showOtpDialog(e164Phone);
+        if (smsCode == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('OTP verification canceled.'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+          return;
+        }
+
+        credential = PhoneAuthProvider.credential(
+          verificationId: verificationId,
+          smsCode: smsCode,
+        );
+      }
+
+      await FirebaseServices.registerUserWithPhoneCredential(
+        user: UserModel(
+          nama: namaController.text.trim(),
+          phone: e164Phone,
+          password: passwordController.text,
+          role: role,
+        ),
+        credential: credential,
+      );
+
+      _pendingOtpTargetPhone = null;
+      _pendingOtpVerificationId = null;
+      _pendingOtpExpiresAt = null;
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Registration success. Please login.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LogInPage()),
+      );
+    } on FirebaseAuthException catch (e) {
+      final friendlyMessage = _friendlyAuthError(e);
+      final errorCode = e.code.toLowerCase();
+      final errorMessage = (e.message ?? '').toLowerCase();
+
+      if (errorCode == 'session-expired') {
+        _pendingOtpTargetPhone = null;
+        _pendingOtpVerificationId = null;
+        _pendingOtpExpiresAt = null;
+      }
+
+      if (errorCode == 'too-many-requests' ||
+          errorMessage.contains('unusual activity') ||
+          errorMessage.contains('blocked all requests')) {
+        _otpBlockedUntil = DateTime.now().add(const Duration(minutes: 30));
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(friendlyMessage),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to register user'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoadingSignUp = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -106,31 +443,87 @@ class _DaftarPageState extends State<DaftarPage> {
                             ),
                           ],
                         ),
-                        TextFormField(
-                          keyboardType: TextInputType.numberWithOptions(),
-                          controller: phoneController,
-                          validator: (value) {
-                            final phone = (value ?? '').trim();
-                            if (phone.isEmpty) {
-                              return "Phone number can't be empty";
-                            }
-                            if (!RegExp(r'^\d+$').hasMatch(phone)) {
-                              return "Phone number can only be numbers";
-                            }
-                            if (phone.length < 9) {
-                              return "Phone number must be at least 9 digits";
-                            }
-                            if (phone.length > 15) {
-                              return "Phone number can't be more than 15 digits";
-                            }
-                            return null;
-                          },
-                          style: TextStyle(
-                            color: AppTheme.secondary,
-                            fontSize: 12,
-                          ),
-                          decoration: decorationConstant(
-                            hintText: "Please input your phone number",
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 4,
+                              child: DropdownButtonFormField<_CountryDialOption>(
+                                value: _selectedCountry,
+                                isExpanded: true,
+                                decoration: decorationConstant(
+                                  hintText: 'Country',
+                                ),
+                                items: _countryOptions.map((option) {
+                                  return DropdownMenuItem<_CountryDialOption>(
+                                    value: option,
+                                    child: Text(
+                                      '${option.label} (${option.dialCode})',
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: AppTheme.secondary,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value == null) return;
+                                  setState(() {
+                                    _selectedCountry = value;
+                                    _pendingOtpTargetPhone = null;
+                                    _pendingOtpVerificationId = null;
+                                    _pendingOtpExpiresAt = null;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 6,
+                              child: TextFormField(
+                                keyboardType: TextInputType.number,
+                                controller: phoneController,
+                                onChanged: (_) {
+                                  _pendingOtpTargetPhone = null;
+                                  _pendingOtpVerificationId = null;
+                                  _pendingOtpExpiresAt = null;
+                                },
+                                validator: (value) {
+                                  final phone = (value ?? '').trim();
+                                  if (phone.isEmpty) {
+                                    return "Phone number can't be empty";
+                                  }
+                                  if (!RegExp(r'^\d+$').hasMatch(phone)) {
+                                    return "Phone number must contain digits only";
+                                  }
+                                  if (phone.length < 4) {
+                                    return "Phone number is too short";
+                                  }
+                                  if (phone.length > 15) {
+                                    return "Phone number is too long";
+                                  }
+                                  return null;
+                                },
+                                style: TextStyle(
+                                  color: AppTheme.secondary,
+                                  fontSize: 12,
+                                ),
+                                decoration: decorationConstant(
+                                  hintText: 'Local phone number',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Enter your local number without country code. Example: 8123456789',
+                            style: TextStyle(
+                              color: AppTheme.secondary.withOpacity(0.7),
+                              fontSize: 11,
+                            ),
                           ),
                         ),
                         SizedBox(height: 12),
@@ -284,75 +677,7 @@ class _DaftarPageState extends State<DaftarPage> {
                           height: 54,
                           isLoading: isLoadingSignUp,
                           text: "Sign Up",
-                          onPressed: () async {
-                            if (isLoadingSignUp) return;
-
-                            if (_formKey.currentState!.validate()) {
-                              setState(() {
-                                isLoadingSignUp = true;
-                              });
-
-                              try {
-                                bool exists =
-                                    await FirebaseServices.isPhoneExists(
-                                      phoneController.text.trim(),
-                                    );
-
-                                if (exists) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        "Phone number is already registered",
-                                      ),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                  return;
-                                }
-
-                                await FirebaseServices.registerUser(
-                                  user: UserModel(
-                                    nama: namaController.text.trim(),
-                                    phone: phoneController.text.trim(),
-                                    password: passwordController.text,
-                                    role: role,
-                                  ),
-                                );
-
-                                if (!mounted) return;
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const LogInPage(),
-                                  ),
-                                );
-                              } on FirebaseAuthException catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      e.message ?? "Failed to register user",
-                                    ),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                                return;
-                              } catch (_) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Failed to register user"),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                                return;
-                              } finally {
-                                if (mounted) {
-                                  setState(() {
-                                    isLoadingSignUp = false;
-                                  });
-                                }
-                              }
-                            }
-                          },
+                          onPressed: _registerWithOtp,
                         ),
                       ],
                     ),

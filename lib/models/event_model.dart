@@ -15,6 +15,9 @@ class EventModel {
   final String createdAt;
   final String? eventDate;
   final String? eventTime;
+  final bool termsAccepted;
+  final String? termsAcceptedAt;
+  final String? termsVersion;
 
   EventModel({
     this.id,
@@ -30,6 +33,9 @@ class EventModel {
     required this.createdAt,
     this.eventDate,
     this.eventTime,
+    this.termsAccepted = false,
+    this.termsAcceptedAt,
+    this.termsVersion,
   });
 
   Map<String, dynamic> toMap() {
@@ -42,7 +48,18 @@ class EventModel {
       'created_at': createdAt,
       'event_date': eventDate,
       'event_time': eventTime,
+      'terms_accepted': termsAccepted,
     };
+
+    final safeTermsAcceptedAt = termsAcceptedAt?.trim();
+    if (safeTermsAcceptedAt != null && safeTermsAcceptedAt.isNotEmpty) {
+      map['terms_accepted_at'] = safeTermsAcceptedAt;
+    }
+
+    final safeTermsVersion = termsVersion?.trim();
+    if (safeTermsVersion != null && safeTermsVersion.isNotEmpty) {
+      map['terms_version'] = safeTermsVersion;
+    }
 
     final safeLocationName = locationName?.trim();
     if (safeLocationName != null && safeLocationName.isNotEmpty) {
@@ -79,6 +96,18 @@ class EventModel {
     return int.tryParse(value.toString()) ?? fallback;
   }
 
+  static bool _toBool(dynamic value, {bool fallback = false}) {
+    if (value == null) return fallback;
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+
+    final text = value.toString().trim().toLowerCase();
+    if (text == 'true' || text == '1' || text == 'yes') return true;
+    if (text == 'false' || text == '0' || text == 'no') return false;
+
+    return fallback;
+  }
+
   factory EventModel.fromMap(Map<String, dynamic> map) {
     final createdByRaw =
         map['created_by'] ?? map['createdBy'] ?? map['creator_id'];
@@ -107,6 +136,13 @@ class EventModel {
       createdAt: map['created_at'] ?? "",
       eventDate: map['event_date'],
       eventTime: map['event_time'],
+      termsAccepted: _toBool(
+        map['terms_accepted'] ?? map['termsAccepted'],
+        fallback: false,
+      ),
+      termsAcceptedAt: (map['terms_accepted_at'] ?? map['termsAcceptedAt'])
+          ?.toString(),
+      termsVersion: (map['terms_version'] ?? map['termsVersion'])?.toString(),
     );
   }
 

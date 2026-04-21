@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
 import 'package:connext_app/pages/profile_page/profile_page.dart';
+import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/services/event_controller.dart';
 import 'package:connext_app/services/event_participant_controller.dart';
 import 'package:connext_app/services/firebase_services.dart';
@@ -52,6 +53,7 @@ class _HomePageState extends State<HomePage> {
   /// EVENT ATTENDEE
   List<EventModel> attendeeEvents = [];
   List<int> joinedEventIds = [];
+  Set<int> checkedInEventIds = <int>{};
   final Set<int> _joiningEventIds = <int>{};
   bool isLoadingAttendee = true;
   int _attendeeLoadVersion = 0;
@@ -237,6 +239,7 @@ class _HomePageState extends State<HomePage> {
     if (leftEventId != null) {
       setState(() {
         joinedEventIds.remove(leftEventId);
+        checkedInEventIds.remove(leftEventId);
 
         final currentCount = eventParticipantCount[leftEventId] ?? 0;
         eventParticipantCount[leftEventId] = currentCount > 0
@@ -363,6 +366,60 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildStatusBadge({
+    required String label,
+    required Color color,
+    FontWeight fontWeight = FontWeight.w500,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: fontWeight,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildJoiningBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppTheme.secondary,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 10,
+            height: 10,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+          SizedBox(width: 6),
+          Text(
+            "JOINING...",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> loadAttendeeEvents() async {
     if (!mounted) return;
 
@@ -429,13 +486,67 @@ class _HomePageState extends State<HomePage> {
         newJoinedIds = previousJoinedIds;
       }
 
-      final sortedEvents = List<EventModel>.from(events)
+      final previousCheckedInIds = Set<int>.from(checkedInEventIds);
+      final newCheckedInIds = <int>{};
+
+      if (userId > 0 && newJoinedIds.isNotEmpty) {
+        final checkinChecks = await Future.wait(
+          newJoinedIds.map((eventId) async {
+            try {
+              final participant = await CheckinController.getParticipant(
+                userId,
+                eventId,
+              );
+              final checkinTime = participant?['checkin_time']?.toString();
+              final checkedIn =
+                  checkinTime != null && checkinTime.trim().isNotEmpty;
+              return (eventId, checkedIn, true);
+            } catch (_) {
+              return (eventId, false, false);
+            }
+          }),
+        );
+
+        for (final result in checkinChecks) {
+          final eventId = result.$1;
+          final checkedIn = result.$2;
+          final resolved = result.$3;
+
+          if (checkedIn) {
+            newCheckedInIds.add(eventId);
+            continue;
+          }
+
+          if (!resolved && previousCheckedInIds.contains(eventId)) {
+            // Keep previous state if latest checkin status fails to resolve.
+            newCheckedInIds.add(eventId);
+          }
+        }
+      }
+
+      final filteredEvents = events
+          .where((event) {
+            final expired = isEventPassed(event);
+            if (!expired) return true;
+
+            final eventId = event.id;
+            if (eventId == null) return false;
+
+            // Keep expired events only if attendee has joined and already checked in.
+            final joined = newJoinedIds.contains(eventId);
+            final checkedIn = newCheckedInIds.contains(eventId);
+            return joined && checkedIn;
+          })
+          .toList(growable: false);
+
+      final sortedEvents = List<EventModel>.from(filteredEvents)
         ..sort((a, b) => _eventSortKey(b).compareTo(_eventSortKey(a)));
 
       if (!mounted || loadVersion != _attendeeLoadVersion) return;
       setState(() {
         attendeeEvents = sortedEvents;
         joinedEventIds = newJoinedIds;
+        checkedInEventIds = newCheckedInIds;
         isLoadingAttendee = false;
       });
 
@@ -445,6 +556,7 @@ class _HomePageState extends State<HomePage> {
       setState(() {
         if (attendeeEvents.isEmpty) {
           joinedEventIds = [];
+          checkedInEventIds = <int>{};
           eventParticipantCount = {};
           eventCreators = {};
         }
@@ -888,9 +1000,35 @@ class _HomePageState extends State<HomePage> {
                                   final joined =
                                       eventId != null &&
                                       joinedEventIds.contains(eventId);
+                                  final checkedIn =
+                                      eventId != null &&
+                                      checkedInEventIds.contains(eventId);
                                   final isJoiningEvent =
                                       eventId != null &&
                                       _joiningEventIds.contains(eventId);
+                                  final isExpired = isEventPassed(event);
+                                  final showJoinedBadge =
+                                      joined && !checkedIn && !isJoiningEvent;
+                                  final statusBadges = <Widget>[
+                                    if (isJoiningEvent) _buildJoiningBadge(),
+                                    if (showJoinedBadge)
+                                      _buildStatusBadge(
+                                        label: "JOINED",
+                                        color: Colors.green,
+                                      ),
+                                    if (checkedIn)
+                                      _buildStatusBadge(
+                                        label: "CHECKED IN",
+                                        color: const Color(0xFF2F6FED),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    if (isExpired)
+                                      _buildStatusBadge(
+                                        label: "EXPIRED",
+                                        color: Colors.grey,
+                                      ),
+                                  ];
+                                  final hasAnyBadge = statusBadges.isNotEmpty;
 
                                   return AppListCard(
                                     child: InkWell(
@@ -1174,114 +1312,71 @@ class _HomePageState extends State<HomePage> {
 
                                                 /// TITLE EVENT
                                                 Expanded(
-                                                  child: Text(
-                                                    event.title,
-                                                    style: styleText().copyWith(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    maxLines: 2,
-                                                  ),
-                                                ),
-
-                                                /// STATUS JOIN
-                                                if (isJoiningEvent) ...[
-                                                  const SizedBox(width: 8),
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 4,
+                                                  child: Row(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          event.title,
+                                                          style: styleText()
+                                                              .copyWith(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          maxLines: 2,
                                                         ),
-                                                    decoration: BoxDecoration(
-                                                      color: AppTheme.secondary,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            12,
-                                                          ),
-                                                    ),
-                                                    child: const Row(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        SizedBox(
-                                                          width: 10,
-                                                          height: 10,
-                                                          child: CircularProgressIndicator(
-                                                            strokeWidth: 2,
-                                                            valueColor:
-                                                                AlwaysStoppedAnimation<
-                                                                  Color
-                                                                >(Colors.white),
-                                                          ),
+                                                      ),
+                                                      if (hasAnyBadge) ...[
+                                                        const SizedBox(
+                                                          width: 8,
                                                         ),
-                                                        SizedBox(width: 6),
-                                                        Text(
-                                                          "JOINING...",
-                                                          style: TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 11,
-                                                            fontWeight:
-                                                                FontWeight.bold,
+                                                        Flexible(
+                                                          child: Align(
+                                                            alignment: Alignment
+                                                                .topRight,
+                                                            child: SingleChildScrollView(
+                                                              scrollDirection:
+                                                                  Axis.horizontal,
+                                                              reverse: true,
+                                                              child: Row(
+                                                                mainAxisSize:
+                                                                    MainAxisSize
+                                                                        .min,
+                                                                children: [
+                                                                  for (
+                                                                    int i = 0;
+                                                                    i <
+                                                                        statusBadges
+                                                                            .length;
+                                                                    i++
+                                                                  ) ...[
+                                                                    statusBadges[i],
+                                                                    if (i !=
+                                                                        statusBadges.length -
+                                                                            1)
+                                                                      const SizedBox(
+                                                                        width:
+                                                                            8,
+                                                                      ),
+                                                                  ],
+                                                                ],
+                                                              ),
+                                                            ),
                                                           ),
                                                         ),
                                                       ],
-                                                    ),
+                                                    ],
                                                   ),
-                                                ] else if (joined) ...[
-                                                  const SizedBox(width: 8),
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 4,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.green,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            12,
-                                                          ),
-                                                    ),
-                                                    child: const Text(
-                                                      "JOINED",
-                                                      style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                                if (isEventPassed(event)) ...[
-                                                  const SizedBox(width: 8),
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 4,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.grey,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            12,
-                                                          ),
-                                                    ),
-                                                    child: const Text(
-                                                      "EXPIRED",
-                                                      style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 12,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
+                                                ),
                                               ],
                                             ),
 
-                                            const SizedBox(height: 8),
+                                            const SizedBox(height: 10),
 
                                             /// LOCATION
                                             buildRow(

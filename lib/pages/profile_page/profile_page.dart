@@ -13,7 +13,22 @@ import 'package:connext_app/widgets/profile_avatar.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:flutter/material.dart';
 import 'package:connext_app/models/user_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
+
+class _CountryDialOption {
+  final String label;
+  final String dialCode;
+
+  const _CountryDialOption({required this.label, required this.dialCode});
+}
+
+class _PhoneVerificationState {
+  final String? verificationId;
+  final PhoneAuthCredential? autoCredential;
+
+  const _PhoneVerificationState({this.verificationId, this.autoCredential});
+}
 
 class ProfilePage extends StatefulWidget {
   final String role;
@@ -24,6 +39,18 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  static const List<_CountryDialOption> _countryOptions = [
+    _CountryDialOption(label: 'Indonesia', dialCode: '+62'),
+    _CountryDialOption(label: 'Singapore', dialCode: '+65'),
+    _CountryDialOption(label: 'Malaysia', dialCode: '+60'),
+    _CountryDialOption(label: 'Thailand', dialCode: '+66'),
+    _CountryDialOption(label: 'Philippines', dialCode: '+63'),
+    _CountryDialOption(label: 'United States', dialCode: '+1'),
+    _CountryDialOption(label: 'United Kingdom', dialCode: '+44'),
+    _CountryDialOption(label: 'Australia', dialCode: '+61'),
+    _CountryDialOption(label: 'India', dialCode: '+91'),
+  ];
+
   static const Duration _roleChangeTimeout = Duration(seconds: 8);
   static const Duration _profileSaveTimeout = Duration(seconds: 25);
   String? phoneError;
@@ -37,12 +64,189 @@ class _ProfilePageState extends State<ProfilePage> {
   String? tempImageName;
   final ImagePicker picker = ImagePicker();
   String? role;
+  late _CountryDialOption _selectedCountry;
+  String? _pendingOtpTargetPhone;
+  String? _pendingOtpVerificationId;
+  DateTime? _pendingOtpExpiresAt;
 
   @override
   void initState() {
     super.initState();
     role = widget.role;
+    _selectedCountry = _countryOptions.first;
     loadRole();
+  }
+
+  void _applyStoredPhoneToForm(String storedPhone) {
+    final raw = storedPhone.trim();
+    if (raw.isEmpty) {
+      _selectedCountry = _countryOptions.first;
+      phoneController.clear();
+      return;
+    }
+
+    var digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (raw.startsWith('00') && digits.length > 2) {
+      digits = digits.substring(2);
+    }
+
+    final sorted = [..._countryOptions]
+      ..sort((a, b) => b.dialCode.length.compareTo(a.dialCode.length));
+
+    for (final option in sorted) {
+      final dialDigits = option.dialCode.replaceAll(RegExp(r'[^0-9]'), '');
+      if (digits.startsWith(dialDigits) && digits.length > dialDigits.length) {
+        _selectedCountry = option;
+        phoneController.text = digits.substring(dialDigits.length);
+        return;
+      }
+    }
+
+    _selectedCountry = _countryOptions.first;
+    phoneController.text = digits;
+  }
+
+  String _friendlyPhoneUpdateError(FirebaseAuthException e) {
+    final code = e.code.toLowerCase();
+    final message = (e.message ?? '').toLowerCase();
+
+    if (code == 'otp-timeout' ||
+        message.contains('timed out') ||
+        message.contains('timeout')) {
+      return 'OTP request timed out. Please tap Save again.';
+    }
+
+    if (code == 'phone-already-registered' ||
+        code == 'credential-already-in-use' ||
+        code == 'phone-number-already-exists') {
+      return 'Phone number is already used';
+    }
+
+    if (code == 'invalid-verification-code') {
+      return 'OTP code is invalid';
+    }
+
+    if (code == 'session-expired') {
+      return 'OTP session expired. Please request a new OTP';
+    }
+
+    if (code == 'too-many-requests' ||
+        message.contains('blocked all requests')) {
+      return 'OTP is temporarily blocked. Please try again later';
+    }
+
+    return e.message ?? 'Failed to verify phone number';
+  }
+
+  Future<_PhoneVerificationState> _requestOtpVerification(
+    String e164Phone,
+  ) async {
+    final completer = Completer<_PhoneVerificationState>();
+    Timer? failSafeTimer;
+
+    void completeWithState(_PhoneVerificationState state) {
+      if (completer.isCompleted) return;
+      failSafeTimer?.cancel();
+      completer.complete(state);
+    }
+
+    void completeWithError(FirebaseAuthException exception) {
+      if (completer.isCompleted) return;
+      failSafeTimer?.cancel();
+      completer.completeError(exception);
+    }
+
+    failSafeTimer = Timer(const Duration(seconds: 75), () {
+      completeWithError(
+        FirebaseAuthException(
+          code: 'otp-timeout',
+          message: 'OTP request timed out. Please try again.',
+        ),
+      );
+    });
+
+    await FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: e164Phone,
+      timeout: const Duration(seconds: 60),
+      verificationCompleted: (credential) {
+        completeWithState(_PhoneVerificationState(autoCredential: credential));
+      },
+      verificationFailed: (exception) {
+        completeWithError(exception);
+      },
+      codeSent: (verificationId, _) {
+        _pendingOtpTargetPhone = e164Phone;
+        _pendingOtpVerificationId = verificationId;
+        _pendingOtpExpiresAt = DateTime.now().add(const Duration(minutes: 10));
+        completeWithState(
+          _PhoneVerificationState(verificationId: verificationId),
+        );
+      },
+      codeAutoRetrievalTimeout: (verificationId) {
+        _pendingOtpTargetPhone = e164Phone;
+        _pendingOtpVerificationId = verificationId;
+        _pendingOtpExpiresAt = DateTime.now().add(const Duration(minutes: 10));
+        completeWithState(
+          _PhoneVerificationState(verificationId: verificationId),
+        );
+      },
+    );
+
+    return completer.future;
+  }
+
+  Future<String?> _showOtpDialog(String phoneNumber) async {
+    String enteredOtp = '';
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Verify New Phone Number', style: styleText()),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'OTP code has been sent to $phoneNumber',
+                style: styleText(),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                onChanged: (value) {
+                  enteredOtp = value.trim();
+                },
+                decoration: decorationConstant(
+                  hintText: 'Input 6-digit OTP code',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (!RegExp(r'^\d{6}$').hasMatch(enteredOtp)) {
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    const SnackBar(content: Text('OTP code must be 6 digits')),
+                  );
+                  return;
+                }
+
+                Navigator.pop(context, enteredOtp);
+              },
+              child: const Text('Verify'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -115,7 +319,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void showEditProfileSheet(UserModel user) {
     nameController.text = user.nama;
-    phoneController.text = user.phone;
+    _applyStoredPhoneToForm(user.phone);
+    phoneError = null;
     bool isSavingProfile = false;
     bool isSheetClosed = false;
 
@@ -222,43 +427,110 @@ class _ProfilePageState extends State<ProfilePage> {
                               const SizedBox(height: 16),
 
                               /// PHONE
-                              TextFormField(
-                                style: TextStyle(
-                                  color: AppTheme.secondary,
-                                  fontSize: 14,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    flex: 4,
+                                    child:
+                                        DropdownButtonFormField<
+                                          _CountryDialOption
+                                        >(
+                                          value: _selectedCountry,
+                                          isExpanded: true,
+                                          decoration: decorationConstant(
+                                            labelText: "Phone Number",
+                                            hintText: 'Country',
+                                          ),
+                                          items: _countryOptions.map((option) {
+                                            return DropdownMenuItem<
+                                              _CountryDialOption
+                                            >(
+                                              value: option,
+                                              child: Text(
+                                                '${option.label} (${option.dialCode})',
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  color: AppTheme.secondary,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                          onChanged: (value) {
+                                            if (value == null) return;
+                                            setModalState(() {
+                                              _selectedCountry = value;
+                                              phoneError = null;
+                                              _pendingOtpTargetPhone = null;
+                                              _pendingOtpVerificationId = null;
+                                              _pendingOtpExpiresAt = null;
+                                            });
+                                          },
+                                        ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    flex: 6,
+                                    child: TextFormField(
+                                      style: TextStyle(
+                                        color: AppTheme.secondary,
+                                        fontSize: 14,
+                                      ),
+                                      controller: phoneController,
+                                      keyboardType: TextInputType.number,
+                                      decoration: decorationConstant(
+                                        hintText: 'Local phone number',
+                                      ),
+                                      validator: (value) {
+                                        final phone = (value ?? '').trim();
+
+                                        if (phone.isEmpty) {
+                                          return "Phone number must be filled";
+                                        }
+
+                                        if (!RegExp(r'^\d+$').hasMatch(phone)) {
+                                          return "Phone number must contain digits only";
+                                        }
+
+                                        if (phone.length < 4) {
+                                          return "Phone number is too short";
+                                        }
+
+                                        if (phone.length > 15) {
+                                          return "Phone number is too long";
+                                        }
+
+                                        if (phoneError != null) {
+                                          return phoneError;
+                                        }
+
+                                        return null;
+                                      },
+                                      onChanged: (value) {
+                                        if (phoneError != null) {
+                                          setModalState(() {
+                                            phoneError = null;
+                                          });
+                                        }
+
+                                        _pendingOtpTargetPhone = null;
+                                        _pendingOtpVerificationId = null;
+                                        _pendingOtpExpiresAt = null;
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Enter your local number without country code. Example: 8123456789',
+                                  style: TextStyle(
+                                    color: AppTheme.secondary.withOpacity(0.7),
+                                    fontSize: 11,
+                                  ),
                                 ),
-                                controller: phoneController,
-                                keyboardType: TextInputType.number,
-                                decoration: decorationConstant(
-                                  labelText: "Phone Number",
-                                  hintText: phoneController.text,
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return "Phone number must be filled";
-                                  }
-
-                                  if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                                    return "Phone number must be numbers";
-                                  }
-
-                                  if (value.length < 10) {
-                                    return "Phone number is not valid";
-                                  }
-
-                                  if (phoneError != null) {
-                                    return phoneError;
-                                  }
-
-                                  return null;
-                                },
-                                onChanged: (value) {
-                                  if (phoneError != null) {
-                                    setModalState(() {
-                                      phoneError = null;
-                                    });
-                                  }
-                                },
                               ),
 
                               const SizedBox(height: 24),
@@ -272,6 +544,13 @@ class _ProfilePageState extends State<ProfilePage> {
                                 isLoading: isSavingProfile,
                                 onPressed: () async {
                                   if (isSavingProfile) return;
+
+                                  if (phoneError != null) {
+                                    setModalState(() {
+                                      phoneError = null;
+                                    });
+                                  }
+
                                   if (!_formKey.currentState!.validate())
                                     return;
 
@@ -281,24 +560,107 @@ class _ProfilePageState extends State<ProfilePage> {
 
                                   try {
                                     String newName = nameController.text.trim();
-                                    String newPhone = phoneController.text
+                                    final localPhone = phoneController.text
                                         .trim();
 
-                                    if (newPhone != user.phone) {
-                                      bool exists =
-                                          await FirebaseServices.isPhoneExists(
-                                            newPhone,
+                                    final newPhone =
+                                        FirebaseServices.normalizePhoneToE164(
+                                          localPhone,
+                                          countryDialCode:
+                                              _selectedCountry.dialCode,
+                                        );
+
+                                    final currentPhone =
+                                        FirebaseServices.normalizePhoneToE164(
+                                          user.phone,
+                                        );
+
+                                    if (newPhone != currentPhone) {
+                                      final hasReusableSession =
+                                          _pendingOtpTargetPhone == newPhone &&
+                                          (_pendingOtpVerificationId ?? '')
+                                              .isNotEmpty &&
+                                          _pendingOtpExpiresAt != null &&
+                                          DateTime.now().isBefore(
+                                            _pendingOtpExpiresAt!,
                                           );
 
-                                      if (exists) {
-                                        setModalState(() {
-                                          phoneError =
-                                              "Phone number is already used";
-                                        });
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            hasReusableSession
+                                                ? 'Using previously sent OTP for $newPhone...'
+                                                : 'Sending OTP to $newPhone...',
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
 
-                                        _formKey.currentState!.validate();
-                                        return;
+                                      final verification = hasReusableSession
+                                          ? _PhoneVerificationState(
+                                              verificationId:
+                                                  _pendingOtpVerificationId,
+                                            )
+                                          : await _requestOtpVerification(
+                                              newPhone,
+                                            );
+
+                                      PhoneAuthCredential? credential =
+                                          verification.autoCredential;
+
+                                      if (credential == null) {
+                                        final verificationId =
+                                            verification.verificationId;
+                                        if (verificationId == null ||
+                                            verificationId.isEmpty) {
+                                          throw FirebaseAuthException(
+                                            code: 'otp-missing-verification-id',
+                                            message:
+                                                'Failed to get OTP verification session',
+                                          );
+                                        }
+
+                                        final smsCode = await _showOtpDialog(
+                                          newPhone,
+                                        );
+                                        if (smsCode == null) {
+                                          setModalState(() {
+                                            isSavingProfile = false;
+                                          });
+
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Phone update canceled',
+                                                ),
+                                                behavior:
+                                                    SnackBarBehavior.floating,
+                                              ),
+                                            );
+                                          }
+                                          return;
+                                        }
+
+                                        credential =
+                                            PhoneAuthProvider.credential(
+                                              verificationId: verificationId,
+                                              smsCode: smsCode,
+                                            );
                                       }
+
+                                      await FirebaseServices.updateCurrentUserPhoneWithCredential(
+                                        credential: credential,
+                                      );
+
+                                      _pendingOtpTargetPhone = null;
+                                      _pendingOtpVerificationId = null;
+                                      _pendingOtpExpiresAt = null;
                                     }
 
                                     await FirebaseServices.updateProfile(
@@ -331,6 +693,34 @@ class _ProfilePageState extends State<ProfilePage> {
 
                                     isSheetClosed = true;
                                     Navigator.pop(context);
+                                  } on FirebaseAuthException catch (e) {
+                                    if (e.code == 'session-expired') {
+                                      _pendingOtpTargetPhone = null;
+                                      _pendingOtpVerificationId = null;
+                                      _pendingOtpExpiresAt = null;
+                                    }
+
+                                    if (e.code == 'phone-already-registered' ||
+                                        e.code == 'email-already-in-use' ||
+                                        e.code == 'credential-already-in-use' ||
+                                        e.code ==
+                                            'phone-number-already-exists') {
+                                      setModalState(() {
+                                        phoneError =
+                                            "Phone number is already used";
+                                      });
+                                      _formKey.currentState!.validate();
+                                      return;
+                                    }
+
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          _friendlyPhoneUpdateError(e),
+                                        ),
+                                      ),
+                                    );
                                   } catch (_) {
                                     if (!mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
