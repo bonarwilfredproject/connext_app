@@ -629,9 +629,11 @@ class FirebaseServices {
     }
   }
 
-  static Future<String?> _resolveEmailByPhone(String phone) async {
+  static Future<List<String>> _resolveEmailCandidatesByPhone(
+    String phone,
+  ) async {
     final rawPhone = phone.trim();
-    if (rawPhone.isEmpty) return null;
+    if (rawPhone.isEmpty) return const [];
 
     String canonicalPhone = rawPhone;
     try {
@@ -640,62 +642,121 @@ class FirebaseServices {
       canonicalPhone = rawPhone;
     }
 
+    final emailCandidates = <String>[];
+    final seen = <String>{};
+
+    void addCandidate(String? value) {
+      final email = (value ?? '').trim();
+      if (email.isEmpty) return;
+      if (seen.add(email)) {
+        emailCandidates.add(email);
+      }
+    }
+
     final byE164 = await _firebaseFirestore
         .collection('users')
         .where('phone_e164', isEqualTo: canonicalPhone)
-        .limit(1)
+        .limit(10)
         .get();
 
-    if (byE164.docs.isNotEmpty) {
-      final email = (byE164.docs.first.data()['email'] ?? '').toString().trim();
-      if (email.isNotEmpty) return email;
-    }
-
-    final byPhone = await _firebaseFirestore
+    final byPhoneCanonical = await _firebaseFirestore
         .collection('users')
         .where('phone', isEqualTo: canonicalPhone)
-        .limit(1)
+        .limit(10)
         .get();
 
-    if (byPhone.docs.isNotEmpty) {
-      final email = (byPhone.docs.first.data()['email'] ?? '')
-          .toString()
-          .trim();
-      if (email.isNotEmpty) return email;
+    QuerySnapshot<Map<String, dynamic>>? byPhoneRaw;
+    if (rawPhone != canonicalPhone) {
+      byPhoneRaw = await _firebaseFirestore
+          .collection('users')
+          .where('phone', isEqualTo: rawPhone)
+          .limit(10)
+          .get();
     }
 
-    return null;
+    for (final doc in [
+      ...byE164.docs,
+      ...byPhoneCanonical.docs,
+      if (byPhoneRaw != null) ...byPhoneRaw.docs,
+    ]) {
+      final data = doc.data();
+      addCandidate(data['email']?.toString());
+    }
+
+    return emailCandidates;
   }
 
   static Future<UserModel?> loginUser({
     required String phone,
     required String password,
   }) async {
-    String email = _emailFromPhone(phone);
-    bool resolvedFromPhoneRecord = false;
+    final initialEmail = _emailFromPhone(phone);
+    final candidates = <String>[];
+    final seenCandidates = <String>{};
+
+    void addCandidate(String? value) {
+      final email = (value ?? '').trim();
+      if (email.isEmpty) return;
+      if (seenCandidates.add(email)) {
+        candidates.add(email);
+      }
+    }
+
+    addCandidate(initialEmail);
+
+    final resolvedCandidates = await _resolveEmailCandidatesByPhone(phone);
+    final hasResolvedPhoneRecord = resolvedCandidates.any(
+      (e) => e.trim().isNotEmpty,
+    );
+
+    for (final email in resolvedCandidates) {
+      addCandidate(email);
+    }
 
     try {
-      UserCredential cred;
-      try {
-        cred = await _auth.signInWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-      } on FirebaseAuthException catch (e) {
-        if (e.code != 'invalid-credential' && e.code != 'user-not-found') {
+      UserCredential? cred;
+      bool hasPasswordMismatch = false;
+
+      for (final candidate in candidates) {
+        try {
+          cred = await _auth.signInWithEmailAndPassword(
+            email: candidate,
+            password: password,
+          );
+          break;
+        } on FirebaseAuthException catch (e) {
+          final code = e.code.toLowerCase();
+
+          if (code == 'wrong-password') {
+            if (hasResolvedPhoneRecord) {
+              hasPasswordMismatch = true;
+            }
+            continue;
+          }
+
+          if (code == 'user-not-found') {
+            continue;
+          }
+
+          if (code == 'invalid-credential') {
+            continue;
+          }
+
           rethrow;
         }
+      }
 
-        final resolvedEmail = await _resolveEmailByPhone(phone);
-        if (resolvedEmail == null) {
-          rethrow;
+      if (cred == null) {
+        if (hasPasswordMismatch) {
+          throw FirebaseAuthException(
+            code: 'wrong-password',
+            message: 'Incorrect password',
+          );
         }
 
-        resolvedFromPhoneRecord = true;
-        email = resolvedEmail;
-        cred = await _auth.signInWithEmailAndPassword(
-          email: email,
-          password: password,
+        throw FirebaseAuthException(
+          code: 'user-not-found',
+          message: 'Phone is not registered',
         );
       }
 
@@ -731,15 +792,7 @@ class FirebaseServices {
     } on FirebaseAuthException catch (e) {
       final errorCode = e.code.toLowerCase();
 
-      // Keep login validation based on Firebase Auth only.
       if (errorCode == 'wrong-password') {
-        throw FirebaseAuthException(
-          code: 'wrong-password',
-          message: 'Incorrect password',
-        );
-      }
-
-      if (resolvedFromPhoneRecord && errorCode == 'invalid-credential') {
         throw FirebaseAuthException(
           code: 'wrong-password',
           message: 'Incorrect password',

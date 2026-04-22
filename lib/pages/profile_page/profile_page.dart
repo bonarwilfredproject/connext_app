@@ -53,6 +53,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   static const Duration _roleChangeTimeout = Duration(seconds: 8);
   static const Duration _profileSaveTimeout = Duration(seconds: 25);
+  static const Duration _otpRequestCooldown = Duration(seconds: 45);
   String? phoneError;
   bool isChangingRole = false;
   bool isLoggingOut = false;
@@ -68,6 +69,8 @@ class _ProfilePageState extends State<ProfilePage> {
   String? _pendingOtpTargetPhone;
   String? _pendingOtpVerificationId;
   DateTime? _pendingOtpExpiresAt;
+  String? _lastOtpRequestedPhone;
+  DateTime? _lastOtpRequestedAt;
 
   @override
   void initState() {
@@ -110,6 +113,10 @@ class _ProfilePageState extends State<ProfilePage> {
     final code = e.code.toLowerCase();
     final message = (e.message ?? '').toLowerCase();
 
+    if (code == 'otp-cooldown') {
+      return e.message ?? 'Please wait before requesting OTP again';
+    }
+
     if (code == 'otp-timeout' ||
         message.contains('timed out') ||
         message.contains('timeout')) {
@@ -131,16 +138,44 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     if (code == 'too-many-requests' ||
+        code == 'quota-exceeded' ||
         message.contains('blocked all requests')) {
       return 'OTP is temporarily blocked. Please try again later';
+    }
+
+    if (_isAndroidAppVerificationFailure(e)) {
+      return 'Android app verification failed. Please add SHA-1 and SHA-256 to Firebase Android app settings, then download latest google-services.json.';
     }
 
     return e.message ?? 'Failed to verify phone number';
   }
 
+  bool _isAndroidAppVerificationFailure(FirebaseAuthException e) {
+    final code = e.code.toLowerCase();
+    final message = (e.message ?? '').toLowerCase();
+
+    return code == 'invalid-app-credential' ||
+        code == 'captcha-check-failed' ||
+        message.contains('missing a valid app identifier') ||
+        message.contains('play integrity') ||
+        message.contains('recaptcha');
+  }
+
   Future<_PhoneVerificationState> _requestOtpVerification(
     String e164Phone,
   ) async {
+    if (_lastOtpRequestedPhone == e164Phone && _lastOtpRequestedAt != null) {
+      final elapsed = DateTime.now().difference(_lastOtpRequestedAt!);
+      if (elapsed < _otpRequestCooldown) {
+        final waitSeconds = _otpRequestCooldown.inSeconds - elapsed.inSeconds;
+        throw FirebaseAuthException(
+          code: 'otp-cooldown',
+          message:
+              'Please wait ${waitSeconds.clamp(1, _otpRequestCooldown.inSeconds)} seconds before requesting OTP again',
+        );
+      }
+    }
+
     final completer = Completer<_PhoneVerificationState>();
     Timer? failSafeTimer;
 
@@ -165,32 +200,59 @@ class _ProfilePageState extends State<ProfilePage> {
       );
     });
 
-    await FirebaseAuth.instance.verifyPhoneNumber(
-      phoneNumber: e164Phone,
-      timeout: const Duration(seconds: 60),
-      verificationCompleted: (credential) {
-        completeWithState(_PhoneVerificationState(autoCredential: credential));
-      },
-      verificationFailed: (exception) {
-        completeWithError(exception);
-      },
-      codeSent: (verificationId, _) {
-        _pendingOtpTargetPhone = e164Phone;
-        _pendingOtpVerificationId = verificationId;
-        _pendingOtpExpiresAt = DateTime.now().add(const Duration(minutes: 10));
-        completeWithState(
-          _PhoneVerificationState(verificationId: verificationId),
-        );
-      },
-      codeAutoRetrievalTimeout: (verificationId) {
-        _pendingOtpTargetPhone = e164Phone;
-        _pendingOtpVerificationId = verificationId;
-        _pendingOtpExpiresAt = DateTime.now().add(const Duration(minutes: 10));
-        completeWithState(
-          _PhoneVerificationState(verificationId: verificationId),
-        );
-      },
-    );
+    _lastOtpRequestedPhone = e164Phone;
+    _lastOtpRequestedAt = DateTime.now();
+
+    Future<void> startVerification({required bool forceRecaptcha}) async {
+      if (forceRecaptcha) {
+        await FirebaseAuth.instance.setSettings(forceRecaptchaFlow: true);
+      }
+
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: e164Phone,
+        timeout: const Duration(seconds: 60),
+        verificationCompleted: (credential) {
+          completeWithState(
+            _PhoneVerificationState(autoCredential: credential),
+          );
+        },
+        verificationFailed: (exception) async {
+          if (!forceRecaptcha && _isAndroidAppVerificationFailure(exception)) {
+            try {
+              await startVerification(forceRecaptcha: true);
+              return;
+            } on FirebaseAuthException catch (recaptchaError) {
+              completeWithError(recaptchaError);
+              return;
+            }
+          }
+
+          completeWithError(exception);
+        },
+        codeSent: (verificationId, _) {
+          _pendingOtpTargetPhone = e164Phone;
+          _pendingOtpVerificationId = verificationId;
+          _pendingOtpExpiresAt = DateTime.now().add(
+            const Duration(minutes: 10),
+          );
+          completeWithState(
+            _PhoneVerificationState(verificationId: verificationId),
+          );
+        },
+        codeAutoRetrievalTimeout: (verificationId) {
+          _pendingOtpTargetPhone = e164Phone;
+          _pendingOtpVerificationId = verificationId;
+          _pendingOtpExpiresAt = DateTime.now().add(
+            const Duration(minutes: 10),
+          );
+          completeWithState(
+            _PhoneVerificationState(verificationId: verificationId),
+          );
+        },
+      );
+    }
+
+    await startVerification(forceRecaptcha: false);
 
     return completer.future;
   }
@@ -570,10 +632,21 @@ class _ProfilePageState extends State<ProfilePage> {
                                               _selectedCountry.dialCode,
                                         );
 
+                                    final authPhone = FirebaseAuth
+                                        .instance
+                                        .currentUser
+                                        ?.phoneNumber;
+
                                     final currentPhone =
-                                        FirebaseServices.normalizePhoneToE164(
-                                          user.phone,
-                                        );
+                                        (authPhone ?? '').trim().isNotEmpty
+                                        ? FirebaseServices.normalizePhoneToE164(
+                                            authPhone!,
+                                          )
+                                        : FirebaseServices.normalizePhoneToE164(
+                                            user.phone,
+                                            countryDialCode:
+                                                _selectedCountry.dialCode,
+                                          );
 
                                     if (newPhone != currentPhone) {
                                       final hasReusableSession =
