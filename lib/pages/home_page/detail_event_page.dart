@@ -756,7 +756,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: hadir
-                                      ? AppTheme.third
+                                      ? const Color(0xFF78D98B)
                                       : AppTheme.fourth,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
@@ -1248,7 +1248,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                         vertical: 3,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.third,
+                                        color: const Color(0xFF78D98B),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: const Text(
