@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connext_app/models/user_model.dart';
+import 'package:connext_app/services/preferences_services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -354,6 +355,62 @@ class FirebaseServices {
     }
   }
 
+  static Future<void> migratePhoneAuthMappingsOnce() async {
+    final pref = PreferenceHandler();
+    await pref.init();
+    if (pref.getPhoneAuthMappingsMigrated()) return;
+
+    final usersSnapshot = await _firebaseFirestore.collection('users').get();
+    if (usersSnapshot.docs.isEmpty) {
+      await pref.setPhoneAuthMappingsMigrated(true);
+      return;
+    }
+
+    final batch = _firebaseFirestore.batch();
+    var changes = 0;
+
+    for (final doc in usersSnapshot.docs) {
+      final data = doc.data();
+      final rawPhone = (data['phone_e164'] ?? data['phone'] ?? '')
+          .toString()
+          .trim();
+      if (rawPhone.isEmpty) continue;
+
+      String phoneE164;
+      try {
+        phoneE164 = normalizePhoneToE164(rawPhone);
+      } catch (_) {
+        try {
+          phoneE164 = normalizePhoneToE164(rawPhone, countryDialCode: '+62');
+        } catch (_) {
+          continue;
+        }
+      }
+
+      final canonicalEmail = _emailFromPhone(phoneE164);
+      final currentEmail = (data['email'] ?? '').toString().trim();
+
+      final updateData = <String, dynamic>{
+        'phone_e164': phoneE164,
+        'auth_email_canonical': canonicalEmail,
+        'phone_auth_migrated_at': FieldValue.serverTimestamp(),
+      };
+
+      if (currentEmail.isNotEmpty && currentEmail != canonicalEmail) {
+        updateData['auth_email_legacy'] = currentEmail;
+      }
+
+      batch.set(doc.reference, updateData, SetOptions(merge: true));
+      changes++;
+    }
+
+    if (changes > 0) {
+      await batch.commit();
+    }
+
+    await pref.setPhoneAuthMappingsMigrated(true);
+  }
+
   static Future<QueryDocumentSnapshot<Map<String, dynamic>>?>
   _findPhoneConflict(String phone, {String? excludeUid}) async {
     final rawPhone = phone.trim();
@@ -479,17 +536,40 @@ class FirebaseServices {
   static Future<void> updateProfile({
     required String name,
     required String phone,
+    String? oldPhone,
   }) async {
     final firebaseUser = _auth.currentUser;
     if (firebaseUser == null) return;
 
     final normalizedPhone = normalizePhoneToE164(phone);
 
-    await _firebaseFirestore.collection('users').doc(firebaseUser.uid).update({
+    String? normalizedOldPhone;
+    if (oldPhone != null && oldPhone.trim().isNotEmpty) {
+      try {
+        normalizedOldPhone = normalizePhoneToE164(oldPhone);
+      } catch (_) {
+        normalizedOldPhone = oldPhone.trim();
+      }
+    }
+
+    final hasChangedPhone =
+        normalizedOldPhone != null && normalizedOldPhone != normalizedPhone;
+
+    final updateData = <String, dynamic>{
       'nama': name,
       'phone': normalizedPhone,
       'phone_e164': normalizedPhone,
-    });
+    };
+
+    if (hasChangedPhone) {
+      updateData['old_email'] = _emailFromPhone(normalizedOldPhone);
+      updateData['old_phone_e164'] = normalizedOldPhone;
+    }
+
+    await _firebaseFirestore
+        .collection('users')
+        .doc(firebaseUser.uid)
+        .update(updateData);
   }
 
   static Future<void> updateProfileImage(String imagePath) async {
@@ -686,11 +766,71 @@ class FirebaseServices {
     return emailCandidates;
   }
 
+  static String _normalizePhoneSafely(String phone, {String? countryDialCode}) {
+    try {
+      return normalizePhoneToE164(phone, countryDialCode: countryDialCode);
+    } catch (_) {
+      final raw = phone.trim();
+      final digits = raw.replaceAll(RegExp(r'[^0-9+]'), '');
+      if (digits.isEmpty) return raw;
+      if (digits.startsWith('+')) return digits;
+      return '+$digits';
+    }
+  }
+
+  static Future<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+  _findUserDocsByPhoneFlexible(String phone, {String? countryDialCode}) async {
+    final candidates = <String>{};
+    final trimmed = phone.trim();
+    if (trimmed.isNotEmpty) {
+      candidates.add(trimmed);
+      candidates.add(
+        _normalizePhoneSafely(trimmed, countryDialCode: countryDialCode),
+      );
+      candidates.add(_normalizePhoneSafely(trimmed, countryDialCode: '+62'));
+    }
+
+    final docsByPath = <String, QueryDocumentSnapshot<Map<String, dynamic>>>{};
+
+    for (final value in candidates) {
+      if (value.isEmpty) continue;
+
+      final byE164 = await _firebaseFirestore
+          .collection('users')
+          .where('phone_e164', isEqualTo: value)
+          .limit(10)
+          .get();
+
+      for (final doc in byE164.docs) {
+        docsByPath[doc.reference.path] = doc;
+      }
+
+      final byPhone = await _firebaseFirestore
+          .collection('users')
+          .where('phone', isEqualTo: value)
+          .limit(10)
+          .get();
+
+      for (final doc in byPhone.docs) {
+        docsByPath[doc.reference.path] = doc;
+      }
+    }
+
+    return docsByPath.values.toList();
+  }
+
+  static bool _isSamePhone(String a, String b) {
+    final normalizedA = _normalizePhoneSafely(a);
+    final normalizedB = _normalizePhoneSafely(b);
+    return normalizedA == normalizedB;
+  }
+
   static Future<UserModel?> loginUser({
     required String phone,
     required String password,
   }) async {
-    final initialEmail = _emailFromPhone(phone);
+    final requestedPhone = _normalizePhoneSafely(phone);
+    final initialEmail = _emailFromPhone(requestedPhone);
     final candidates = <String>[];
     final seenCandidates = <String>{};
 
@@ -702,12 +842,23 @@ class FirebaseServices {
       }
     }
 
+    final matchedUserDocs = await _findUserDocsByPhoneFlexible(requestedPhone);
+    final hasResolvedPhoneRecordFromDocs = matchedUserDocs.isNotEmpty;
+
     addCandidate(initialEmail);
 
-    final resolvedCandidates = await _resolveEmailCandidatesByPhone(phone);
-    final hasResolvedPhoneRecord = resolvedCandidates.any(
-      (e) => e.trim().isNotEmpty,
+    for (final doc in matchedUserDocs) {
+      final data = doc.data();
+      addCandidate(data['email']?.toString());
+      addCandidate(data['auth_email_canonical']?.toString());
+      addCandidate(data['auth_email_legacy']?.toString());
+    }
+
+    final resolvedCandidates = await _resolveEmailCandidatesByPhone(
+      requestedPhone,
     );
+    final hasResolvedPhoneRecord =
+        hasResolvedPhoneRecordFromDocs || resolvedCandidates.isNotEmpty;
 
     for (final email in resolvedCandidates) {
       addCandidate(email);
@@ -723,6 +874,47 @@ class FirebaseServices {
             email: candidate,
             password: password,
           );
+
+          final firebaseUser = cred.user;
+          if (firebaseUser == null) {
+            cred = null;
+            continue;
+          }
+
+          final profileDoc = await _firebaseFirestore
+              .collection('users')
+              .doc(firebaseUser.uid)
+              .get();
+          final profileData = profileDoc.data();
+
+          var matchedPhone = false;
+          final authPhone = (firebaseUser.phoneNumber ?? '').trim();
+          if (authPhone.isNotEmpty && _isSamePhone(authPhone, requestedPhone)) {
+            matchedPhone = true;
+          }
+
+          if (!matchedPhone && profileData != null) {
+            final profilePhoneE164 = (profileData['phone_e164'] ?? '')
+                .toString()
+                .trim();
+            final profilePhone = (profileData['phone'] ?? '').toString().trim();
+            if (profilePhoneE164.isNotEmpty &&
+                _isSamePhone(profilePhoneE164, requestedPhone)) {
+              matchedPhone = true;
+            }
+            if (!matchedPhone &&
+                profilePhone.isNotEmpty &&
+                _isSamePhone(profilePhone, requestedPhone)) {
+              matchedPhone = true;
+            }
+          }
+
+          if (!matchedPhone) {
+            await _auth.signOut();
+            cred = null;
+            continue;
+          }
+
           break;
         } on FirebaseAuthException catch (e) {
           final code = e.code.toLowerCase();
@@ -739,6 +931,9 @@ class FirebaseServices {
           }
 
           if (code == 'invalid-credential') {
+            if (hasResolvedPhoneRecord) {
+              hasPasswordMismatch = true;
+            }
             continue;
           }
 
@@ -845,6 +1040,194 @@ class FirebaseServices {
       ...data,
       'profile_image': normalizedProfileImage,
     });
+  }
+
+  static Future<void> resetPasswordForCurrentUser({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'No user is currently logged in',
+      );
+    }
+
+    final userEmail = currentUser.email;
+    if (userEmail == null || userEmail.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'invalid-email',
+        message: 'User email not found',
+      );
+    }
+
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: userEmail,
+        password: currentPassword,
+      );
+      await currentUser.reauthenticateWithCredential(credential);
+
+      await currentUser.updatePassword(newPassword);
+
+      await _firebaseFirestore.collection('users').doc(currentUser.uid).update({
+        'password': newPassword,
+        'password_updated_at': FieldValue.serverTimestamp(),
+      });
+    } on FirebaseAuthException catch (e) {
+      final code = e.code.toLowerCase();
+      final message = (e.message ?? '').toLowerCase();
+      if (code == 'wrong-password' ||
+          code == 'invalid-credential' ||
+          message.contains('wrong password') ||
+          message.contains('incorrect password') ||
+          message.contains('invalid credential')) {
+        throw FirebaseAuthException(
+          code: 'wrong-password',
+          message: 'Current password is incorrect',
+        );
+      }
+      rethrow;
+    }
+  }
+
+  static Future<String?> findUserByPhoneForForgotPassword(
+    String phone, {
+    String? countryDialCode,
+  }) async {
+    String phoneE164;
+    try {
+      phoneE164 = normalizePhoneToE164(phone, countryDialCode: countryDialCode);
+    } catch (_) {
+      phoneE164 = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    }
+
+    final byE164 = await _firebaseFirestore
+        .collection('users')
+        .where('phone_e164', isEqualTo: phoneE164)
+        .limit(1)
+        .get();
+
+    final byPhone = await _firebaseFirestore
+        .collection('users')
+        .where('phone', isEqualTo: phoneE164)
+        .limit(1)
+        .get();
+
+    QueryDocumentSnapshot<Map<String, dynamic>>? userDoc;
+    if (byE164.docs.isNotEmpty) {
+      userDoc = byE164.docs.first;
+    } else if (byPhone.docs.isNotEmpty) {
+      userDoc = byPhone.docs.first;
+    }
+
+    if (userDoc == null) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'Phone number is not registered',
+      );
+    }
+
+    await userDoc.reference.set({
+      'phone': phoneE164,
+      'phone_e164': phoneE164,
+    }, SetOptions(merge: true));
+
+    final userData = userDoc.data();
+    final userEmail = (userData['email'] ?? '').toString().trim();
+
+    if (userEmail.isEmpty) {
+      throw FirebaseAuthException(
+        code: 'invalid-email',
+        message: 'User email not found in system',
+      );
+    }
+
+    return userEmail;
+  }
+
+  static Future<void> resetPasswordWithPhoneVerification({
+    required String phone,
+    required String newPassword,
+    required PhoneAuthCredential credential,
+  }) async {
+    final phoneE164 = normalizePhoneToE164(phone);
+
+    final signInResult = await _auth.signInWithCredential(credential);
+    final signedInUser = signInResult.user;
+
+    if (signedInUser == null) {
+      throw FirebaseAuthException(
+        code: 'phone-auth-failed',
+        message: 'Phone authentication failed',
+      );
+    }
+
+    if (signInResult.additionalUserInfo?.isNewUser == true) {
+      try {
+        await signedInUser.delete();
+      } catch (_) {}
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'Phone number is not registered',
+      );
+    }
+
+    final authPhone = signedInUser.phoneNumber ?? '';
+    if (authPhone.isNotEmpty && authPhone != phoneE164) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'Phone number does not match account',
+      );
+    }
+
+    try {
+      final canonicalEmail = _emailFromPhone(phoneE164);
+      final loginEmail = canonicalEmail;
+      var emailToPersist = loginEmail;
+
+      final providerIds = signedInUser.providerData
+          .map((provider) => provider.providerId)
+          .toSet();
+
+      if (!providerIds.contains('password')) {
+        final emailCredential = EmailAuthProvider.credential(
+          email: loginEmail,
+          password: newPassword,
+        );
+
+        try {
+          await signedInUser.linkWithCredential(emailCredential);
+          emailToPersist = loginEmail;
+        } on FirebaseAuthException catch (e) {
+          if (e.code == 'provider-already-linked') {
+            await signedInUser.updatePassword(newPassword);
+            emailToPersist = signedInUser.email ?? loginEmail;
+          } else if (e.code == 'email-already-in-use' ||
+              e.code == 'credential-already-in-use') {
+            await signedInUser.updatePassword(newPassword);
+            emailToPersist = signedInUser.email ?? loginEmail;
+          } else {
+            rethrow;
+          }
+        }
+      } else {
+        await signedInUser.updatePassword(newPassword);
+        emailToPersist = signedInUser.email ?? loginEmail;
+      }
+
+      await _firebaseFirestore.collection('users').doc(signedInUser.uid).set({
+        'uid': signedInUser.uid,
+        if (emailToPersist.isNotEmpty) 'email': emailToPersist,
+        'phone': phoneE164,
+        'phone_e164': phoneE164,
+        'password': newPassword,
+        'password_updated_at': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } finally {
+      await _auth.signOut();
+    }
   }
 
   static Future<void> logout() async {
