@@ -21,13 +21,18 @@ class AppSectionCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF171A33), Color(0xFF22254A)],
+        ),
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.third.withOpacity(0.16), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: AppTheme.third.withOpacity(0.12),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
@@ -38,10 +43,30 @@ class AppSectionCard extends StatelessWidget {
             Row(
               children: [
                 if (icon != null) ...[
-                  Icon(icon, color: AppTheme.secondary),
-                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.third.withOpacity(0.95),
+                          AppTheme.fourth.withOpacity(0.95),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: AppTheme.primary, size: 18),
+                  ),
+                  const SizedBox(width: 10),
                 ],
-                Text(title!, style: styleText()),
+                Expanded(
+                  child: Text(
+                    title!,
+                    style: styleText().copyWith(
+                      color: AppTheme.secondary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),

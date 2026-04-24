@@ -4,6 +4,7 @@ import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/models/user_model.dart';
+import 'package:connext_app/pages/auth/forgot_password_page.dart';
 import 'package:connext_app/pages/home_page/home_page.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/custom_appbar.dart';
@@ -274,7 +275,10 @@ class _LogInPageState extends State<LogInPage> {
                         //password field
                         Row(
                           children: [
-                            Icon(Icons.password, color: Color(0XFF424874)),
+                            const Icon(
+                              Icons.password,
+                              color: AppTheme.secondary,
+                            ),
                             const SizedBox(width: 8),
                             Text("Password", style: styleText()),
                           ],
@@ -342,6 +346,27 @@ class _LogInPageState extends State<LogInPage> {
                           icon: Icons.login,
                           isLoading: isLoadingLogin,
                           text: "Log In",
+                        ),
+                        const SizedBox(height: 12),
+                        Center(
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ForgotPasswordPage(),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'Forgot Password?',
+                              style: styleText().copyWith(
+                                color: AppTheme.third,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),

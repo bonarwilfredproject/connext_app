@@ -12,6 +12,7 @@ import 'package:connext_app/services/event_participant_controller.dart';
 import 'package:connext_app/services/google_maps_service.dart';
 import 'package:connext_app/widgets/app_list_card.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
+import 'package:connext_app/widgets/connext_app_bar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/profile_avatar.dart';
 import 'package:flutter/material.dart';
@@ -369,9 +370,16 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.primary,
-      appBar: AppBar(
-        backgroundColor: AppTheme.primary,
-        title: Text("Event Detail", style: styleText()),
+      appBar: ConnextAppBar(
+        variant: ConnextAppBarVariant.hero,
+        title: Text(
+          "Event Detail",
+          style: styleText().copyWith(
+            color: AppTheme.secondary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        onLeadingPressed: () => Navigator.pop(context),
       ),
       body: Stack(
         children: [
@@ -389,10 +397,10 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
                     ),
                   ),
                 )
-              : Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       /// =====================
                       /// SECTION INFO EVENT
@@ -650,17 +658,19 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
                                     ),
                                     icon: const Icon(
                                       Icons.exit_to_app,
-                                      color: AppTheme.white,
+                                      color: AppTheme.primary,
                                     ),
                                     label: const Text(
                                       "Leave Event",
-                                      style: TextStyle(color: AppTheme.white),
+                                      style: TextStyle(color: AppTheme.primary),
                                     ),
                                     onPressed: () async {
                                       final confirm = await showDialog(
                                         context: context,
                                         builder: (_) => AlertDialog(
-                                          backgroundColor: AppTheme.third,
+                                          backgroundColor: const Color(
+                                            0xFF171A33,
+                                          ),
                                           title: Text(
                                             "Leave Event",
                                             style: styleText(),
@@ -697,7 +707,9 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
                                                   Navigator.pop(context, true),
                                               child: Text(
                                                 "Leave",
-                                                style: styleText(),
+                                                style: styleText().copyWith(
+                                                  color: AppTheme.fourth,
+                                                ),
                                               ),
                                             ),
                                           ],

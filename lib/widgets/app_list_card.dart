@@ -18,10 +18,19 @@ class AppListCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: AppTheme.third,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [const Color(0xFF1B1F3E), const Color(0xFF262B57)],
+        ),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4)),
+        border: Border.all(color: AppTheme.third.withOpacity(0.14), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.third.withOpacity(0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
       child: child,

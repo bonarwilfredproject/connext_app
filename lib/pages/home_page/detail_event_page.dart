@@ -13,6 +13,7 @@ import 'package:connext_app/services/google_maps_service.dart';
 import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/widgets/app_list_card.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
+import 'package:connext_app/widgets/connext_app_bar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/profile_avatar.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
@@ -204,7 +205,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
 
     if (dateTime == null) return '-';
 
-    return DateFormat('EEEE, dd MMM yyyy, HH:mm', 'id').format(dateTime);
+    return DateFormat('EEEE, dd MMM yyyy, HH:mm', 'en_US').format(dateTime);
   }
 
   Future<void> initializeData() async {
@@ -362,7 +363,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
             return AlertDialog(
-              backgroundColor: AppTheme.third,
+              backgroundColor: const Color(0xFF171A33),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
@@ -378,118 +379,196 @@ class _DetailEventPageState extends State<DetailEventPage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        TextFormField(
-                          controller: titleController,
-                          style: TextStyle(
-                            color: AppTheme.secondary,
-                            fontSize: 14,
-                          ),
-                          validator: (value) =>
-                              requiredValidator(value, 'Event name'),
-                          decoration: decorationConstant(
-                            hintText: 'Event Name',
-                            labelText: 'Event Name',
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        GooglePlacesAutocompleteField(
-                          controller: locationController,
-                          labelText: 'Location',
-                          hintText: 'Search event location on Google Maps',
-                          showKeySourceInfo: false,
-                          validator: (value) =>
-                              requiredValidator(value, 'Location'),
-                          onSelected: (details) {
-                            setStateDialog(() {
-                              selectedLocationPlaceId = details.placeId;
-                              selectedLocationName =
-                                  details.name?.trim().isNotEmpty ?? false
-                                  ? details.name!.trim()
-                                  : details.description.trim();
-                            });
-                          },
-                          onTextChanged: (value) {
-                            if (selectedLocationPlaceId != null ||
-                                selectedLocationName != null) {
-                              selectedLocationPlaceId = null;
-                              selectedLocationName = null;
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: TextFormField(
-                                controller: dateControllerEdit,
-                                readOnly: true,
-                                style: TextStyle(
-                                  color: AppTheme.secondary,
-                                  fontSize: 14,
-                                ),
-                                decoration: decorationConstant(
-                                  hintText: 'Choose date',
-                                  labelText: 'Date',
-                                ),
-                                onTap: () async {
-                                  final now = DateTime.now();
-                                  final safeInitialDate =
-                                      (selectedDateEdit != null &&
-                                          selectedDateEdit!.isBefore(now))
-                                      ? now
-                                      : selectedDateEdit ?? now;
-
-                                  final picked = await showDatePicker(
-                                    context: context,
-                                    initialDate: safeInitialDate,
-                                    firstDate: now,
-                                    lastDate: DateTime(2100),
-                                  );
-
-                                  if (picked != null) {
-                                    selectedDateEdit = picked;
-                                    dateControllerEdit.text = DateFormat(
-                                      'EE, d MMMM yyyy',
-                                    ).format(picked);
-                                    timeError = validateDateTimeEdit();
-                                    setStateDialog(() {});
-                                  }
-                                },
-                              ),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF22254A),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: AppTheme.third.withOpacity(0.16),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TextFormField(
-                                controller: timeControllerEdit,
-                                readOnly: true,
-                                style: TextStyle(
-                                  color: AppTheme.secondary,
-                                  fontSize: 14,
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.third.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                                decoration: decorationConstant(
-                                  hintText: 'Choose time',
-                                  labelText: 'Time',
-                                ).copyWith(errorMaxLines: 1),
-                                onTap: () async {
-                                  final picked = await showTimePicker(
-                                    context: context,
-                                    initialTime:
-                                        selectedTimeEdit ?? TimeOfDay.now(),
-                                  );
+                                child: const Icon(
+                                  Icons.edit_calendar,
+                                  size: 18,
+                                  color: AppTheme.third,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'Update event details below. Date and time cannot be in the past.',
+                                  style: styleText().copyWith(fontSize: 12),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Event Form',
+                            style: styleText().copyWith(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.third,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1A1D3A),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: AppTheme.third.withOpacity(0.16),
+                            ),
+                          ),
+                          child: TextFormField(
+                            controller: titleController,
+                            style: TextStyle(
+                              color: AppTheme.secondary,
+                              fontSize: 14,
+                            ),
+                            validator: (value) =>
+                                requiredValidator(value, 'Event name'),
+                            decoration: decorationConstant(
+                              hintText: 'Event Name',
+                              labelText: 'Event Name',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1A1D3A),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: AppTheme.third.withOpacity(0.16),
+                            ),
+                          ),
+                          child: GooglePlacesAutocompleteField(
+                            controller: locationController,
+                            labelText: 'Location',
+                            hintText: 'Search event location on Google Maps',
+                            showKeySourceInfo: false,
+                            validator: (value) =>
+                                requiredValidator(value, 'Location'),
+                            onSelected: (details) {
+                              setStateDialog(() {
+                                selectedLocationPlaceId = details.placeId;
+                                selectedLocationName =
+                                    details.name?.trim().isNotEmpty ?? false
+                                    ? details.name!.trim()
+                                    : details.description.trim();
+                              });
+                            },
+                            onTextChanged: (value) {
+                              if (selectedLocationPlaceId != null ||
+                                  selectedLocationName != null) {
+                                selectedLocationPlaceId = null;
+                                selectedLocationName = null;
+                              }
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF22254A),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: AppTheme.third.withOpacity(0.12),
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: dateControllerEdit,
+                                  readOnly: true,
+                                  style: TextStyle(
+                                    color: AppTheme.secondary,
+                                    fontSize: 14,
+                                  ),
+                                  decoration: decorationConstant(
+                                    hintText: 'Choose date',
+                                    labelText: 'Date',
+                                  ),
+                                  onTap: () async {
+                                    final now = DateTime.now();
+                                    final safeInitialDate =
+                                        (selectedDateEdit != null &&
+                                            selectedDateEdit!.isBefore(now))
+                                        ? now
+                                        : selectedDateEdit ?? now;
 
-                                  if (picked != null) {
-                                    selectedTimeEdit = picked;
-                                    timeControllerEdit.text = picked.format(
-                                      context,
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      initialDate: safeInitialDate,
+                                      firstDate: now,
+                                      lastDate: DateTime(2100),
                                     );
-                                    timeError = validateDateTimeEdit();
-                                    setStateDialog(() {});
-                                  }
-                                },
+
+                                    if (picked != null) {
+                                      selectedDateEdit = picked;
+                                      dateControllerEdit.text = DateFormat(
+                                        'EE, d MMMM yyyy',
+                                      ).format(picked);
+                                      timeError = validateDateTimeEdit();
+                                      setStateDialog(() {});
+                                    }
+                                  },
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: timeControllerEdit,
+                                  readOnly: true,
+                                  style: TextStyle(
+                                    color: AppTheme.secondary,
+                                    fontSize: 14,
+                                  ),
+                                  decoration: decorationConstant(
+                                    hintText: 'Choose time',
+                                    labelText: 'Time',
+                                  ).copyWith(errorMaxLines: 1),
+                                  onTap: () async {
+                                    final picked = await showTimePicker(
+                                      context: context,
+                                      initialTime:
+                                          selectedTimeEdit ?? TimeOfDay.now(),
+                                    );
+
+                                    if (picked != null) {
+                                      selectedTimeEdit = picked;
+                                      timeControllerEdit.text = picked.format(
+                                        context,
+                                      );
+                                      timeError = validateDateTimeEdit();
+                                      setStateDialog(() {});
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 10),
                         if (timeError != null)
@@ -500,25 +579,35 @@ class _DetailEventPageState extends State<DetailEventPage> {
                               child: Text(
                                 timeError!,
                                 style: const TextStyle(
-                                  color: Colors.red,
+                                  color: AppTheme.fourth,
                                   fontSize: 11.5,
                                 ),
                               ),
                             ),
                           ),
                         const SizedBox(height: 12),
-                        TextFormField(
-                          controller: descriptionController,
-                          maxLines: 3,
-                          style: TextStyle(
-                            color: AppTheme.secondary,
-                            fontSize: 14,
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1A1D3A),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: AppTheme.third.withOpacity(0.16),
+                            ),
                           ),
-                          validator: (value) =>
-                              requiredValidator(value, 'Description'),
-                          decoration: decorationConstant(
-                            hintText: 'Description',
-                            labelText: 'Description',
+                          child: TextFormField(
+                            controller: descriptionController,
+                            maxLines: 3,
+                            style: TextStyle(
+                              color: AppTheme.secondary,
+                              fontSize: 14,
+                            ),
+                            validator: (value) =>
+                                requiredValidator(value, 'Description'),
+                            decoration: decorationConstant(
+                              hintText: 'Description',
+                              labelText: 'Description',
+                            ),
                           ),
                         ),
                       ],
@@ -533,7 +622,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.fourth,
+                    backgroundColor: AppTheme.third,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -568,7 +657,10 @@ class _DetailEventPageState extends State<DetailEventPage> {
                     await loadEvent();
                     await loadPeserta();
                   },
-                  child: Text('Save', style: styleText()),
+                  child: Text(
+                    'Save',
+                    style: styleText().copyWith(color: AppTheme.primary),
+                  ),
                 ),
               ],
             );
@@ -663,13 +755,15 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                   vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: hadir ? Colors.green : Colors.red,
+                                  color: hadir
+                                      ? AppTheme.third
+                                      : AppTheme.fourth,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
                                   hadir ? 'Present' : 'Absent',
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: AppTheme.primary,
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -705,13 +799,10 @@ class _DetailEventPageState extends State<DetailEventPage> {
   Widget _buildErrorState() {
     return Scaffold(
       backgroundColor: AppTheme.primary,
-      appBar: AppBar(
-        backgroundColor: AppTheme.primary,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
+      appBar: ConnextAppBar(
+        variant: ConnextAppBarVariant.minimal,
         title: Text('Event Detail', style: styleText()),
+        onLeadingPressed: () => Navigator.pop(context),
       ),
       body: Center(
         child: Padding(
@@ -737,7 +828,10 @@ class _DetailEventPageState extends State<DetailEventPage> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+        backgroundColor: AppTheme.primary,
+      );
     }
 
     if (event == null) {
@@ -772,7 +866,6 @@ class _DetailEventPageState extends State<DetailEventPage> {
                         Text(
                           event!.location,
                           style: styleText().copyWith(
-                            decoration: TextDecoration.underline,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -862,6 +955,88 @@ class _DetailEventPageState extends State<DetailEventPage> {
       ),
     );
 
+    final heroBanner = Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.third.withOpacity(0.95),
+            AppTheme.fourth.withOpacity(0.95),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.third.withOpacity(0.18),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.event, color: AppTheme.secondary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      event!.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: styleText().copyWith(
+                        color: AppTheme.primary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Event detail & attendee check-in',
+                      style: styleText().copyWith(
+                        color: AppTheme.primary.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _buildHeroTag(Icons.location_pin, event!.location),
+              _buildHeroTag(
+                Icons.event_available,
+                event!.eventDate != null
+                    ? "${DateFormat('EEE, d MMM yyyy').format(DateTime.parse(event!.eventDate!))} • ${event!.eventTime ?? '-'}"
+                    : '-',
+              ),
+              _buildHeroTag(Icons.people, '$totalPeserta joined'),
+            ],
+          ),
+        ],
+      ),
+    );
+
     final scanButton = TombolSementara(
       onPressed: () async {
         final result = await Navigator.push(
@@ -927,18 +1102,18 @@ class _DetailEventPageState extends State<DetailEventPage> {
                     alignment: Alignment.centerRight,
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     decoration: BoxDecoration(
-                      color: Colors.red,
+                      color: AppTheme.fourth,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Icon(Icons.delete_outline, color: Colors.white),
+                        Icon(Icons.delete_outline, color: AppTheme.primary),
                         SizedBox(width: 6),
                         Text(
                           'Delete',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: AppTheme.primary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -949,7 +1124,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                     return await showDialog<bool>(
                           context: context,
                           builder: (_) => AlertDialog(
-                            backgroundColor: AppTheme.third,
+                            backgroundColor: const Color(0xFF171A33),
                             title: Text('Delete Attendee', style: styleText()),
                             content: Text(
                               'Are you sure want to delete ${p['namaUser']}?',
@@ -962,7 +1137,12 @@ class _DetailEventPageState extends State<DetailEventPage> {
                               ),
                               TextButton(
                                 onPressed: () => Navigator.pop(context, true),
-                                child: Text('Delete', style: styleText()),
+                                child: Text(
+                                  'Delete',
+                                  style: styleText().copyWith(
+                                    color: AppTheme.fourth,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -1068,13 +1248,13 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                         vertical: 3,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.green,
+                                        color: AppTheme.third,
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: const Text(
                                         'Present',
                                         style: TextStyle(
-                                          color: Colors.white,
+                                          color: AppTheme.primary,
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -1140,20 +1320,20 @@ class _DetailEventPageState extends State<DetailEventPage> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: AppTheme.primary,
-      appBar: AppBar(
-        backgroundColor: AppTheme.primary,
+      appBar: ConnextAppBar(
+        variant: ConnextAppBarVariant.hero,
         title: Text(
           event!.title,
-          style: styleText().copyWith(fontWeight: FontWeight.bold),
+          style: styleText().copyWith(
+            fontWeight: FontWeight.w800,
+            color: AppTheme.secondary,
+          ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context, true),
-        ),
+        onLeadingPressed: () => Navigator.pop(context, true),
         actions: [
           IconButton(
             onPressed: showEditEventDialog,
-            icon: const Icon(Icons.edit, color: Color(0XFF424874)),
+            icon: const Icon(Icons.edit, color: AppTheme.third),
           ),
         ],
       ),
@@ -1168,6 +1348,8 @@ class _DetailEventPageState extends State<DetailEventPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      heroBanner,
+                      const SizedBox(height: 20),
                       eventInfoSection,
                       const SizedBox(height: 20),
                       scanButton,
@@ -1186,6 +1368,34 @@ class _DetailEventPageState extends State<DetailEventPage> {
                     : SliverToBoxAdapter(child: presentAttendeeListSection),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroTag(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withOpacity(0.18),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: AppTheme.primary),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              text,
+              overflow: TextOverflow.ellipsis,
+              style: styleText().copyWith(
+                color: AppTheme.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),

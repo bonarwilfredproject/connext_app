@@ -380,7 +380,7 @@ class _HomePageState extends State<HomePage> {
       child: Text(
         label,
         style: TextStyle(
-          color: Colors.white,
+          color: AppTheme.primary,
           fontSize: 12,
           fontWeight: fontWeight,
         ),
@@ -403,14 +403,14 @@ class _HomePageState extends State<HomePage> {
             height: 10,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
             ),
           ),
           SizedBox(width: 6),
           Text(
             "JOINING...",
             style: TextStyle(
-              color: Colors.white,
+              color: AppTheme.primary,
               fontSize: 11,
               fontWeight: FontWeight.bold,
             ),
@@ -756,7 +756,7 @@ class _HomePageState extends State<HomePage> {
                                         horizontal: 24,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.red,
+                                        color: AppTheme.fourth,
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: Row(
@@ -765,13 +765,13 @@ class _HomePageState extends State<HomePage> {
                                         children: const [
                                           Icon(
                                             Icons.delete_outline,
-                                            color: Colors.white,
+                                            color: AppTheme.primary,
                                           ),
                                           SizedBox(width: 6),
                                           Text(
                                             "Delete",
                                             style: TextStyle(
-                                              color: Colors.white,
+                                              color: AppTheme.primary,
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
@@ -783,7 +783,9 @@ class _HomePageState extends State<HomePage> {
                                       return await showDialog(
                                         context: context,
                                         builder: (_) => AlertDialog(
-                                          backgroundColor: AppTheme.third,
+                                          backgroundColor: const Color(
+                                            0xFF171A33,
+                                          ),
                                           title: Text(
                                             "Delete Event",
                                             style: styleText(),
@@ -820,7 +822,9 @@ class _HomePageState extends State<HomePage> {
                                                   Navigator.pop(context, true),
                                               child: Text(
                                                 "Delete",
-                                                style: styleText(),
+                                                style: styleText().copyWith(
+                                                  color: AppTheme.fourth,
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -1014,18 +1018,21 @@ class _HomePageState extends State<HomePage> {
                                     if (showJoinedBadge)
                                       _buildStatusBadge(
                                         label: "JOINED",
-                                        color: Colors.green,
+                                        color: const Color(0xFF73E8D7),
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     if (checkedIn)
                                       _buildStatusBadge(
                                         label: "CHECKED IN",
-                                        color: const Color(0xFF2F6FED),
+                                        color: const Color(0xFF8BE39A),
                                         fontWeight: FontWeight.w600,
                                       ),
                                     if (isExpired)
                                       _buildStatusBadge(
                                         label: "EXPIRED",
-                                        color: Colors.grey,
+                                        color: AppTheme.fourth.withOpacity(
+                                          0.75,
+                                        ),
                                       ),
                                   ];
                                   final hasAnyBadge = statusBadges.isNotEmpty;
@@ -1108,7 +1115,9 @@ class _HomePageState extends State<HomePage> {
                                                     context: context,
                                                     builder: (_) => AlertDialog(
                                                       backgroundColor:
-                                                          AppTheme.third,
+                                                          const Color(
+                                                            0xFF171A33,
+                                                          ),
                                                       title: Text(
                                                         "Event ended",
                                                         style: styleText(),
@@ -1125,7 +1134,11 @@ class _HomePageState extends State<HomePage> {
                                                               ),
                                                           child: Text(
                                                             "OK",
-                                                            style: styleText(),
+                                                            style: styleText()
+                                                                .copyWith(
+                                                                  color: AppTheme
+                                                                      .third,
+                                                                ),
                                                           ),
                                                         ),
                                                       ],
@@ -1140,7 +1153,7 @@ class _HomePageState extends State<HomePage> {
                                                   context: context,
                                                   builder: (_) => AlertDialog(
                                                     backgroundColor:
-                                                        AppTheme.third,
+                                                        const Color(0xFF171A33),
                                                     title: Text(
                                                       "Join Event",
                                                       style: styleText(),
@@ -1184,7 +1197,11 @@ class _HomePageState extends State<HomePage> {
                                                             ),
                                                         child: Text(
                                                           "Join",
-                                                          style: styleText(),
+                                                          style: styleText()
+                                                              .copyWith(
+                                                                color: AppTheme
+                                                                    .third,
+                                                              ),
                                                         ),
                                                       ),
                                                     ],

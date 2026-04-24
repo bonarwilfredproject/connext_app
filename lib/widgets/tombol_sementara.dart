@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:connext_app/constants/app_theme.dart';
 
 class TombolSementara extends StatelessWidget {
   const TombolSementara({
@@ -21,12 +22,11 @@ class TombolSementara extends StatelessWidget {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         minimumSize: Size(width, height),
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadiusGeometry.circular(12),
-        ),
-        backgroundColor: Color(0XFF424874),
-        foregroundColor: Color(0xFFF4EEFF),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        backgroundColor: AppTheme.third,
+        foregroundColor: AppTheme.primary,
+        elevation: 8,
       ),
       onPressed: isLoading ? null : onPressed,
       child: Row(
@@ -39,13 +39,16 @@ class TombolSementara extends StatelessWidget {
               height: 18,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFF4EEFF)),
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
               ),
             )
           else if (icon != null)
             Icon(icon),
           const SizedBox(width: 8),
-          Text(text, style: TextStyle(fontSize: 16, color: Color(0xFFF4EEFF))),
+          Text(
+            text,
+            style: const TextStyle(fontSize: 16, color: AppTheme.primary),
+          ),
         ],
       ),
     );

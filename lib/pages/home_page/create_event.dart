@@ -7,6 +7,7 @@ import 'package:connext_app/services/google_maps_service.dart';
 import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
+import 'package:connext_app/widgets/connext_app_bar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/google_places_autocomplete_field.dart';
 import 'package:connext_app/constants/style_text.dart';
@@ -47,7 +48,7 @@ class _CreateEventState extends State<CreateEvent> {
         return Container(
           height: MediaQuery.of(context).size.height * 0.78,
           decoration: const BoxDecoration(
-            color: Color(0xFFF4EEFF),
+            color: AppTheme.primary,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: SafeArea(
@@ -62,7 +63,7 @@ class _CreateEventState extends State<CreateEvent> {
                       width: 42,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFB8B0C9),
+                        color: AppTheme.third.withOpacity(0.7),
                         borderRadius: BorderRadius.circular(999),
                       ),
                     ),
@@ -94,8 +95,8 @@ class _CreateEventState extends State<CreateEvent> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0XFF424874),
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppTheme.third,
+                        foregroundColor: AppTheme.primary,
                       ),
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(Icons.check),
@@ -261,10 +262,17 @@ class _CreateEventState extends State<CreateEvent> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: const Color(0xFFF4EEFF),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF4EEFF),
-        title: Text("Create Event", style: styleText()),
+      backgroundColor: AppTheme.primary,
+      appBar: ConnextAppBar(
+        variant: ConnextAppBarVariant.hero,
+        title: Text(
+          "Create Event",
+          style: styleText().copyWith(
+            color: AppTheme.secondary,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        onLeadingPressed: () => Navigator.pop(context),
       ),
       body: Stack(
         children: [
@@ -476,12 +484,16 @@ class _CreateEventState extends State<CreateEvent> {
 
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.75),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF171A33), Color(0xFF22254A)],
+                          ),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: hasAcceptedTerms
-                                ? const Color(0xFF424874)
-                                : const Color(0xFFD0C6E6),
+                                ? AppTheme.third
+                                : AppTheme.third.withOpacity(0.18),
                           ),
                         ),
                         child: Padding(
@@ -497,7 +509,7 @@ class _CreateEventState extends State<CreateEvent> {
                                 children: [
                                   Checkbox(
                                     value: hasAcceptedTerms,
-                                    activeColor: const Color(0XFF424874),
+                                    activeColor: AppTheme.third,
                                     onChanged: (value) {
                                       setState(() {
                                         hasAcceptedTerms = value ?? false;
@@ -539,7 +551,7 @@ class _CreateEventState extends State<CreateEvent> {
                       Center(
                         child: IconButton(
                           style: IconButton.styleFrom(
-                            backgroundColor: const Color(0XFF424874),
+                            backgroundColor: AppTheme.third,
                           ),
                           onPressed: isCreatingEvent ? null : createEvent,
                           icon: isCreatingEvent
@@ -548,10 +560,10 @@ class _CreateEventState extends State<CreateEvent> {
                                   height: 18,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: Color(0xFFF4EEFF),
+                                    color: AppTheme.primary,
                                   ),
                                 )
-                              : const Icon(Icons.add, color: Color(0xFFF4EEFF)),
+                              : const Icon(Icons.add, color: AppTheme.primary),
                         ),
                       ),
                     ],

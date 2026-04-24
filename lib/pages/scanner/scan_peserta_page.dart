@@ -3,6 +3,7 @@ import 'package:animate_do/animate_do.dart';
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/pages/scanner/corner_painter.dart';
 import 'package:connext_app/services/check_in_controller.dart';
+import 'package:connext_app/widgets/connext_app_bar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
@@ -83,7 +84,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
 
   Future<void> _safeVibrate() async {
     try {
-      final hasVibrator = await Vibration.hasVibrator() ?? false;
+      final hasVibrator = await Vibration.hasVibrator();
       if (!hasVibrator) return;
 
       await Vibration.vibrate(preset: VibrationPreset.quickSuccessAlert);
@@ -131,10 +132,10 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.primary,
-      appBar: AppBar(
+      appBar: ConnextAppBar(
+        variant: ConnextAppBarVariant.minimal,
         title: Text("Scan Attendee", style: styleText()),
-        backgroundColor: AppTheme.primary,
-        elevation: 0,
+        onLeadingPressed: () => Navigator.pop(context),
       ),
       body: Stack(
         children: [
@@ -282,7 +283,7 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
                       vertical: 16,
                     ),
                     decoration: BoxDecoration(
-                      color: AppTheme.third,
+                      color: const Color(0xFF171A33),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Column(
@@ -291,7 +292,12 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
                         const SizedBox(
                           width: 26,
                           height: 26,
-                          child: CircularProgressIndicator(strokeWidth: 3),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppTheme.third,
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Text(
@@ -323,18 +329,22 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF171A33),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ShakeX(child: Icon(Icons.cancel, color: Colors.red, size: 80)),
+            ShakeX(child: Icon(Icons.cancel, color: AppTheme.fourth, size: 80)),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               "Scan Failed",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: styleText().copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
-            Text(pesan, textAlign: TextAlign.center),
+            Text(pesan, style: styleText(), textAlign: TextAlign.center),
           ],
         ),
       ),
@@ -353,20 +363,24 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF171A33),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Tada(
-              child: Icon(Icons.check_circle, color: Colors.green, size: 80),
+              child: Icon(Icons.check_circle, color: AppTheme.third, size: 80),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               "Check-in Successful!",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: styleText().copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
-            Text(nama),
+            Text(nama, style: styleText()),
           ],
         ),
       ),

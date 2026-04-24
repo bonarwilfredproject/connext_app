@@ -1,4 +1,5 @@
 import 'package:connext_app/constants/app_theme.dart';
+import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/pages/home_page/home_page.dart';
 import 'package:connext_app/pages/landing_page/landing_page.dart';
@@ -38,9 +39,9 @@ class _SplashScreenState extends State<SplashScreen> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color(0xFFF9F5FF),
-                    Color(0xFFEDE5FF),
-                    Color(0xFFE4D9FF),
+                    Color(0xFF0F1026),
+                    Color(0xFF171A33),
+                    Color(0xFF262B57),
                   ],
                 ),
               ),
@@ -50,19 +51,19 @@ class _SplashScreenState extends State<SplashScreen> {
             top: -120,
             right: -70,
             size: 260,
-            color: Color(0x66FFFFFF),
+            color: Color(0x3300D9FF),
           ),
           const _SplashOrb(
             bottom: 80,
             left: -90,
             size: 300,
-            color: Color(0x4DA6B1E1),
+            color: Color(0x33FF4D8D),
           ),
           const _SplashOrb(
             top: 140,
             left: 30,
             size: 80,
-            color: Color(0x55DCD6F7),
+            color: Color(0x33FFFFFF),
           ),
           SafeArea(
             child: Center(
@@ -84,18 +85,18 @@ class _SplashScreenState extends State<SplashScreen> {
                           gradient: const LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [Color(0xFFFFFFFF), Color(0xFFF0E8FF)],
+                            colors: [Color(0xFF2A2F5C), Color(0xFF171A33)],
                           ),
                           boxShadow: const [
                             BoxShadow(
-                              color: Color(0x4D424874),
+                              color: Color(0x6600D9FF),
                               blurRadius: 30,
                               spreadRadius: 2,
                               offset: Offset(0, 18),
                             ),
                           ],
                           border: Border.all(
-                            color: const Color(0xFFCDC4EA),
+                            color: Color(0x6600D9FF),
                             width: 1.3,
                           ),
                         ),
@@ -135,7 +136,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     child: Text(
                       'Crafting Moments, Seamlessly.',
                       style: TextStyle(
-                        color: AppTheme.secondary.withOpacity(0.78),
+                        color: AppTheme.secondary.withOpacity(0.84),
                         fontSize: 14,
                         letterSpacing: 0.35,
                       ),
@@ -153,8 +154,8 @@ class _SplashScreenState extends State<SplashScreen> {
                           return LinearProgressIndicator(
                             minHeight: 5,
                             value: value,
-                            backgroundColor: const Color(0x40A6B1E1),
-                            color: AppTheme.secondary,
+                            backgroundColor: AppTheme.third.withOpacity(0.18),
+                            color: AppTheme.third,
                           );
                         },
                       ),
@@ -171,6 +172,12 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void autoLogin() async {
     await Future.delayed(Duration(seconds: 3));
+
+    try {
+      await FirebaseServices.migratePhoneAuthMappingsOnce();
+    } catch (_) {
+      // Ignore migration failures and continue app startup.
+    }
 
     final pref = PreferenceHandler();
     await pref.init();

@@ -1,4 +1,5 @@
-import 'package:connext_app/constants/style_text.dart';
+import 'package:connext_app/constants/app_theme.dart';
+import 'package:connext_app/widgets/connext_app_bar.dart';
 import 'package:flutter/material.dart';
 
 class HomeScreenAppbar extends StatelessWidget implements PreferredSizeWidget {
@@ -13,26 +14,34 @@ class HomeScreenAppbar extends StatelessWidget implements PreferredSizeWidget {
   final Function()? onTap;
   @override
   Widget build(BuildContext context) {
-    return AppBar(
-      backgroundColor: Color(0xFFF4EEFF),
-      title: Padding(
-        padding: EdgeInsets.symmetric(vertical: 60.0),
-        child: Row(
-          children: [
-            Expanded(flex: 4, child: title),
-            Spacer(),
-            Expanded(
-              child: InkWell(
-                onTap: onTap,
-                child: CircleAvatar(
-                  minRadius: 24,
-                  backgroundColor: Color(0xFFF4EEFF),
-                  child: child,
+    return ConnextAppBar(
+      variant: ConnextAppBarVariant.hero,
+      title: Row(
+        children: [
+          Expanded(flex: 4, child: title),
+          const SizedBox(width: 12),
+          InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.third.withOpacity(0.95),
+                    AppTheme.fourth.withOpacity(0.95),
+                  ],
                 ),
+                shape: BoxShape.circle,
+              ),
+              child: CircleAvatar(
+                minRadius: 24,
+                backgroundColor: const Color(0xFF171A33),
+                child: child,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

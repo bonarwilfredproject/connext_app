@@ -1,3 +1,4 @@
+import 'package:connext_app/widgets/connext_app_bar.dart';
 import 'package:flutter/material.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -6,17 +7,14 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final void Function()? onPressed;
   @override
   Widget build(BuildContext context) {
-    return AppBar(
+    return ConnextAppBar(
+      variant: ConnextAppBarVariant.minimal,
       title: title,
-      leading: IconButton(
-        onPressed: onPressed,
-        icon: Icon(Icons.arrow_back, color: Color(0XFF424874)),
-      ),
-      backgroundColor: Color(0xFFF4EEFF),
+      onLeadingPressed: onPressed,
+      centerTitle: false,
     );
   }
 
   @override
-  // TODO: implement preferredSize
-  Size get preferredSize => Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

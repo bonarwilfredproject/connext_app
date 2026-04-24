@@ -4,13 +4,16 @@ import 'dart:typed_data';
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/constants/style_text.dart';
+import 'package:connext_app/pages/auth/reset_password_page.dart';
 import 'package:connext_app/pages/landing_page/landing_page.dart';
 import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
+import 'package:connext_app/widgets/connext_app_bar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/profile_avatar.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:connext_app/models/user_model.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -257,55 +260,152 @@ class _ProfilePageState extends State<ProfilePage> {
     return completer.future;
   }
 
-  Future<String?> _showOtpDialog(String phoneNumber) async {
+  Future<String?> _showOtpDialog(
+    String phoneNumber, {
+    String? errorText,
+  }) async {
     String enteredOtp = '';
+    String? dialogError = errorText;
 
     return showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Verify New Phone Number', style: styleText()),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'OTP code has been sent to $phoneNumber',
-                style: styleText(),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text('Verify New Phone Number', style: styleText()),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'OTP code has been sent to $phoneNumber',
+                    style: styleText(),
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF171A33),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppTheme.third.withOpacity(0.45),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Enter your 6-digit OTP',
+                          style: styleText().copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.third,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          maxLength: 6,
+                          textAlign: TextAlign.center,
+                          style: styleText().copyWith(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 8,
+                          ),
+                          onChanged: (value) {
+                            enteredOtp = value.trim();
+                            if (dialogError != null) {
+                              setDialogState(() {
+                                dialogError = null;
+                              });
+                            }
+                          },
+                          decoration: InputDecoration(
+                            hintText: '000000',
+                            hintStyle: styleText().copyWith(
+                              fontSize: 24,
+                              letterSpacing: 8,
+                              color: AppTheme.secondary.withOpacity(0.4),
+                              fontWeight: FontWeight.w600,
+                            ),
+                            counterText: '',
+                            filled: true,
+                            fillColor: AppTheme.primary.withOpacity(0.26),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 12,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(
+                                color: AppTheme.third.withOpacity(0.35),
+                                width: 1.2,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(
+                                color: AppTheme.third.withOpacity(0.5),
+                                width: 1.4,
+                              ),
+                            ),
+                            focusedBorder: const OutlineInputBorder(
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(10),
+                              ),
+                              borderSide: BorderSide(
+                                color: AppTheme.third,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (dialogError != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      dialogError!,
+                      style: const TextStyle(
+                        color: AppTheme.fourth,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                onChanged: (value) {
-                  enteredOtp = value.trim();
-                },
-                decoration: decorationConstant(
-                  hintText: 'Input 6-digit OTP code',
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
                 ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                if (!RegExp(r'^\d{6}$').hasMatch(enteredOtp)) {
-                  ScaffoldMessenger.of(this.context).showSnackBar(
-                    const SnackBar(content: Text('OTP code must be 6 digits')),
-                  );
-                  return;
-                }
+                TextButton(
+                  onPressed: () {
+                    if (!RegExp(r'^\d{6}$').hasMatch(enteredOtp)) {
+                      setDialogState(() {
+                        dialogError = 'OTP code must be 6 digits';
+                      });
+                      return;
+                    }
 
-                Navigator.pop(context, enteredOtp);
-              },
-              child: const Text('Verify'),
-            ),
-          ],
+                    Navigator.pop(context, enteredOtp);
+                  },
+                  child: Text(
+                    'Verify',
+                    style: styleText().copyWith(color: AppTheme.third),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -458,7 +558,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       child: const Icon(
                                         Icons.camera_alt,
                                         size: 18,
-                                        color: Colors.white,
+                                        color: AppTheme.primary,
                                       ),
                                     ),
                                   ],
@@ -489,99 +589,118 @@ class _ProfilePageState extends State<ProfilePage> {
                               const SizedBox(height: 16),
 
                               /// PHONE
-                              Row(
-                                children: [
-                                  Expanded(
-                                    flex: 4,
-                                    child:
-                                        DropdownButtonFormField<
-                                          _CountryDialOption
-                                        >(
-                                          value: _selectedCountry,
-                                          isExpanded: true,
-                                          decoration: decorationConstant(
-                                            labelText: "Phone Number",
-                                            hintText: 'Country',
-                                          ),
-                                          items: _countryOptions.map((option) {
-                                            return DropdownMenuItem<
-                                              _CountryDialOption
-                                            >(
-                                              value: option,
-                                              child: Text(
-                                                '${option.label} (${option.dialCode})',
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  color: AppTheme.secondary,
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            );
-                                          }).toList(),
-                                          onChanged: (value) {
-                                            if (value == null) return;
-                                            setModalState(() {
-                                              _selectedCountry = value;
-                                              phoneError = null;
-                                              _pendingOtpTargetPhone = null;
-                                              _pendingOtpVerificationId = null;
-                                              _pendingOtpExpiresAt = null;
-                                            });
-                                          },
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final isCompact = constraints.maxWidth < 380;
+
+                                  final countryField =
+                                      DropdownButtonFormField<
+                                        _CountryDialOption
+                                      >(
+                                        value: _selectedCountry,
+                                        isExpanded: true,
+                                        decoration: decorationConstant(
+                                          labelText: isCompact
+                                              ? null
+                                              : "Phone Number",
+                                          hintText: 'Country',
                                         ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    flex: 6,
-                                    child: TextFormField(
-                                      style: TextStyle(
-                                        color: AppTheme.secondary,
-                                        fontSize: 14,
-                                      ),
-                                      controller: phoneController,
-                                      keyboardType: TextInputType.number,
-                                      decoration: decorationConstant(
-                                        hintText: 'Local phone number',
-                                      ),
-                                      validator: (value) {
-                                        final phone = (value ?? '').trim();
-
-                                        if (phone.isEmpty) {
-                                          return "Phone number must be filled";
-                                        }
-
-                                        if (!RegExp(r'^\d+$').hasMatch(phone)) {
-                                          return "Phone number must contain digits only";
-                                        }
-
-                                        if (phone.length < 4) {
-                                          return "Phone number is too short";
-                                        }
-
-                                        if (phone.length > 15) {
-                                          return "Phone number is too long";
-                                        }
-
-                                        if (phoneError != null) {
-                                          return phoneError;
-                                        }
-
-                                        return null;
-                                      },
-                                      onChanged: (value) {
-                                        if (phoneError != null) {
+                                        items: _countryOptions.map((option) {
+                                          return DropdownMenuItem<
+                                            _CountryDialOption
+                                          >(
+                                            value: option,
+                                            child: Text(
+                                              '${option.label} (${option.dialCode})',
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: AppTheme.secondary,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                        onChanged: (value) {
+                                          if (value == null) return;
                                           setModalState(() {
+                                            _selectedCountry = value;
                                             phoneError = null;
+                                            _pendingOtpTargetPhone = null;
+                                            _pendingOtpVerificationId = null;
+                                            _pendingOtpExpiresAt = null;
                                           });
-                                        }
+                                        },
+                                      );
 
-                                        _pendingOtpTargetPhone = null;
-                                        _pendingOtpVerificationId = null;
-                                        _pendingOtpExpiresAt = null;
-                                      },
+                                  final phoneField = TextFormField(
+                                    style: TextStyle(
+                                      color: AppTheme.secondary,
+                                      fontSize: 14,
                                     ),
-                                  ),
-                                ],
+                                    controller: phoneController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: decorationConstant(
+                                      labelText: isCompact
+                                          ? "Phone Number"
+                                          : null,
+                                      hintText: 'Local phone number',
+                                    ),
+                                    validator: (value) {
+                                      final phone = (value ?? '').trim();
+
+                                      if (phone.isEmpty) {
+                                        return "Phone number must be filled";
+                                      }
+
+                                      if (!RegExp(r'^\d+$').hasMatch(phone)) {
+                                        return "Phone number must contain digits only";
+                                      }
+
+                                      if (phone.length < 4) {
+                                        return "Phone number is too short";
+                                      }
+
+                                      if (phone.length > 15) {
+                                        return "Phone number is too long";
+                                      }
+
+                                      if (phoneError != null) {
+                                        return phoneError;
+                                      }
+
+                                      return null;
+                                    },
+                                    onChanged: (value) {
+                                      if (phoneError != null) {
+                                        setModalState(() {
+                                          phoneError = null;
+                                        });
+                                      }
+
+                                      _pendingOtpTargetPhone = null;
+                                      _pendingOtpVerificationId = null;
+                                      _pendingOtpExpiresAt = null;
+                                    },
+                                  );
+
+                                  if (isCompact) {
+                                    return Column(
+                                      children: [
+                                        countryField,
+                                        const SizedBox(height: 8),
+                                        phoneField,
+                                      ],
+                                    );
+                                  }
+
+                                  return Row(
+                                    children: [
+                                      Expanded(flex: 4, child: countryField),
+                                      const SizedBox(width: 8),
+                                      Expanded(flex: 6, child: phoneField),
+                                    ],
+                                  );
+                                },
                               ),
                               const SizedBox(height: 4),
                               Align(
@@ -696,40 +815,59 @@ class _ProfilePageState extends State<ProfilePage> {
                                           );
                                         }
 
-                                        final smsCode = await _showOtpDialog(
-                                          newPhone,
-                                        );
-                                        if (smsCode == null) {
-                                          setModalState(() {
-                                            isSavingProfile = false;
-                                          });
+                                        String? otpDialogError;
 
-                                          if (mounted) {
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  'Phone update canceled',
+                                        while (true) {
+                                          final smsCode = await _showOtpDialog(
+                                            newPhone,
+                                            errorText: otpDialogError,
+                                          );
+                                          if (smsCode == null) {
+                                            setModalState(() {
+                                              isSavingProfile = false;
+                                            });
+
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(
+                                                context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Phone update canceled',
+                                                  ),
+                                                  behavior:
+                                                      SnackBarBehavior.floating,
                                                 ),
-                                                behavior:
-                                                    SnackBarBehavior.floating,
-                                              ),
-                                            );
+                                              );
+                                            }
+                                            return;
                                           }
-                                          return;
-                                        }
 
-                                        credential =
-                                            PhoneAuthProvider.credential(
-                                              verificationId: verificationId,
-                                              smsCode: smsCode,
+                                          final attemptCredential =
+                                              PhoneAuthProvider.credential(
+                                                verificationId: verificationId,
+                                                smsCode: smsCode,
+                                              );
+
+                                          try {
+                                            await FirebaseServices.updateCurrentUserPhoneWithCredential(
+                                              credential: attemptCredential,
                                             );
+                                            credential = attemptCredential;
+                                            break;
+                                          } on FirebaseAuthException catch (e) {
+                                            final code = e.code.toLowerCase();
+                                            if (code ==
+                                                    'invalid-verification-code' ||
+                                                code == 'session-expired') {
+                                              otpDialogError =
+                                                  _friendlyPhoneUpdateError(e);
+                                              continue;
+                                            }
+                                            rethrow;
+                                          }
+                                        }
                                       }
-
-                                      await FirebaseServices.updateCurrentUserPhoneWithCredential(
-                                        credential: credential,
-                                      );
 
                                       _pendingOtpTargetPhone = null;
                                       _pendingOtpVerificationId = null;
@@ -739,6 +877,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     await FirebaseServices.updateProfile(
                                       name: newName,
                                       phone: newPhone,
+                                      oldPhone: currentPhone,
                                     ).timeout(_profileSaveTimeout);
 
                                     final pref = PreferenceHandler();
@@ -921,7 +1060,7 @@ class _ProfilePageState extends State<ProfilePage> {
       final confirm = await showDialog(
         context: context,
         builder: (_) => AlertDialog(
-          backgroundColor: AppTheme.third,
+          backgroundColor: const Color(0xFF171A33),
           title: Text("Log Out", style: styleText()),
           content: Text("Are you sure want to log out?", style: styleText()),
           actions: [
@@ -931,7 +1070,10 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: Text("Yes", style: styleText()),
+              child: Text(
+                "Yes",
+                style: styleText().copyWith(color: AppTheme.third),
+              ),
             ),
           ],
         ),
@@ -983,11 +1125,11 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: AppTheme.primary,
-      appBar: AppBar(
-        elevation: 0,
+      appBar: ConnextAppBar(
+        variant: ConnextAppBarVariant.minimal,
         title: Text("Profile", style: styleText()),
+        onLeadingPressed: () => Navigator.pop(context),
         centerTitle: true,
-        backgroundColor: AppTheme.primary,
       ),
       body: StreamBuilder<UserModel?>(
         stream: FirebaseServices.currentUserProfileStream(),
@@ -1034,7 +1176,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             child: Icon(
                               Icons.edit,
                               size: 16,
-                              color: Colors.white,
+                              color: AppTheme.primary,
                             ),
                           ),
                         ],
@@ -1068,10 +1210,16 @@ class _ProfilePageState extends State<ProfilePage> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-
-                              Spacer(),
-
-                              Text(user.nama, style: styleText()),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  user.nama,
+                                  style: styleText(),
+                                  textAlign: TextAlign.right,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
                             ],
                           ),
 
@@ -1089,10 +1237,16 @@ class _ProfilePageState extends State<ProfilePage> {
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-
-                              Spacer(),
-
-                              Text(user.phone, style: styleText()),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  user.phone,
+                                  style: styleText(),
+                                  textAlign: TextAlign.right,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                              ),
                             ],
                           ),
 
@@ -1133,14 +1287,14 @@ class _ProfilePageState extends State<ProfilePage> {
                                             strokeWidth: 2,
                                             valueColor:
                                                 AlwaysStoppedAnimation<Color>(
-                                                  Colors.white,
+                                                  AppTheme.primary,
                                                 ),
                                           ),
                                         )
                                       : const Icon(
                                           Icons.swap_horiz,
                                           size: 18,
-                                          color: Colors.white,
+                                          color: AppTheme.primary,
                                         ),
                                 ),
                               ),
@@ -1151,6 +1305,24 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
 
                     const SizedBox(height: 40),
+
+                    /// RESET PASSWORD BUTTON
+                    TombolSementara(
+                      icon: Icons.lock,
+                      height: 54,
+                      width: double.infinity,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ResetPasswordPage(),
+                          ),
+                        );
+                      },
+                      text: "Reset Password",
+                    ),
+
+                    const SizedBox(height: 12),
 
                     /// LOGOUT BUTTON
                     TombolSementara(

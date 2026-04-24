@@ -15,6 +15,7 @@ class PreferenceHandler {
   static const String _namaUser = "namaUser";
   static const String _role = "role";
   static const String _userId = "userId";
+  static const String _phoneAuthMappingsMigrated = "phoneAuthMappingsMigrated";
 
   /// SAVE USER SAAT LOGIN / REGISTER
   Future<void> saveUser(int userId, String nama, String role) async {
@@ -52,6 +53,14 @@ class PreferenceHandler {
   /// CEK LOGIN
   bool getIsLogin() {
     return _preferences.getBool(_isLogin) ?? false;
+  }
+
+  bool getPhoneAuthMappingsMigrated() {
+    return _preferences.getBool(_phoneAuthMappingsMigrated) ?? false;
+  }
+
+  Future<void> setPhoneAuthMappingsMigrated(bool value) async {
+    await _preferences.setBool(_phoneAuthMappingsMigrated, value);
   }
 
   /// LOGOUT

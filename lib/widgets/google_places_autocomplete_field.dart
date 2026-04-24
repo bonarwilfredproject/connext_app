@@ -251,7 +251,7 @@ class _GooglePlacesAutocompleteFieldState
             padding: const EdgeInsets.only(top: 6, left: 4),
             child: Text(
               _queryErrorMessage!,
-              style: TextStyle(color: Colors.red.shade700, fontSize: 11.5),
+              style: const TextStyle(color: AppTheme.fourth, fontSize: 11.5),
             ),
           ),
         if (kDebugMode && widget.showKeySourceInfo)
@@ -270,14 +270,14 @@ class _GooglePlacesAutocompleteFieldState
           Container(
             margin: const EdgeInsets.only(top: 8),
             decoration: BoxDecoration(
-              color: AppTheme.third,
+              color: const Color(0xFF171A33),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.secondary.withOpacity(0.12)),
-              boxShadow: const [
+              border: Border.all(color: AppTheme.third.withOpacity(0.12)),
+              boxShadow: [
                 BoxShadow(
-                  color: Colors.black12,
+                  color: AppTheme.third.withOpacity(0.08),
                   blurRadius: 16,
-                  offset: Offset(0, 8),
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),

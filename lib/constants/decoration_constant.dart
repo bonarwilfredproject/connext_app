@@ -12,7 +12,10 @@ InputDecoration decorationConstant({
     labelStyle: styleText(),
 
     hintText: hintText,
-    hintStyle: TextStyle(color: AppTheme.secondary, fontSize: 12),
+    hintStyle: TextStyle(
+      color: AppTheme.secondary.withOpacity(0.6),
+      fontSize: 12,
+    ),
 
     suffixIcon: suffixIcon,
     errorMaxLines: 3,
@@ -21,7 +24,7 @@ InputDecoration decorationConstant({
 
     /// 🔥 BACKGROUND NORMAL
     filled: true,
-    fillColor: AppTheme.primary,
+    fillColor: const Color(0xFF171A33),
 
     /// 🔥 DEFAULT (TIDAK ADA BORDER)
     border: OutlineInputBorder(
@@ -44,13 +47,13 @@ InputDecoration decorationConstant({
     /// 🔥 ERROR
     errorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Colors.red, width: 1.2),
+      borderSide: BorderSide(color: AppTheme.fourth, width: 1.2),
     ),
 
     /// 🔥 FOCUS + ERROR
     focusedErrorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Colors.red, width: 1.5),
+      borderSide: BorderSide(color: AppTheme.fourth, width: 1.5),
     ),
   );
 }

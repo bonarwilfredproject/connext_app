@@ -28,9 +28,9 @@ class _LandingPageState extends State<LandingPage> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color(0xFFF8F3FF),
-                    Color(0xFFEFE6FF),
-                    Color(0xFFE5DCFF),
+                    Color(0xFF0F1026),
+                    Color(0xFF171A33),
+                    Color(0xFF262B57),
                   ],
                 ),
               ),
@@ -40,19 +40,19 @@ class _LandingPageState extends State<LandingPage> {
             size: 320,
             top: -120,
             right: -60,
-            color: Color(0x55FFFFFF),
+            color: Color(0x3300D9FF),
           ),
           const _LandingOrb(
             size: 280,
             bottom: -70,
             left: -80,
-            color: Color(0x55DCD6F7),
+            color: Color(0x33FF4D8D),
           ),
           const _LandingOrb(
             size: 90,
             top: 190,
             left: 28,
-            color: Color(0x55A6B1E1),
+            color: Color(0x33FFFFFF),
           ),
           SafeArea(
             child: LayoutBuilder(
@@ -76,10 +76,10 @@ class _LandingPageState extends State<LandingPage> {
                               vertical: 6,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.6),
+                              color: const Color(0xFF171A33).withOpacity(0.78),
                               borderRadius: BorderRadius.circular(999),
                               border: Border.all(
-                                color: const Color(0x66A6B1E1),
+                                color: AppTheme.third.withOpacity(0.3),
                               ),
                             ),
                             child: Text(
@@ -103,15 +103,15 @@ class _LandingPageState extends State<LandingPage> {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               gradient: const LinearGradient(
-                                colors: [Color(0xFFFFFFFF), Color(0xFFF1E9FF)],
+                                colors: [Color(0xFF2A2F5C), Color(0xFF171A33)],
                               ),
                               border: Border.all(
-                                color: const Color(0xFFCBC0EC),
+                                color: AppTheme.third.withOpacity(0.35),
                                 width: 1.4,
                               ),
                               boxShadow: const [
                                 BoxShadow(
-                                  color: Color(0x3D424874),
+                                  color: Color(0x6600D9FF),
                                   blurRadius: 24,
                                   offset: Offset(0, 12),
                                 ),
@@ -150,7 +150,7 @@ class _LandingPageState extends State<LandingPage> {
                             textAlign: TextAlign.center,
                             style: styleText().copyWith(
                               fontSize: 14,
-                              color: AppTheme.secondary.withOpacity(0.82),
+                              color: AppTheme.secondary.withOpacity(0.86),
                               height: 1.45,
                             ),
                           ),
@@ -196,14 +196,21 @@ class _LandingPageState extends State<LandingPage> {
                                   18,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.67),
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Color(0xFF171A33),
+                                      Color(0xFF22254A),
+                                    ],
+                                  ),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
-                                    color: const Color(0x66BBB0DE),
+                                    color: AppTheme.third.withOpacity(0.18),
                                   ),
                                   boxShadow: const [
                                     BoxShadow(
-                                      color: Color(0x1F424874),
+                                      color: Color(0x5500D9FF),
                                       blurRadius: 22,
                                       offset: Offset(0, 10),
                                     ),
@@ -215,11 +222,9 @@ class _LandingPageState extends State<LandingPage> {
                                       width: double.infinity,
                                       child: ElevatedButton.icon(
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(
-                                            0XFF424874,
-                                          ),
-                                          foregroundColor: Colors.white,
-                                          elevation: 0,
+                                          backgroundColor: AppTheme.third,
+                                          foregroundColor: AppTheme.primary,
+                                          elevation: 8,
                                           padding: const EdgeInsets.symmetric(
                                             vertical: 14,
                                           ),
@@ -254,8 +259,10 @@ class _LandingPageState extends State<LandingPage> {
                                       child: OutlinedButton.icon(
                                         style: OutlinedButton.styleFrom(
                                           foregroundColor: AppTheme.secondary,
-                                          side: const BorderSide(
-                                            color: Color(0x99424874),
+                                          side: BorderSide(
+                                            color: AppTheme.fourth.withOpacity(
+                                              0.8,
+                                            ),
                                             width: 1.2,
                                           ),
                                           padding: const EdgeInsets.symmetric(
@@ -304,7 +311,7 @@ class _LandingPageState extends State<LandingPage> {
                             textAlign: TextAlign.center,
                             style: styleText().copyWith(
                               fontSize: 12.5,
-                              color: AppTheme.secondary.withOpacity(0.75),
+                              color: AppTheme.secondary.withOpacity(0.82),
                             ),
                           ),
                         ),
@@ -367,9 +374,9 @@ class _FeatureChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.72),
+        color: const Color(0xFF171A33).withOpacity(0.85),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0x66A6B1E1)),
+        border: Border.all(color: AppTheme.third.withOpacity(0.18)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

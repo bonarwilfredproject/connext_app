@@ -1,15 +1,13 @@
 import 'dart:async';
 
 import 'package:connext_app/constants/app_theme.dart';
+import 'package:connext_app/constants/password_validation.dart';
 import 'package:connext_app/constants/style_text.dart';
-import 'package:connext_app/services/firebase_services.dart';
-import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
-import 'package:connext_app/pages/auth/log_in_page.dart';
+import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/custom_appbar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
-import 'package:connext_app/widgets/role_selector.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -29,14 +27,14 @@ class _CountryDialOption {
   const _CountryDialOption({required this.label, required this.dialCode});
 }
 
-class DaftarPage extends StatefulWidget {
-  const DaftarPage({super.key});
+class ForgotPasswordPage extends StatefulWidget {
+  const ForgotPasswordPage({super.key});
 
   @override
-  State<DaftarPage> createState() => _DaftarPageState();
+  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _DaftarPageState extends State<DaftarPage> {
+class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   static const List<_CountryDialOption> _countryOptions = [
     _CountryDialOption(label: 'Indonesia', dialCode: '+62'),
     _CountryDialOption(label: 'Singapore', dialCode: '+65'),
@@ -48,19 +46,19 @@ class _DaftarPageState extends State<DaftarPage> {
     _CountryDialOption(label: 'India', dialCode: '+91'),
   ];
 
-  String role = "Committee";
-  bool isVisible = true;
-  bool isLoadingSignUp = false;
+  late _CountryDialOption _selectedCountry;
+  final GlobalKey<FormState> _formKey = GlobalKey();
+  TextEditingController phoneController = TextEditingController();
+  TextEditingController newPasswordController = TextEditingController();
+  TextEditingController confirmPasswordController = TextEditingController();
+
+  bool isLoadingResetPassword = false;
+  bool showNewPassword = false;
+  bool showConfirmPassword = false;
   DateTime? _otpBlockedUntil;
   String? _pendingOtpTargetPhone;
   String? _pendingOtpVerificationId;
   DateTime? _pendingOtpExpiresAt;
-  late _CountryDialOption _selectedCountry;
-  final GlobalKey<FormState> _formKey = GlobalKey();
-  TextEditingController namaController = TextEditingController();
-  TextEditingController phoneController = TextEditingController();
-  TextEditingController passwordController = TextEditingController();
-  TextEditingController confirmPasswordController = TextEditingController();
 
   @override
   void initState() {
@@ -70,9 +68,8 @@ class _DaftarPageState extends State<DaftarPage> {
 
   @override
   void dispose() {
-    namaController.dispose();
     phoneController.dispose();
-    passwordController.dispose();
+    newPasswordController.dispose();
     confirmPasswordController.dispose();
     super.dispose();
   }
@@ -84,26 +81,22 @@ class _DaftarPageState extends State<DaftarPage> {
     if (code == 'otp-timeout' ||
         message.contains('timed out') ||
         message.contains('timeout')) {
-      return 'OTP request timed out. Please check your internet connection and tap Sign Up again. If it persists, try switching to a different network (WiFi/Mobile data).';
+      return 'OTP request timed out. Please check your internet connection and try again. If it persists, try switching to a different network (WiFi/Mobile data).';
+    }
+
+    if (code == 'user-not-found' ||
+        message.contains('not registered') ||
+        message.contains('phone')) {
+      return 'Phone number is not registered in the system.';
     }
 
     if (code == 'too-many-requests' ||
         message.contains('unusual activity') ||
         message.contains('blocked all requests')) {
-      return 'This device is temporarily blocked due to too many OTP attempts. Please try again in 30-60 minutes and switch your internet connection.';
+      return 'This device is temporarily blocked due to too many attempts. Please try again in 30-60 minutes.';
     }
 
-    if (code == 'captcha-check-failed' || message.contains('recaptcha')) {
-      return 'reCAPTCHA verification failed. Please ensure a stable connection, active Google Play Services, and try again.';
-    }
-
-    if (code == 'invalid-app-credential' ||
-        message.contains('missing a valid app identifier') ||
-        message.contains('play integrity')) {
-      return 'Android app verification with Firebase failed. Ensure debug SHA-1 and SHA-256 are added in Firebase Console.';
-    }
-
-    return e.message ?? 'Failed to register user';
+    return e.message ?? 'Failed to reset password';
   }
 
   Future<_PhoneVerificationState> _requestOtpVerification(
@@ -124,7 +117,6 @@ class _DaftarPageState extends State<DaftarPage> {
       completer.completeError(exception);
     }
 
-    // Extended fail-safe timeout to 120 seconds for slower network conditions
     failSafeTimer = Timer(const Duration(seconds: 120), () {
       completeWithError(
         FirebaseAuthException(
@@ -333,18 +325,25 @@ class _DaftarPageState extends State<DaftarPage> {
     return smsCode;
   }
 
-  Future<void> _registerWithOtp() async {
-    if (isLoadingSignUp) return;
+  Future<void> _resetPasswordWithOtp() async {
+    if (isLoadingResetPassword) return;
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
-      isLoadingSignUp = true;
+      isLoadingResetPassword = true;
     });
 
     try {
       final rawPhone = phoneController.text.trim();
+      final newPassword = newPasswordController.text;
 
       final e164Phone = FirebaseServices.normalizePhoneToE164(
+        rawPhone,
+        countryDialCode: _selectedCountry.dialCode,
+      );
+
+      // Verify phone exists
+      await FirebaseServices.findUserByPhoneForForgotPassword(
         rawPhone,
         countryDialCode: _selectedCountry.dialCode,
       );
@@ -423,13 +422,9 @@ class _DaftarPageState extends State<DaftarPage> {
           );
 
           try {
-            await FirebaseServices.registerUserWithPhoneCredential(
-              user: UserModel(
-                nama: namaController.text.trim(),
-                phone: e164Phone,
-                password: passwordController.text,
-                role: role,
-              ),
+            await FirebaseServices.resetPasswordWithPhoneVerification(
+              phone: e164Phone,
+              newPassword: newPassword,
               credential: attemptCredential,
             );
             credential = attemptCredential;
@@ -445,13 +440,9 @@ class _DaftarPageState extends State<DaftarPage> {
           }
         }
       } else {
-        await FirebaseServices.registerUserWithPhoneCredential(
-          user: UserModel(
-            nama: namaController.text.trim(),
-            phone: e164Phone,
-            password: passwordController.text,
-            role: role,
-          ),
+        await FirebaseServices.resetPasswordWithPhoneVerification(
+          phone: e164Phone,
+          newPassword: newPassword,
           credential: credential,
         );
       }
@@ -463,30 +454,22 @@ class _DaftarPageState extends State<DaftarPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Registration success. Please login.'),
+          content: Text(
+            'Password reset success. Please login with your new password.',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LogInPage()),
-      );
+      Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
       final friendlyMessage = _friendlyAuthError(e);
       final errorCode = e.code.toLowerCase();
       final errorMessage = (e.message ?? '').toLowerCase();
 
-      // Auto-clear pending OTP state on timeout to allow fresh retry
       if (errorCode == 'otp-timeout' ||
           errorMessage.contains('timed out') ||
           errorMessage.contains('timeout')) {
-        _pendingOtpTargetPhone = null;
-        _pendingOtpVerificationId = null;
-        _pendingOtpExpiresAt = null;
-      }
-
-      if (errorCode == 'session-expired') {
         _pendingOtpTargetPhone = null;
         _pendingOtpVerificationId = null;
         _pendingOtpExpiresAt = null;
@@ -496,7 +479,6 @@ class _DaftarPageState extends State<DaftarPage> {
           errorMessage.contains('unusual activity') ||
           errorMessage.contains('blocked all requests')) {
         _otpBlockedUntil = DateTime.now().add(const Duration(minutes: 30));
-        // Also clear pending OTP state when rate-limited
         _pendingOtpTargetPhone = null;
         _pendingOtpVerificationId = null;
         _pendingOtpExpiresAt = null;
@@ -509,18 +491,18 @@ class _DaftarPageState extends State<DaftarPage> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to register user'),
+        SnackBar(
+          content: Text('Failed to reset password: ${e.toString()}'),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } finally {
       if (mounted) {
         setState(() {
-          isLoadingSignUp = false;
+          isLoadingResetPassword = false;
         });
       }
     }
@@ -553,57 +535,32 @@ class _DaftarPageState extends State<DaftarPage> {
                             height: 80,
                           ),
                         ),
-                        SizedBox(height: 20),
-                        SizedBox(height: 32),
-                        //nama field
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Icon(
-                                Icons.person,
-                                color: AppTheme.secondary,
-                              ),
-                            ),
-
-                            Expanded(
-                              flex: 8,
-                              child: Text("Name", style: styleText()),
-                            ),
-                          ],
+                        const SizedBox(height: 24),
+                        Text(
+                          'Reset Your Password',
+                          style: styleText().copyWith(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        TextFormField(
-                          controller: namaController,
-                          validator: (value) {
-                            if (value!.isEmpty) {
-                              return "Name must be filled";
-                            }
-                            return null;
-                          },
-                          style: TextStyle(
-                            color: AppTheme.secondary,
+                        const SizedBox(height: 8),
+                        Text(
+                          'Enter your phone number and new password',
+                          style: styleText().copyWith(
                             fontSize: 12,
+                            color: AppTheme.secondary.withAlpha(200),
                           ),
-                          decoration: decorationConstant(
-                            hintText: "Please input your name",
-                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        SizedBox(height: 12),
-                        //phone field
+                        const SizedBox(height: 24),
                         Row(
                           children: [
-                            Expanded(
-                              child: Icon(
-                                Icons.phone,
-                                color: AppTheme.secondary,
-                              ),
-                            ),
-
-                            Expanded(
-                              flex: 8,
-                              child: Text("Phone Number", style: styleText()),
-                            ),
+                            Icon(Icons.phone, color: AppTheme.secondary),
+                            const SizedBox(width: 8),
+                            Text("Phone Number", style: styleText()),
                           ],
                         ),
+                        const SizedBox(height: 8),
                         Row(
                           children: [
                             Expanded(
@@ -687,158 +644,108 @@ class _DaftarPageState extends State<DaftarPage> {
                             ),
                           ),
                         ),
-                        SizedBox(height: 12),
-                        //password field
+                        const SizedBox(height: 12),
                         Row(
                           children: [
-                            Expanded(
-                              child: Icon(
-                                Icons.password,
-                                color: AppTheme.secondary,
-                              ),
+                            const Icon(
+                              Icons.password,
+                              color: AppTheme.secondary,
                             ),
-
-                            Expanded(
-                              flex: 8,
-                              child: Text("Password", style: styleText()),
-                            ),
+                            const SizedBox(width: 8),
+                            Text("New Password", style: styleText()),
                           ],
                         ),
+                        const SizedBox(height: 12),
                         TextFormField(
-                          validator: (value) {
-                            final password = value ?? '';
-                            final hasUppercase = RegExp(
-                              r'[A-Z]',
-                            ).hasMatch(password);
-                            final hasLowercase = RegExp(
-                              r'[a-z]',
-                            ).hasMatch(password);
-                            final hasNumber = RegExp(r'\d').hasMatch(password);
-                            final hasSpecialChar = RegExp(
-                              r'[!@#$%^&*(),.?":{}|<>_\-\\/\[\];\`~+=]',
-                            ).hasMatch(password);
-                            if (password.isEmpty) {
-                              return "Password must be filled";
-                            }
-                            if (password.length < 8 ||
-                                !hasUppercase ||
-                                !hasLowercase ||
-                                !hasNumber ||
-                                !hasSpecialChar) {
-                              return "Password must have at least 8 characters, an uppercase, a lowercase, a number, and a special character";
-                            }
-                            return null;
-                          },
-                          controller: passwordController,
-                          obscureText: isVisible ? true : false,
+                          controller: newPasswordController,
+                          obscureText: !showNewPassword,
                           obscuringCharacter: "*",
                           style: TextStyle(
                             color: AppTheme.secondary,
                             fontSize: 12,
                           ),
+                          validator: (value) {
+                            return validateStrongPassword(value);
+                          },
                           decoration: decorationConstant(
-                            hintText: "Please input your password",
+                            hintText: 'Please input your password',
                             suffixIcon: IconButton(
-                              onPressed: () {
-                                isVisible = !isVisible;
-                                setState(() {});
-                              },
-                              icon: isVisible
-                                  ? Icon(
-                                      Icons.visibility_off,
-                                      color: AppTheme.secondary,
-                                    )
-                                  : Icon(
-                                      Icons.visibility,
-                                      color: AppTheme.secondary,
-                                    ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        //confirm password field
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Icon(
-                                Icons.password,
+                              icon: Icon(
+                                showNewPassword
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
                                 color: AppTheme.secondary,
                               ),
-                            ),
-                            Expanded(
-                              flex: 8,
-                              child: Text(
-                                "Confirm password",
-                                style: styleText(),
-                              ),
-                            ),
-                          ],
-                        ),
-                        TextFormField(
-                          validator: (value) {
-                            final confirmPassword = value ?? '';
-                            if (confirmPassword.isEmpty) {
-                              return "Please re-input your password";
-                            }
-                            if (passwordController.text !=
-                                confirmPasswordController.text) {
-                              return "Password is not match";
-                            }
-
-                            return null;
-                          },
-                          controller: confirmPasswordController,
-                          obscureText: isVisible ? true : false,
-                          obscuringCharacter: "*",
-                          style: TextStyle(
-                            color: AppTheme.secondary,
-                            fontSize: 12,
-                          ),
-                          decoration: decorationConstant(
-                            hintText: "Please re-input your password",
-                            suffixIcon: IconButton(
                               onPressed: () {
-                                isVisible = !isVisible;
-                                setState(() {});
-                              },
-                              icon: isVisible
-                                  ? Icon(
-                                      Icons.visibility_off,
-                                      color: AppTheme.secondary,
-                                    )
-                                  : Icon(
-                                      Icons.visibility,
-                                      color: AppTheme.secondary,
-                                    ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("Sign Up As", style: styleText()),
-                            const SizedBox(height: 10),
-
-                            RoleSelector(
-                              role: role,
-                              onChanged: (value) {
                                 setState(() {
-                                  role = value;
+                                  showNewPassword = !showNewPassword;
                                 });
                               },
                             ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.password,
+                              color: AppTheme.secondary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text("Confirm Password", style: styleText()),
                           ],
                         ),
-                        SizedBox(height: 28),
-                        //tombol daftar
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: confirmPasswordController,
+                          obscureText: !showConfirmPassword,
+                          obscuringCharacter: "*",
+                          style: TextStyle(
+                            color: AppTheme.secondary,
+                            fontSize: 12,
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please confirm your password';
+                            }
+                            final passwordError = validateStrongPassword(
+                              newPasswordController.text,
+                            );
+                            if (passwordError != null) {
+                              return passwordError;
+                            }
+                            if (value != newPasswordController.text) {
+                              return 'Passwords do not match';
+                            }
+                            return null;
+                          },
+                          decoration: decorationConstant(
+                            hintText: 'Please re-input your password',
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                showConfirmPassword
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                                color: AppTheme.secondary,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  showConfirmPassword = !showConfirmPassword;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
                         TombolSementara(
-                          icon: Icons.app_registration,
+                          text: isLoadingResetPassword
+                              ? 'Resetting...'
+                              : 'Reset Password',
                           width: double.infinity,
                           height: 54,
-                          isLoading: isLoadingSignUp,
-                          text: "Sign Up",
-                          onPressed: _registerWithOtp,
+                          onPressed: isLoadingResetPassword
+                              ? null
+                              : _resetPasswordWithOtp,
                         ),
                       ],
                     ),
@@ -849,7 +756,6 @@ class _DaftarPageState extends State<DaftarPage> {
           ),
         ],
       ),
-      backgroundColor: AppTheme.primary,
     );
   }
 }
