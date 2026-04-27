@@ -1,6 +1,8 @@
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/constants/style_text.dart';
@@ -8,6 +10,7 @@ import 'package:connext_app/models/event_model.dart';
 import 'package:connext_app/pages/scanner/scan_peserta_page.dart';
 import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/services/event_controller.dart';
+import 'package:connext_app/services/event_invite_link_service.dart';
 import 'package:connext_app/services/event_participant_controller.dart';
 import 'package:connext_app/services/google_maps_service.dart';
 import 'package:connext_app/services/user_controller.dart';
@@ -22,6 +25,10 @@ import 'package:connext_app/widgets/google_places_autocomplete_field.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:lottie/lottie.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:simple_file_saver/simple_file_saver.dart';
+import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
 
 class DetailEventPage extends StatefulWidget {
   final int eventId;
@@ -33,7 +40,8 @@ class DetailEventPage extends StatefulWidget {
   State<DetailEventPage> createState() => _DetailEventPageState();
 }
 
-class _DetailEventPageState extends State<DetailEventPage> {
+class _DetailEventPageState extends State<DetailEventPage>
+    with WidgetsBindingObserver {
   static const Duration _requestTimeout = Duration(seconds: 8);
   Timer? _realtimeDebounceTimer;
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _eventRealtimeSub;
@@ -42,6 +50,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _usersRealtimeSub;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _creatorRealtimeSub;
   int? _boundCreatorId;
+  bool _isAppInForeground = true;
 
   EventModel? event;
   String createdByName = 'Unknown user';
@@ -51,6 +60,9 @@ class _DetailEventPageState extends State<DetailEventPage> {
   int totalPeserta = 0;
   int totalHadir = 0;
   List<Map<String, dynamic>> scannedPeserta = [];
+  bool _isSharingEvent = false;
+  bool _isExportingCsv = false;
+  bool _isExportingExcel = false;
 
   final GlobalKey<FormState> _editFormKey = GlobalKey<FormState>();
   final TextEditingController dateControllerEdit = TextEditingController();
@@ -65,6 +77,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     event = widget.initialEvent;
     initializeDateFormatting('id');
     _bindRealtimeListeners();
@@ -73,6 +86,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _realtimeDebounceTimer?.cancel();
     _eventRealtimeSub?.cancel();
     _participantsRealtimeSub?.cancel();
@@ -86,8 +100,13 @@ class _DetailEventPageState extends State<DetailEventPage> {
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _isAppInForeground = state == AppLifecycleState.resumed;
+  }
+
   void _scheduleRealtimeRefresh() {
-    if (!mounted) return;
+    if (!mounted || !_isAppInForeground) return;
 
     _realtimeDebounceTimer?.cancel();
     _realtimeDebounceTimer = Timer(const Duration(milliseconds: 400), () async {
@@ -97,6 +116,10 @@ class _DetailEventPageState extends State<DetailEventPage> {
     });
   }
 
+  void _handleRealtimeError(Object error, StackTrace stackTrace) {
+    debugPrint('Realtime listener error: $error');
+  }
+
   void _bindRealtimeListeners() {
     final eventDocRef = FirebaseFirestore.instance
         .collection('events')
@@ -104,17 +127,24 @@ class _DetailEventPageState extends State<DetailEventPage> {
 
     _eventRealtimeSub = eventDocRef.snapshots().listen(
       (_) => _scheduleRealtimeRefresh(),
+      onError: _handleRealtimeError,
     );
 
     _participantsRealtimeSub = eventDocRef
         .collection('participants')
         .snapshots()
-        .listen((_) => _scheduleRealtimeRefresh());
+        .listen(
+          (_) => _scheduleRealtimeRefresh(),
+          onError: _handleRealtimeError,
+        );
 
     _usersRealtimeSub = FirebaseFirestore.instance
         .collection('users')
         .snapshots()
-        .listen((_) => _scheduleRealtimeRefresh());
+        .listen(
+          (_) => _scheduleRealtimeRefresh(),
+          onError: _handleRealtimeError,
+        );
   }
 
   void _bindCreatorRealtimeListener(int creatorId) {
@@ -144,7 +174,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
             }
             createdByImage = latestImage;
           });
-        });
+        }, onError: _handleRealtimeError);
   }
 
   String? requiredValidator(String? value, String label) {
@@ -332,6 +362,204 @@ class _DetailEventPageState extends State<DetailEventPage> {
     }
   }
 
+  String _buildInviteLink() {
+    final eventId = event?.id ?? widget.eventId;
+    return EventInviteLinkService.buildJoinEventUri(eventId).toString();
+  }
+
+  String _sanitizeFileName(String value) {
+    final sanitized = value
+        .trim()
+        .replaceAll(RegExp(r'[^a-zA-Z0-9\-_]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_');
+    return sanitized.isEmpty ? 'present_attendees' : sanitized;
+  }
+
+  List<List<String>> _buildPresentAttendeeTable() {
+    final rows = <List<String>>[
+      ['No', 'Name', 'Phone', 'Check In Time'],
+    ];
+
+    for (var index = 0; index < scannedPeserta.length; index++) {
+      final attendee = scannedPeserta[index];
+      rows.add([
+        '${index + 1}',
+        attendee['namaUser']?.toString() ?? '',
+        attendee['phone']?.toString() ?? '',
+        formatCheckinDateTime(attendee['waktu']),
+      ]);
+    }
+
+    return rows;
+  }
+
+  String _toCsv(List<List<String>> rows) {
+    String escapeCell(String value) {
+      final needsQuotes =
+          value.contains(',') ||
+          value.contains('"') ||
+          value.contains('\n') ||
+          value.contains('\r');
+      final escaped = value.replaceAll('"', '""');
+      return needsQuotes ? '"$escaped"' : escaped;
+    }
+
+    return rows.map((row) => row.map(escapeCell).join(',')).join('\n');
+  }
+
+  Future<void> _shareInviteLink() async {
+    if (_isSharingEvent || event == null) return;
+
+    setState(() {
+      _isSharingEvent = true;
+    });
+
+    try {
+      final inviteLink = _buildInviteLink();
+      final installLink = EventInviteLinkService.buildPlayStoreUri().toString();
+      final directAppLink = EventInviteLinkService.buildDirectAppUri(
+        event?.id ?? widget.eventId,
+      ).toString();
+      try {
+        await Share.shareUri(Uri.parse(inviteLink));
+      } catch (_) {
+        await Share.share(
+          'Join event "${event!.title}" in Connext\n\n'
+          'Open invite link:\n$inviteLink\n\n'
+          'Open directly in app:\n$directAppLink\n\n'
+          'If Connext is not installed yet:\n$installLink',
+          subject: 'Invite to ${event!.title}',
+        );
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Event link shared successfully')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final inviteLink = _buildInviteLink();
+      await Clipboard.setData(ClipboardData(text: inviteLink));
+      final errorMsg = e.toString().contains('MissingPluginException')
+          ? 'Share unavailable, link copied to clipboard'
+          : 'Error sharing, link copied to clipboard';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMsg)));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSharingEvent = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _exportPresentAttendeesAsCsv() async {
+    if (_isExportingCsv || scannedPeserta.isEmpty || event == null) return;
+
+    setState(() {
+      _isExportingCsv = true;
+    });
+
+    try {
+      final rows = _buildPresentAttendeeTable();
+      final csvText = _toCsv(rows);
+      final fileName =
+          'present_attendees_${_sanitizeFileName(event!.title)}.csv';
+
+      final saved = await SimpleFileSaver.saveFile(
+        dataBytes: Uint8List.fromList(utf8.encode(csvText)),
+        fileName: fileName,
+        mimeType: 'text/csv',
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            saved ? 'CSV saved to Downloads: $fileName' : 'CSV save cancelled',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error exporting CSV: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isExportingCsv = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _exportPresentAttendeesAsExcel() async {
+    if (_isExportingExcel || scannedPeserta.isEmpty || event == null) return;
+
+    setState(() {
+      _isExportingExcel = true;
+    });
+
+    try {
+      final workbook = xlsio.Workbook();
+      final sheet = workbook.worksheets[0];
+      sheet.name = 'Present Attendee';
+
+      final rows = _buildPresentAttendeeTable();
+      for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+        final row = rows[rowIndex];
+        for (var columnIndex = 0; columnIndex < row.length; columnIndex++) {
+          sheet
+              .getRangeByIndex(rowIndex + 1, columnIndex + 1)
+              .setText(row[columnIndex]);
+        }
+      }
+
+      sheet.autoFitColumn(1);
+      sheet.autoFitColumn(2);
+      sheet.autoFitColumn(3);
+      sheet.autoFitColumn(4);
+
+      final fileBytes = Uint8List.fromList(workbook.saveAsStream());
+      workbook.dispose();
+
+      final fileName =
+          'present_attendees_${_sanitizeFileName(event!.title)}.xlsx';
+
+      final saved = await SimpleFileSaver.saveFile(
+        dataBytes: fileBytes,
+        fileName: fileName,
+        mimeType:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            saved
+                ? 'Excel saved to Downloads: $fileName'
+                : 'Excel save cancelled',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error exporting Excel: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isExportingExcel = false;
+        });
+      }
+    }
+  }
+
   void showEditEventDialog() {
     if (event == null) return;
 
@@ -462,7 +690,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                           child: GooglePlacesAutocompleteField(
                             controller: locationController,
                             labelText: 'Location',
-                            hintText: 'Search event location on Google Maps',
+                            hintText: 'Search location',
                             showKeySourceInfo: false,
                             validator: (value) =>
                                 requiredValidator(value, 'Location'),
@@ -735,6 +963,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                           imagePath: p['profileImage']?.toString(),
                           radius: 20,
                           backgroundColor: AppTheme.third,
+                          iconColor: AppTheme.primary,
                           iconSize: 20,
                         ),
                         const SizedBox(width: 12),
@@ -780,7 +1009,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                         const Icon(
                           Icons.phone,
                           size: 18,
-                          color: AppTheme.secondary,
+                          color: Color(0xFF00C2FF),
                         ),
                         const SizedBox(width: 8),
                         Text(p['phone'] ?? '', style: styleText()),
@@ -810,7 +1039,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.event_busy, size: 56, color: AppTheme.secondary),
+              const Icon(Icons.event_busy, size: 56, color: AppTheme.fourth),
               const SizedBox(height: 12),
               Text(loadError ?? 'Failed to load event', style: styleText()),
               const SizedBox(height: 12),
@@ -844,45 +1073,16 @@ class _DetailEventPageState extends State<DetailEventPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.numbers, color: AppTheme.secondary),
+              Icon(Icons.numbers, color: AppTheme.third),
               const SizedBox(width: 10),
               Text('${event!.id}', style: styleText()),
             ],
           ),
           const SizedBox(height: 16),
-          InkWell(
-            onTap: _openEventLocation,
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Icon(Icons.location_pin, color: AppTheme.secondary),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          event!.location,
-                          style: styleText().copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Icon(Icons.open_in_new, size: 16, color: AppTheme.secondary),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.description, color: AppTheme.secondary),
+              Icon(Icons.description, color: const Color(0xFF73E8D7)),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -895,22 +1095,9 @@ class _DetailEventPageState extends State<DetailEventPage> {
             ],
           ),
           const SizedBox(height: 16),
-          InkWell(
-            onTap: showParticipants,
-            child: Row(
-              children: [
-                Icon(Icons.people, color: AppTheme.secondary),
-                const SizedBox(width: 10),
-                Text('$totalPeserta joined', style: styleText()),
-                const SizedBox(width: 6),
-                Icon(Icons.chevron_right, size: 18, color: AppTheme.secondary),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
           Row(
             children: [
-              Icon(Icons.verified, color: AppTheme.secondary),
+              Icon(Icons.verified, color: const Color(0xFF73E8D7)),
               const SizedBox(width: 10),
               Text('$totalHadir present', style: styleText()),
             ],
@@ -922,6 +1109,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                 imagePath: createdByImage,
                 radius: 12,
                 backgroundColor: AppTheme.third,
+                iconColor: AppTheme.primary,
                 iconSize: 16,
               ),
               const SizedBox(width: 10),
@@ -931,24 +1119,9 @@ class _DetailEventPageState extends State<DetailEventPage> {
           const SizedBox(height: 16),
           Row(
             children: [
-              Icon(Icons.history, color: AppTheme.secondary),
+              Icon(Icons.history, color: AppTheme.third),
               const SizedBox(width: 10),
               Text(formatCreatedAt(event!.createdAt), style: styleText()),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Icon(Icons.event_available, color: AppTheme.secondary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  event!.eventDate != null
-                      ? "${DateFormat('EEEE, d MMMM yyyy').format(DateTime.parse(event!.eventDate!))} • ${event!.eventTime ?? '-'}"
-                      : '-',
-                  style: styleText(),
-                ),
-              ),
             ],
           ),
         ],
@@ -987,7 +1160,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                   color: AppTheme.primary.withOpacity(0.18),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.event, color: AppTheme.secondary),
+                child: const Icon(Icons.event, color: AppTheme.primary),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1023,14 +1196,23 @@ class _DetailEventPageState extends State<DetailEventPage> {
             spacing: 10,
             runSpacing: 10,
             children: [
-              _buildHeroTag(Icons.location_pin, event!.location),
+              _buildHeroActionTag(
+                icon: Icons.location_pin,
+                label: event!.location,
+                onTap: _openEventLocation,
+              ),
+              _buildHeroActionTag(
+                icon: Icons.people,
+                label: '$totalPeserta joined',
+                onTap: showParticipants,
+                accentColor: const Color(0xFF73E8D7),
+              ),
               _buildHeroTag(
                 Icons.event_available,
                 event!.eventDate != null
                     ? "${DateFormat('EEE, d MMM yyyy').format(DateTime.parse(event!.eventDate!))} • ${event!.eventTime ?? '-'}"
                     : '-',
               ),
-              _buildHeroTag(Icons.people, '$totalPeserta joined'),
             ],
           ),
         ],
@@ -1090,6 +1272,58 @@ class _DetailEventPageState extends State<DetailEventPage> {
       icon: Icons.people,
       child: Column(
         children: [
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _isExportingCsv
+                      ? null
+                      : _exportPresentAttendeesAsCsv,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF73E8D7),
+                    foregroundColor: AppTheme.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: _isExportingCsv
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.file_download_outlined),
+                  label: const Text('CSV'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _isExportingExcel
+                      ? null
+                      : _exportPresentAttendeesAsExcel,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.third,
+                    foregroundColor: AppTheme.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: _isExportingExcel
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.grid_on_outlined),
+                  label: const Text('Excel'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           for (int index = 0; index < scannedPeserta.length; index++) ...[
             if (index > 0) const SizedBox(height: 20),
             Builder(
@@ -1225,6 +1459,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                             imagePath: p['profileImage']?.toString(),
                             radius: 22,
                             backgroundColor: AppTheme.third,
+                            iconColor: AppTheme.primary,
                             iconSize: 22,
                           ),
                           const SizedBox(width: 12),
@@ -1268,7 +1503,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                     const Icon(
                                       Icons.phone,
                                       size: 18,
-                                      color: AppTheme.secondary,
+                                      color: Color(0xFF00C2FF),
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
@@ -1287,7 +1522,7 @@ class _DetailEventPageState extends State<DetailEventPage> {
                                     const Icon(
                                       Icons.access_time,
                                       size: 18,
-                                      color: AppTheme.secondary,
+                                      color: Color(0xFF73E8D7),
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
@@ -1331,6 +1566,17 @@ class _DetailEventPageState extends State<DetailEventPage> {
         ),
         onLeadingPressed: () => Navigator.pop(context, true),
         actions: [
+          IconButton(
+            onPressed: _isSharingEvent ? null : _shareInviteLink,
+            icon: _isSharingEvent
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.share_outlined, color: AppTheme.third),
+            tooltip: 'Share event link',
+          ),
           IconButton(
             onPressed: showEditEventDialog,
             icon: const Icon(Icons.edit, color: AppTheme.third),
@@ -1398,6 +1644,47 @@ class _DetailEventPageState extends State<DetailEventPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHeroActionTag({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color accentColor = AppTheme.third,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withOpacity(0.18),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: accentColor.withOpacity(0.45)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: accentColor),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: styleText().copyWith(
+                    color: AppTheme.primary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

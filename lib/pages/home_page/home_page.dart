@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
+import 'package:connext_app/pages/landing_page/landing_page.dart';
 import 'package:connext_app/pages/profile_page/profile_page.dart';
 import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/services/event_controller.dart';
@@ -58,12 +59,12 @@ class _HomePageState extends State<HomePage> {
   bool isLoadingAttendee = true;
   int _attendeeLoadVersion = 0;
   late List<UserModel> dataUser = [];
+  bool _isSessionGuardReady = false;
 
   @override
   void initState() {
     super.initState();
     _bootstrap();
-    _bindProfileRealtimeListener();
 
     /// 🔥 AUTO REFRESH TIAP DETIK
     timer = Timer.periodic(const Duration(seconds: 1), (t) {
@@ -74,8 +75,58 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _bootstrap() async {
+    final sessionValid = await _validateMinimumSessionData();
+    if (!sessionValid || !mounted) return;
+
     await getCurrentUser();
     await loadSession();
+    _bindProfileRealtimeListener();
+
+    if (!mounted) return;
+    setState(() {
+      _isSessionGuardReady = true;
+    });
+  }
+
+  Future<bool> _validateMinimumSessionData() async {
+    final uid = FirebaseServices.currentUid;
+    final profile = await FirebaseServices.getCurrentUserProfile();
+
+    final isValidProfile =
+        uid != null &&
+        uid.isNotEmpty &&
+        profile != null &&
+        (profile.id ?? 0) > 0 &&
+        profile.nama.trim().isNotEmpty &&
+        profile.role.trim().isNotEmpty;
+
+    if (isValidProfile) return true;
+
+    await _forceRelogin(
+      'Session data is outdated after update. Please login again.',
+    );
+    return false;
+  }
+
+  Future<void> _forceRelogin(String message) async {
+    final pref = PreferenceHandler();
+    await pref.init();
+    await pref.logout();
+
+    try {
+      await FirebaseServices.logout();
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => LandingPage()),
+      (route) => false,
+    );
   }
 
   @override
@@ -355,10 +406,15 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Widget buildRow(IconData icon, String text, {Widget? trailing}) {
+  Widget buildRow(
+    IconData icon,
+    String text, {
+    Widget? trailing,
+    Color iconColor = AppTheme.third,
+  }) {
     return Row(
       children: [
-        SizedBox(child: Icon(icon, size: 18, color: AppTheme.secondary)),
+        SizedBox(child: Icon(icon, size: 18, color: iconColor)),
         const SizedBox(width: 8),
         Expanded(child: Text(text, style: styleText())),
         if (trailing != null) ...[const SizedBox(width: 6), trailing],
@@ -644,6 +700,13 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isSessionGuardReady) {
+      return const Scaffold(
+        backgroundColor: AppTheme.primary,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: HomeScreenAppbar(
         title: Text.rich(
@@ -683,7 +746,8 @@ class _HomePageState extends State<HomePage> {
         child: ProfileAvatar(
           imagePath: currentUser?.profileImage,
           radius: 24,
-          backgroundColor: AppTheme.third,
+          backgroundColor: const Color(0xFF73E8D7),
+          iconColor: AppTheme.primary,
           iconSize: 24,
         ),
       ),
@@ -709,9 +773,20 @@ class _HomePageState extends State<HomePage> {
                       }
                     },
                     height: 54,
-                    width: 164,
-                    icon: Icons.edit,
-                    text: "Create Event",
+                    width: double.infinity,
+                    icon: Icons.add_circle,
+                    text: "Create New Event",
+                  ),
+                  const SizedBox(height: 6),
+                  Center(
+                    child: Text(
+                      "Tap to add a new event and publish it for attendees",
+                      style: styleText().copyWith(
+                        fontSize: 11,
+                        color: AppTheme.third,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                   SizedBox(height: 20),
 
@@ -913,7 +988,7 @@ class _HomePageState extends State<HomePage> {
                                               children: [
                                                 Icon(
                                                   Icons.event,
-                                                  color: AppTheme.secondary,
+                                                  color: AppTheme.third,
                                                   size: 20,
                                                 ),
                                                 const SizedBox(width: 8),
@@ -930,10 +1005,44 @@ class _HomePageState extends State<HomePage> {
                                                   ),
                                                 ),
                                                 const SizedBox(width: 8),
-                                                Icon(
-                                                  Icons.info_outline,
-                                                  color: AppTheme.secondary,
-                                                  size: 20,
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.third
+                                                        .withOpacity(0.18),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          999,
+                                                        ),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        Icons.touch_app,
+                                                        color: AppTheme.third,
+                                                        size: 14,
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        'Detail',
+                                                        style: styleText()
+                                                            .copyWith(
+                                                              fontSize: 10,
+                                                              color: AppTheme
+                                                                  .third,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w700,
+                                                            ),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               ],
                                             ),
@@ -943,6 +1052,7 @@ class _HomePageState extends State<HomePage> {
                                             buildRow(
                                               Icons.location_pin,
                                               event.location,
+                                              iconColor: AppTheme.third,
                                             ),
 
                                             const SizedBox(height: 6),
@@ -953,6 +1063,9 @@ class _HomePageState extends State<HomePage> {
                                               event.eventDate != null
                                                   ? "${DateFormat('EE, d MMMM yyyy').format(DateTime.parse(event.eventDate!))} • ${event.eventTime}"
                                                   : "-",
+                                              iconColor: const Color(
+                                                0xFF73E8D7,
+                                              ),
                                             ),
 
                                             const SizedBox(height: 6),
@@ -960,6 +1073,43 @@ class _HomePageState extends State<HomePage> {
                                             buildRow(
                                               Icons.people,
                                               "${eventParticipantCount[event.id] ?? 0} joined",
+                                              iconColor: const Color(
+                                                0xFF00C2FF,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 10),
+                                            Container(
+                                              width: double.infinity,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 8,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.third
+                                                    .withOpacity(0.14),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.open_in_new,
+                                                    size: 16,
+                                                    color: AppTheme.third,
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    'Tap this card to open detail event',
+                                                    style: styleText().copyWith(
+                                                      color: AppTheme.third,
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -1321,7 +1471,7 @@ class _HomePageState extends State<HomePage> {
                                               children: [
                                                 Icon(
                                                   Icons.event,
-                                                  color: AppTheme.secondary,
+                                                  color: AppTheme.third,
                                                   size: 20,
                                                 ),
 
@@ -1399,6 +1549,7 @@ class _HomePageState extends State<HomePage> {
                                             buildRow(
                                               Icons.location_pin,
                                               event.location,
+                                              iconColor: AppTheme.third,
                                             ),
 
                                             const SizedBox(height: 8),
@@ -1407,6 +1558,9 @@ class _HomePageState extends State<HomePage> {
                                             buildRow(
                                               Icons.people,
                                               "${eventParticipantCount[event.id] ?? 0} joined",
+                                              iconColor: const Color(
+                                                0xFF00C2FF,
+                                              ),
                                             ),
                                             const SizedBox(height: 8),
 
@@ -1415,6 +1569,9 @@ class _HomePageState extends State<HomePage> {
                                               event.eventDate != null
                                                   ? "${DateFormat('EE, d MMMM yyyy').format(DateTime.parse(event.eventDate!))} • ${event.eventTime ?? '-'}"
                                                   : "-",
+                                              iconColor: const Color(
+                                                0xFF73E8D7,
+                                              ),
                                             ),
                                             const SizedBox(height: 8),
 
@@ -1446,6 +1603,56 @@ class _HomePageState extends State<HomePage> {
                                                   ),
                                                 ],
                                               ),
+                                            const SizedBox(height: 10),
+                                            Container(
+                                              width: double.infinity,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 8,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: joined || checkedIn
+                                                    ? const Color(
+                                                        0xFF73E8D7,
+                                                      ).withOpacity(0.2)
+                                                    : AppTheme.third
+                                                          .withOpacity(0.14),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    joined || checkedIn
+                                                        ? Icons.open_in_new
+                                                        : Icons.touch_app,
+                                                    size: 16,
+                                                    color: joined || checkedIn
+                                                        ? const Color(
+                                                            0xFF73E8D7,
+                                                          )
+                                                        : AppTheme.third,
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Text(
+                                                    joined || checkedIn
+                                                        ? 'Tap this card to open your event'
+                                                        : 'Tap this card to join this event',
+                                                    style: styleText().copyWith(
+                                                      color: joined || checkedIn
+                                                          ? const Color(
+                                                              0xFF73E8D7,
+                                                            )
+                                                          : AppTheme.third,
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ),

@@ -1201,7 +1201,10 @@ class _ProfilePageState extends State<ProfilePage> {
                           /// NAMA
                           Row(
                             children: [
-                              Icon(Icons.person, color: AppTheme.secondary),
+                              Icon(
+                                Icons.person,
+                                color: const Color(0xFF73E8D7),
+                              ),
                               SizedBox(width: 10),
 
                               Text(
@@ -1228,7 +1231,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           /// PHONE
                           Row(
                             children: [
-                              Icon(Icons.phone, color: AppTheme.secondary),
+                              Icon(Icons.phone, color: const Color(0xFF00C2FF)),
                               SizedBox(width: 10),
 
                               Text(
@@ -1255,7 +1258,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           /// ROLE
                           Row(
                             children: [
-                              Icon(Icons.badge, color: AppTheme.secondary),
+                              Icon(Icons.badge, color: const Color(0xFF73E8D7)),
                               const SizedBox(width: 10),
 
                               Text(
@@ -1265,37 +1268,103 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                               ),
 
-                              const Spacer(),
+                              const SizedBox(width: 12),
 
-                              Text(role ?? "Unknown", style: styleText()),
-
-                              const SizedBox(width: 10),
-
-                              GestureDetector(
-                                onTap: isChangingRole ? null : changeRole,
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.secondary,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: isChangingRole
-                                      ? const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                  AppTheme.primary,
-                                                ),
-                                          ),
-                                        )
-                                      : const Icon(
-                                          Icons.swap_horiz,
-                                          size: 18,
-                                          color: AppTheme.primary,
+                              Expanded(
+                                child: Wrap(
+                                  alignment: WrapAlignment.end,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 10,
+                                  runSpacing: 8,
+                                  children: [
+                                    Text(
+                                      role ?? "Unknown",
+                                      style: styleText().copyWith(
+                                        color: AppTheme.third,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    InkWell(
+                                      onTap: isChangingRole ? null : changeRole,
+                                      borderRadius: BorderRadius.circular(999),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
                                         ),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              Color(0xFF2AE6B7),
+                                              Color(0xFF00C2FF),
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            999,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppTheme.third.withOpacity(
+                                                0.35,
+                                              ),
+                                              blurRadius: 10,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: isChangingRole
+                                            ? const SizedBox(
+                                                width: 18,
+                                                height: 18,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                        Color
+                                                      >(AppTheme.primary),
+                                                ),
+                                              )
+                                            : Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.swap_horiz_rounded,
+                                                    size: 18,
+                                                    color: AppTheme.primary,
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  ConstrainedBox(
+                                                    constraints:
+                                                        const BoxConstraints(
+                                                          maxWidth: 130,
+                                                        ),
+                                                    child: FittedBox(
+                                                      fit: BoxFit.scaleDown,
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Text(
+                                                        role == 'Committee'
+                                                            ? 'Switch to Attendee'
+                                                            : 'Switch to Committee',
+                                                        maxLines: 1,
+                                                        softWrap: false,
+                                                        style: styleText()
+                                                            .copyWith(
+                                                              color: AppTheme
+                                                                  .primary,
+                                                              fontSize: 11,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w800,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],

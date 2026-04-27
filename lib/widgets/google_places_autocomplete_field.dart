@@ -229,7 +229,7 @@ class _GooglePlacesAutocompleteFieldState
                     ),
                   )
                 : widget.controller.text.trim().isEmpty
-                ? const Icon(Icons.place_outlined)
+                ? const Icon(Icons.search)
                 : IconButton(
                     onPressed: () {
                       widget.controller.clear();
@@ -287,7 +287,7 @@ class _GooglePlacesAutocompleteFieldState
                 for (var i = 0; i < suggestions.length; i++) ...[
                   ListTile(
                     dense: true,
-                    leading: const Icon(Icons.location_on_outlined),
+                    leading: const Icon(Icons.location_pin),
                     title: Text(
                       suggestions[i].mainText ?? suggestions[i].description,
                       style: styleText().copyWith(fontWeight: FontWeight.w600),

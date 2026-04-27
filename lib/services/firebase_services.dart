@@ -22,6 +22,15 @@ class FirebaseServices {
     return '$normalized@connext.app';
   }
 
+  static String _fallbackEmailFromPhoneAndUid(String phone, String uid) {
+    final normalized = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    final safeUid = uid.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+    final uidSuffix = safeUid.isEmpty
+        ? DateTime.now().millisecondsSinceEpoch.toString()
+        : safeUid.substring(0, safeUid.length > 12 ? 12 : safeUid.length);
+    return '$normalized.$uidSuffix@connext.app';
+  }
+
   static String normalizePhoneToE164(String phone, {String? countryDialCode}) {
     final raw = phone.trim();
     if (raw.isEmpty) {
@@ -285,8 +294,9 @@ class FirebaseServices {
     required UserModel user,
     required PhoneAuthCredential credential,
   }) async {
-    final email = _emailFromPhone(user.phone);
+    final canonicalEmail = _emailFromPhone(user.phone);
     final e164Phone = normalizePhoneToE164(user.phone);
+    String loginEmail = canonicalEmail;
 
     bool shouldSignOut = false;
 
@@ -317,28 +327,149 @@ class FirebaseServices {
 
       final userId = await _nextUserId();
 
-      final emailCredential = EmailAuthProvider.credential(
-        email: email,
-        password: user.password,
-      );
+      Future<void> linkUsingEmail(String targetEmail) async {
+        final emailCredential = EmailAuthProvider.credential(
+          email: targetEmail,
+          password: user.password,
+        );
+        await firebaseUser.linkWithCredential(emailCredential);
+        loginEmail = targetEmail;
+      }
+
+      bool isEmailConflictCode(String code) {
+        final normalized = code.toLowerCase();
+        return normalized == 'credential-already-in-use' ||
+            normalized == 'email-already-in-use';
+      }
 
       try {
-        await firebaseUser.linkWithCredential(emailCredential);
+        await linkUsingEmail(canonicalEmail);
       } on FirebaseAuthException catch (e) {
-        if (e.code != 'provider-already-linked') {
+        final authCode = e.code.toLowerCase();
+
+        if (authCode == 'provider-already-linked') {
+          // Email provider already linked, this is fine
+          loginEmail = firebaseUser.email ?? canonicalEmail;
+        } else if (authCode == 'credential-already-in-use' ||
+            authCode == 'email-already-in-use') {
+          // Email is already registered by another user
+          // Try to recover: check if this is an old email from a user who changed phone
+          try {
+            QuerySnapshot<Map<String, dynamic>> usersWithOldEmail =
+                await _firebaseFirestore
+                    .collection('users')
+                    .where('old_email', isEqualTo: canonicalEmail)
+                    .where('old_phone_e164', isEqualTo: e164Phone)
+                    .limit(1)
+                    .get();
+
+            if (usersWithOldEmail.docs.isEmpty) {
+              usersWithOldEmail = await _firebaseFirestore
+                  .collection('users')
+                  .where('auth_email_legacy', isEqualTo: canonicalEmail)
+                  .where('old_phone_e164', isEqualTo: e164Phone)
+                  .limit(1)
+                  .get();
+            }
+
+            if (usersWithOldEmail.docs.isNotEmpty) {
+              // Found matching old email+phone, clear them to allow re-registration
+              await _firebaseFirestore
+                  .collection('users')
+                  .doc(usersWithOldEmail.docs.first.id)
+                  .update({
+                    'old_email': FieldValue.delete(),
+                    'old_phone_e164': FieldValue.delete(),
+                    'auth_email_legacy': FieldValue.delete(),
+                  });
+
+              // Retry linking with cleared old email
+              try {
+                await linkUsingEmail(canonicalEmail);
+              } on FirebaseAuthException catch (retryError) {
+                if (!isEmailConflictCode(retryError.code)) {
+                  throw FirebaseAuthException(
+                    code: 'email-linking-failed',
+                    message:
+                        'Failed to complete email registration after cleanup: ${retryError.toString()}',
+                  );
+                }
+
+                // Canonical still occupied in Auth, fallback to deterministic alias.
+                final fallbackEmail = _fallbackEmailFromPhoneAndUid(
+                  e164Phone,
+                  firebaseUser.uid,
+                );
+
+                try {
+                  await linkUsingEmail(fallbackEmail);
+                } on FirebaseAuthException catch (fallbackError) {
+                  final fallbackCode = fallbackError.code.toLowerCase();
+                  if (fallbackCode == 'provider-already-linked') {
+                    loginEmail = firebaseUser.email ?? fallbackEmail;
+                  } else {
+                    throw FirebaseAuthException(
+                      code: 'email-linking-failed',
+                      message:
+                          'Failed to complete email registration after cleanup with fallback alias: ${fallbackError.toString()}',
+                    );
+                  }
+                }
+              }
+            } else {
+              // If canonical email is already occupied, use deterministic alias email.
+              final fallbackEmail = _fallbackEmailFromPhoneAndUid(
+                e164Phone,
+                firebaseUser.uid,
+              );
+              try {
+                await linkUsingEmail(fallbackEmail);
+              } on FirebaseAuthException catch (fallbackError) {
+                final fallbackCode = fallbackError.code.toLowerCase();
+                if (fallbackCode == 'provider-already-linked') {
+                  loginEmail = firebaseUser.email ?? fallbackEmail;
+                } else {
+                  throw FirebaseAuthException(
+                    code: 'email-already-registered',
+                    message:
+                        'Email associated with this phone is already registered and fallback alias failed. Please contact support.',
+                  );
+                }
+              }
+            }
+          } catch (recoveryError) {
+            if (recoveryError is FirebaseAuthException) {
+              rethrow;
+            }
+            throw FirebaseAuthException(
+              code: 'email-recovery-failed',
+              message:
+                  'Could not resolve email registration issue: ${recoveryError.toString()}',
+            );
+          }
+        } else {
           rethrow;
         }
       }
 
-      await _firebaseFirestore.collection('users').doc(firebaseUser.uid).set({
-        ...user.toMap(),
-        'id': userId,
-        'uid': firebaseUser.uid,
-        'email': email,
-        'phone': user.phone.trim(),
-        'phone_e164': e164Phone,
-        'created_at': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      try {
+        await _firebaseFirestore.collection('users').doc(firebaseUser.uid).set({
+          ...user.toMap(),
+          'id': userId,
+          'uid': firebaseUser.uid,
+          'email': loginEmail,
+          'auth_email_canonical': canonicalEmail,
+          if (loginEmail != canonicalEmail) 'auth_email_legacy': canonicalEmail,
+          'phone': user.phone.trim(),
+          'phone_e164': e164Phone,
+          'created_at': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (firestoreError) {
+        throw FirebaseAuthException(
+          code: 'firestore-write-failed',
+          message: 'Failed to save user profile: ${firestoreError.toString()}',
+        );
+      }
 
       return UserModel(
         id: userId,
@@ -347,6 +478,14 @@ class FirebaseServices {
         password: user.password,
         role: user.role,
         profileImage: user.profileImage,
+      );
+    } on FirebaseAuthException {
+      rethrow;
+    } catch (unexpectedError) {
+      throw FirebaseAuthException(
+        code: 'registration-error',
+        message:
+            'An unexpected error occurred during registration: ${unexpectedError.toString()}',
       );
     } finally {
       if (shouldSignOut) {

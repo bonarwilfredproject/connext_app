@@ -1,6 +1,14 @@
+import 'dart:async';
+
+import 'package:app_links/app_links.dart';
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/firebase_options.dart';
+import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
+import 'package:connext_app/pages/event_invite_page.dart';
 import 'package:connext_app/pages/splash_screen.dart';
+import 'package:connext_app/services/event_invite_link_service.dart';
+import 'package:connext_app/services/event_participant_controller.dart';
+import 'package:connext_app/services/preferences_services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -22,6 +30,53 @@ void main() async {
   }
 
   runApp(const MyApp());
+  unawaited(_initializeDeepLinks());
+}
+
+Future<void> _initializeDeepLinks() async {
+  final appLinks = AppLinks();
+
+  Future<void> handleIncomingUri(Uri? uri) async {
+    if (uri == null) return;
+
+    final eventId = EventInviteLinkService.parseEventId(uri);
+    if (eventId == null) return;
+
+    final pref = PreferenceHandler();
+    await pref.init();
+    await pref.savePendingJoinEventId(eventId);
+
+    if (!pref.getIsLogin()) return;
+
+    final userId = pref.getUserId();
+    final alreadyJoined = userId > 0
+        ? await EventParticipantController.isJoined(userId, eventId)
+        : false;
+
+    final navigator = rootNavigatorKey.currentState;
+    if (navigator == null) return;
+
+    await pref.clearPendingJoinEventId();
+
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => alreadyJoined
+            ? AttendeeEventPage(userId: userId, eventId: eventId)
+            : EventInvitePage(eventId: eventId),
+      ),
+      (route) => false,
+    );
+  }
+
+  try {
+    await handleIncomingUri(await appLinks.getInitialLink());
+  } catch (_) {
+    // Ignore malformed or unavailable initial deep links.
+  }
+
+  appLinks.uriLinkStream.listen((uri) {
+    unawaited(handleIncomingUri(uri));
+  });
 }
 
 class MyApp extends StatelessWidget {

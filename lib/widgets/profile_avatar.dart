@@ -8,6 +8,7 @@ class ProfileAvatar extends StatefulWidget {
   final double radius;
   final Color backgroundColor;
   final IconData fallbackIcon;
+  final Color iconColor;
   final double iconSize;
 
   const ProfileAvatar({
@@ -16,6 +17,7 @@ class ProfileAvatar extends StatefulWidget {
     required this.radius,
     required this.backgroundColor,
     this.fallbackIcon = Icons.person,
+    this.iconColor = Colors.white,
     this.iconSize = 24,
   });
 
@@ -101,7 +103,11 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
           backgroundColor: widget.backgroundColor,
           backgroundImage: image,
           child: image == null
-              ? Icon(widget.fallbackIcon, size: widget.iconSize)
+              ? Icon(
+                  widget.fallbackIcon,
+                  size: widget.iconSize,
+                  color: widget.iconColor,
+                )
               : null,
         );
       },

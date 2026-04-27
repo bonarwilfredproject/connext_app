@@ -8,12 +8,14 @@ class AppSectionCard extends StatelessWidget {
     required this.child,
     this.title,
     this.icon,
+    this.iconColor = AppTheme.primary,
     this.padding = const EdgeInsets.all(20),
   });
 
   final Widget child;
   final String? title;
   final IconData? icon;
+  final Color iconColor;
   final EdgeInsets padding;
 
   @override
@@ -54,7 +56,7 @@ class AppSectionCard extends StatelessWidget {
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(icon, color: AppTheme.primary, size: 18),
+                    child: Icon(icon, color: iconColor, size: 18),
                   ),
                   const SizedBox(width: 10),
                 ],

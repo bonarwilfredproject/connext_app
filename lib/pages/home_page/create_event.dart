@@ -11,6 +11,7 @@ import 'package:connext_app/widgets/connext_app_bar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
 import 'package:connext_app/widgets/google_places_autocomplete_field.dart';
 import 'package:connext_app/constants/style_text.dart';
+import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -315,7 +316,7 @@ class _CreateEventState extends State<CreateEvent> {
                       GooglePlacesAutocompleteField(
                         controller: lokasiController,
                         labelText: 'Location',
-                        hintText: 'Search event location on Google Maps',
+                        hintText: 'Search location',
                         showKeySourceInfo: false,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
@@ -548,22 +549,23 @@ class _CreateEventState extends State<CreateEvent> {
                       const SizedBox(height: 30),
 
                       /// BUTTON
+                      TombolSementara(
+                        icon: Icons.add_circle,
+                        text: 'Create Event Now',
+                        width: double.infinity,
+                        height: 54,
+                        isLoading: isCreatingEvent,
+                        onPressed: createEvent,
+                      ),
+                      const SizedBox(height: 8),
                       Center(
-                        child: IconButton(
-                          style: IconButton.styleFrom(
-                            backgroundColor: AppTheme.third,
+                        child: Text(
+                          'Tap to publish this event for attendees',
+                          style: styleText().copyWith(
+                            fontSize: 11,
+                            color: AppTheme.third,
+                            fontWeight: FontWeight.w600,
                           ),
-                          onPressed: isCreatingEvent ? null : createEvent,
-                          icon: isCreatingEvent
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppTheme.primary,
-                                  ),
-                                )
-                              : const Icon(Icons.add, color: AppTheme.primary),
                         ),
                       ),
                     ],

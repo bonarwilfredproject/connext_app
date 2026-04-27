@@ -1,8 +1,11 @@
 import 'package:connext_app/constants/app_theme.dart';
-import 'package:connext_app/services/firebase_services.dart';
-import 'package:connext_app/services/preferences_services.dart';
+import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
+import 'package:connext_app/pages/event_invite_page.dart';
 import 'package:connext_app/pages/home_page/home_page.dart';
 import 'package:connext_app/pages/landing_page/landing_page.dart';
+import 'package:connext_app/services/event_participant_controller.dart';
+import 'package:connext_app/services/firebase_services.dart';
+import 'package:connext_app/services/preferences_services.dart';
 import 'package:flutter/material.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -171,7 +174,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void autoLogin() async {
-    await Future.delayed(Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 3));
 
     try {
       await FirebaseServices.migratePhoneAuthMappingsOnce();
@@ -182,20 +185,84 @@ class _SplashScreenState extends State<SplashScreen> {
     final pref = PreferenceHandler();
     await pref.init();
 
-    bool? data = await pref.getIsLogin();
-    String? nama = await pref.getNamaUser();
-    String? role = await pref.getRole();
-
-    if (data == true && nama != null && role != null) {
+    final isMarkedLoggedIn = pref.getIsLogin();
+    // Guard against stale local session after app updates.
+    if (!isMarkedLoggedIn) {
+      if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const HomePage()),
+        MaterialPageRoute(builder: (context) => LandingPage()),
         (route) => false,
       );
       return;
     }
 
+    final currentUid = FirebaseServices.currentUid;
+    if (currentUid == null || currentUid.isEmpty) {
+      await pref.logout();
+      try {
+        await FirebaseServices.logout();
+      } catch (_) {}
+
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => LandingPage()),
+        (route) => false,
+      );
+      return;
+    }
+
+    final profile = await FirebaseServices.getCurrentUserProfile();
+    final profileId = profile?.id ?? 0;
+    final profileName = (profile?.nama ?? '').trim();
+    final profileRole = (profile?.role ?? '').trim();
+
+    if (profile == null ||
+        profileId <= 0 ||
+        profileName.isEmpty ||
+        profileRole.isEmpty) {
+      await pref.logout();
+      try {
+        await FirebaseServices.logout();
+      } catch (_) {}
+
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => LandingPage()),
+        (route) => false,
+      );
+      return;
+    }
+
+    // Sync local session cache with latest remote profile.
+    await pref.saveUser(profileId, profileName, profileRole);
+
+    final pendingJoinEventId = pref.getPendingJoinEventId();
+    if (pendingJoinEventId > 0) {
+      final userId = pref.getUserId();
+      final alreadyJoined = userId > 0
+          ? await EventParticipantController.isJoined(
+              userId,
+              pendingJoinEventId,
+            )
+          : false;
+
+      await pref.clearPendingJoinEventId();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => alreadyJoined
+              ? AttendeeEventPage(userId: userId, eventId: pendingJoinEventId)
+              : EventInvitePage(eventId: pendingJoinEventId),
+        ),
+        (route) => false,
+      );
+      return;
+    }
+
+    // Keep silent auto-login once session/profile is valid.
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (context) => LandingPage()),
+      MaterialPageRoute(builder: (context) => const HomePage()),
       (route) => false,
     );
   }

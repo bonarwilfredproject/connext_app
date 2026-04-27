@@ -2,9 +2,12 @@ import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/services/firebase_services.dart';
+import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
 import 'package:connext_app/services/preferences_services.dart';
+import 'package:connext_app/services/event_participant_controller.dart';
 import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/pages/auth/forgot_password_page.dart';
+import 'package:connext_app/pages/event_invite_page.dart';
 import 'package:connext_app/pages/home_page/home_page.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/custom_appbar.dart';
@@ -145,6 +148,29 @@ class _LogInPageState extends State<LogInPage> {
     }
 
     await pref.saveUser(resolvedUserId, login.nama, login.role);
+
+    final pendingJoinEventId = pref.getPendingJoinEventId();
+    if (pendingJoinEventId > 0) {
+      final alreadyJoined = await EventParticipantController.isJoined(
+        resolvedUserId,
+        pendingJoinEventId,
+      );
+
+      await pref.clearPendingJoinEventId();
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (context) => alreadyJoined
+              ? AttendeeEventPage(
+                  userId: resolvedUserId!,
+                  eventId: pendingJoinEventId,
+                )
+              : EventInvitePage(eventId: pendingJoinEventId),
+        ),
+        (route) => false,
+      );
+      return;
+    }
 
     Navigator.pushAndRemoveUntil(
       context,

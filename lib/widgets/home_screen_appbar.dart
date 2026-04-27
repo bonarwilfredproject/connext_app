@@ -1,4 +1,3 @@
-import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/widgets/connext_app_bar.dart';
 import 'package:flutter/material.dart';
 
@@ -26,11 +25,8 @@ class HomeScreenAppbar extends StatelessWidget implements PreferredSizeWidget {
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.third.withOpacity(0.95),
-                    AppTheme.fourth.withOpacity(0.95),
-                  ],
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF73E8D7), Color(0xFF00C2FF)],
                 ),
                 shape: BoxShape.circle,
               ),

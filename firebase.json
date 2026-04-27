@@ -1,1 +1,43 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"connext-ppkd","appId":"1:863870413677:android:625b7a5eb4c36ca8fec864","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"connext-ppkd","configurations":{"android":"1:863870413677:android:625b7a5eb4c36ca8fec864"}}}}}}
+{
+    "flutter": {
+        "platforms": {
+            "android": {
+                "default": {
+                    "projectId": "connext-ppkd",
+                    "appId": "1:863870413677:android:625b7a5eb4c36ca8fec864",
+                    "fileOutput": "android/app/google-services.json"
+                }
+            },
+            "dart": {
+                "lib/firebase_options.dart": {
+                    "projectId": "connext-ppkd",
+                    "configurations": {
+                        "android": "1:863870413677:android:625b7a5eb4c36ca8fec864"
+                    }
+                }
+            }
+        }
+    },
+    "hosting": {
+        "public": "build/web",
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**"
+        ],
+        "rewrites": [
+            {
+                "source": "/j/**",
+                "destination": "/join-event.html"
+            },
+            {
+                "source": "/join-event/**",
+                "destination": "/join-event.html"
+            },
+            {
+                "source": "**",
+                "destination": "/index.html"
+            }
+        ]
+    }
+}

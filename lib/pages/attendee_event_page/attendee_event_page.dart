@@ -6,6 +6,7 @@ import 'package:connext_app/services/user_controller.dart';
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/models/event_model.dart';
+import 'package:connext_app/pages/home_page/home_page.dart';
 import 'package:connext_app/services/check_in_controller.dart';
 import 'package:connext_app/services/event_controller.dart';
 import 'package:connext_app/services/event_participant_controller.dart';
@@ -379,7 +380,12 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
             fontWeight: FontWeight.w800,
           ),
         ),
-        onLeadingPressed: () => Navigator.pop(context),
+        onLeadingPressed: () {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const HomePage()),
+            (route) => false,
+          );
+        },
       ),
       body: Stack(
         children: [
@@ -422,64 +428,90 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
                               const SizedBox(height: 8),
 
                               /// LOCATION
-                              InkWell(
-                                onTap: _openEventLocation,
-                                borderRadius: BorderRadius.circular(8),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 4,
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1A1D3A),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: AppTheme.third.withOpacity(0.16),
                                   ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.location_pin,
-                                        size: 18,
-                                        color: AppTheme.secondary,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            if ((event!.locationName
-                                                    ?.trim()
-                                                    .isNotEmpty ??
-                                                false))
-                                              Text(
-                                                event!.locationName!.trim(),
-                                                style: styleText().copyWith(
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                                maxLines: 2,
-                                              ),
-                                            if ((event!.locationName
-                                                        ?.trim()
-                                                        .isEmpty ??
-                                                    true) ||
-                                                event!.locationName!.trim() !=
-                                                    event!.location.trim())
-                                              Text(
-                                                event!.location,
-                                                style: styleText().copyWith(
-                                                  decoration:
-                                                      TextDecoration.underline,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                                maxLines: 2,
-                                              ),
-                                          ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Icon(
+                                          Icons.location_pin,
+                                          size: 18,
+                                          color: Color(0xFF00C2FF),
                                         ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              if ((event!.locationName
+                                                      ?.trim()
+                                                      .isNotEmpty ??
+                                                  false))
+                                                Text(
+                                                  event!.locationName!.trim(),
+                                                  style: styleText().copyWith(
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  maxLines: 2,
+                                                ),
+                                              if ((event!.locationName
+                                                          ?.trim()
+                                                          .isEmpty ??
+                                                      true) ||
+                                                  event!.locationName!.trim() !=
+                                                      event!.location.trim())
+                                                Text(
+                                                  event!.location,
+                                                  style: styleText().copyWith(
+                                                    decoration: TextDecoration
+                                                        .underline,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  maxLines: 2,
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: _openEventLocation,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppTheme.third,
+                                          foregroundColor: AppTheme.primary,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.map_outlined),
+                                        label: const Text('Open Google Maps'),
                                       ),
-                                      const SizedBox(width: 4),
-                                      const Icon(
-                                        Icons.open_in_new,
-                                        size: 16,
-                                        color: AppTheme.secondary,
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
 
@@ -492,7 +524,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
                                   const Icon(
                                     Icons.description,
                                     size: 18,
-                                    color: AppTheme.secondary,
+                                    color: Color(0xFF73E8D7),
                                   ),
                                   const SizedBox(width: 6),
                                   Expanded(
@@ -516,7 +548,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
                                   const Icon(
                                     Icons.people,
                                     size: 18,
-                                    color: AppTheme.secondary,
+                                    color: Color(0xFF00C2FF),
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
@@ -533,7 +565,7 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
                                   const Icon(
                                     Icons.event_available,
                                     size: 18,
-                                    color: AppTheme.secondary,
+                                    color: Color(0xFF73E8D7),
                                   ),
                                   const SizedBox(width: 6),
                                   Expanded(

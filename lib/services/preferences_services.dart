@@ -16,6 +16,7 @@ class PreferenceHandler {
   static const String _role = "role";
   static const String _userId = "userId";
   static const String _phoneAuthMappingsMigrated = "phoneAuthMappingsMigrated";
+  static const String _pendingJoinEventId = "pendingJoinEventId";
 
   /// SAVE USER SAAT LOGIN / REGISTER
   Future<void> saveUser(int userId, String nama, String role) async {
@@ -61,6 +62,18 @@ class PreferenceHandler {
 
   Future<void> setPhoneAuthMappingsMigrated(bool value) async {
     await _preferences.setBool(_phoneAuthMappingsMigrated, value);
+  }
+
+  Future<void> savePendingJoinEventId(int eventId) async {
+    await _preferences.setInt(_pendingJoinEventId, eventId);
+  }
+
+  int getPendingJoinEventId() {
+    return _preferences.getInt(_pendingJoinEventId) ?? 0;
+  }
+
+  Future<void> clearPendingJoinEventId() async {
+    await _preferences.remove(_pendingJoinEventId);
   }
 
   /// LOGOUT
