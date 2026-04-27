@@ -7,8 +7,8 @@ import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
 import 'package:connext_app/pages/event_invite_page.dart';
 import 'package:connext_app/pages/splash_screen.dart';
 import 'package:connext_app/services/event_invite_link_service.dart';
-import 'package:connext_app/services/event_participant_controller.dart';
 import 'package:connext_app/services/install_referrer_service.dart';
+import 'package:connext_app/services/pending_join_route_service.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -52,9 +52,12 @@ Future<void> _initializeDeepLinks() async {
     if (!pref.getIsLogin()) return;
 
     final userId = pref.getUserId();
-    final alreadyJoined = userId > 0
-        ? await EventParticipantController.isJoined(userId, eventId)
-        : false;
+    final userRole = pref.getRole() ?? 'Attendee';
+    final routeDecision = await PendingJoinRouteService.resolve(
+      userId: userId,
+      userRole: userRole,
+      eventId: eventId,
+    );
 
     final navigator = rootNavigatorKey.currentState;
     if (navigator == null) return;
@@ -63,7 +66,7 @@ Future<void> _initializeDeepLinks() async {
 
     navigator.pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (_) => alreadyJoined
+        builder: (_) => routeDecision.openAttendee
             ? AttendeeEventPage(userId: userId, eventId: eventId)
             : EventInvitePage(eventId: eventId),
       ),

@@ -38,9 +38,9 @@ class _EventInvitePageState extends State<EventInvitePage> {
   String userRole = 'Attendee';
   String? creatorProfileImage;
 
-  bool get isOwnerCommittee {
+  bool get isOwner {
     if (event == null) return false;
-    return userId > 0 && userRole == 'Committee' && event!.createdBy == userId;
+    return userId > 0 && event!.createdBy == userId;
   }
 
   DateTime? get _eventDateTime {
@@ -154,20 +154,20 @@ class _EventInvitePageState extends State<EventInvitePage> {
 
     await _refreshSessionState();
 
-    if (isEventExpired) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This event has already ended')),
-      );
-      return;
-    }
-
-    if (isOwnerCommittee) {
+    if (isOwner) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('You cannot join your own event as attendee'),
         ),
+      );
+      return;
+    }
+
+    if (isEventExpired) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This event has already ended')),
       );
       return;
     }
@@ -623,22 +623,20 @@ class _EventInvitePageState extends State<EventInvitePage> {
                           const SizedBox(height: 18),
                         ],
                         TombolSementara(
-                          icon: isEventExpired && !isAlreadyJoined
+                          icon: isEventExpired
                               ? Icons.event_busy
-                              : isOwnerCommittee
-                              ? Icons.block
+                              : isOwner
+                              ? Icons.person_off
                               : Icons.person_add_alt_1,
-                          text: isEventExpired && !isAlreadyJoined
+                          text: isEventExpired
                               ? 'Event Ended'
-                              : isOwnerCommittee
+                              : isOwner
                               ? 'Your Event'
                               : 'Join Event',
                           width: double.infinity,
                           height: 52,
                           isLoading: isJoining,
-                          onPressed:
-                              (isEventExpired && !isAlreadyJoined) ||
-                                  isOwnerCommittee
+                          onPressed: isEventExpired || isOwner
                               ? null
                               : _joinEvent,
                         ),

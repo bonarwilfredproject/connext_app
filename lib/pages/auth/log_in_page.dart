@@ -4,8 +4,8 @@ import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/pages/auth/daftar_page.dart';
 import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
+import 'package:connext_app/services/pending_join_route_service.dart';
 import 'package:connext_app/services/preferences_services.dart';
-import 'package:connext_app/services/event_participant_controller.dart';
 import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/pages/auth/forgot_password_page.dart';
 import 'package:connext_app/pages/event_invite_page.dart';
@@ -152,16 +152,17 @@ class _LogInPageState extends State<LogInPage> {
 
     final pendingJoinEventId = pref.getPendingJoinEventId();
     if (pendingJoinEventId > 0) {
-      final alreadyJoined = await EventParticipantController.isJoined(
-        resolvedUserId,
-        pendingJoinEventId,
+      final routeDecision = await PendingJoinRouteService.resolve(
+        userId: resolvedUserId,
+        userRole: login.role,
+        eventId: pendingJoinEventId,
       );
 
       await pref.clearPendingJoinEventId();
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (context) => alreadyJoined
+          builder: (context) => routeDecision.openAttendee
               ? AttendeeEventPage(
                   userId: resolvedUserId!,
                   eventId: pendingJoinEventId,

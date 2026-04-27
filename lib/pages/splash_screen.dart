@@ -3,8 +3,8 @@ import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
 import 'package:connext_app/pages/event_invite_page.dart';
 import 'package:connext_app/pages/home_page/home_page.dart';
 import 'package:connext_app/pages/landing_page/landing_page.dart';
-import 'package:connext_app/services/event_participant_controller.dart';
 import 'package:connext_app/services/firebase_services.dart';
+import 'package:connext_app/services/pending_join_route_service.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:flutter/material.dart';
 
@@ -239,18 +239,18 @@ class _SplashScreenState extends State<SplashScreen> {
     final pendingJoinEventId = pref.getPendingJoinEventId();
     if (pendingJoinEventId > 0) {
       final userId = pref.getUserId();
-      final alreadyJoined = userId > 0
-          ? await EventParticipantController.isJoined(
-              userId,
-              pendingJoinEventId,
-            )
-          : false;
+      final userRole = pref.getRole() ?? 'Attendee';
+      final routeDecision = await PendingJoinRouteService.resolve(
+        userId: userId,
+        userRole: userRole,
+        eventId: pendingJoinEventId,
+      );
 
       await pref.clearPendingJoinEventId();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
-          builder: (context) => alreadyJoined
+          builder: (context) => routeDecision.openAttendee
               ? AttendeeEventPage(userId: userId, eventId: pendingJoinEventId)
               : EventInvitePage(eventId: pendingJoinEventId),
         ),

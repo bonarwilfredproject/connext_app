@@ -581,18 +581,7 @@ class _HomePageState extends State<HomePage> {
       }
 
       final filteredEvents = events
-          .where((event) {
-            final expired = isEventPassed(event);
-            if (!expired) return true;
-
-            final eventId = event.id;
-            if (eventId == null) return false;
-
-            // Keep expired events only if attendee has joined and already checked in.
-            final joined = newJoinedIds.contains(eventId);
-            final checkedIn = newCheckedInIds.contains(eventId);
-            return joined && checkedIn;
-          })
+          .where((event) => !isEventPassed(event))
           .toList(growable: false);
 
       final sortedEvents = List<EventModel>.from(filteredEvents)
@@ -1216,6 +1205,48 @@ class _HomePageState extends State<HomePage> {
                                                 if (_joiningEventIds.contains(
                                                   eventId,
                                                 )) {
+                                                  return;
+                                                }
+
+                                                final isOwnerEvent =
+                                                    event.createdBy ==
+                                                    activeUserId;
+
+                                                if (isOwnerEvent) {
+                                                  if (!mounted) return;
+                                                  await showDialog(
+                                                    context: context,
+                                                    builder: (_) => AlertDialog(
+                                                      backgroundColor:
+                                                          const Color(
+                                                            0xFF171A33,
+                                                          ),
+                                                      title: Text(
+                                                        'Owner restriction',
+                                                        style: styleText(),
+                                                      ),
+                                                      content: Text(
+                                                        'You cannot join your own event as attendee',
+                                                        style: styleText(),
+                                                      ),
+                                                      actions: [
+                                                        TextButton(
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                context,
+                                                              ),
+                                                          child: Text(
+                                                            'OK',
+                                                            style: styleText()
+                                                                .copyWith(
+                                                                  color: AppTheme
+                                                                      .third,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
                                                   return;
                                                 }
 
