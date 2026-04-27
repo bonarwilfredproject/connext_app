@@ -623,15 +623,15 @@ class _EventInvitePageState extends State<EventInvitePage> {
                           const SizedBox(height: 18),
                         ],
                         TombolSementara(
-                          icon: isEventExpired
-                              ? Icons.event_busy
-                              : isOwner
+                          icon: isOwner
                               ? Icons.person_off
+                              : isEventExpired
+                              ? Icons.event_busy
                               : Icons.person_add_alt_1,
-                          text: isEventExpired
-                              ? 'Event Ended'
-                              : isOwner
+                          text: isOwner
                               ? 'Your Event'
+                              : isEventExpired
+                              ? 'Event Ended'
                               : 'Join Event',
                           width: double.infinity,
                           height: 52,
