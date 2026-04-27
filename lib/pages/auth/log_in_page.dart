@@ -1,6 +1,7 @@
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/constants/style_text.dart';
+import 'package:connext_app/pages/auth/daftar_page.dart';
 import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
 import 'package:connext_app/services/preferences_services.dart';
@@ -264,12 +265,21 @@ class _LogInPageState extends State<LogInPage> {
                                     return "Phone number must contain digits only";
                                   }
 
-                                  if (phone.length < 4) {
+                                  if (phone.length < 8) {
                                     return "Phone number is too short";
                                   }
 
                                   if (phone.length > 15) {
                                     return "Phone number is too long";
+                                  }
+
+                                  if (_selectedCountry.dialCode == '+62' &&
+                                      !phone.startsWith('8')) {
+                                    return "For Indonesia number, use local format starting with 8";
+                                  }
+
+                                  if (RegExp(r'^(\d)\1+$').hasMatch(phone)) {
+                                    return "Phone number seems invalid";
                                   }
 
                                   return null;
@@ -392,6 +402,44 @@ class _LogInPageState extends State<LogInPage> {
                                 fontSize: 14,
                               ),
                             ),
+                          ),
+                        ),
+                        Center(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                "Don't have an account? ",
+                                style: TextStyle(
+                                  color: AppTheme.secondary.withOpacity(0.72),
+                                  fontSize: 13,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const DaftarPage(),
+                                    ),
+                                  );
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: const Size(0, 0),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: Text(
+                                  'Sign Up',
+                                  style: styleText().copyWith(
+                                    color: AppTheme.third,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
