@@ -2,10 +2,14 @@ import 'dart:async';
 
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/style_text.dart';
+import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
+import 'package:connext_app/pages/event_invite_page.dart';
+import 'package:connext_app/pages/home_page/home_page.dart';
+import 'package:connext_app/services/event_participant_controller.dart';
 import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
-import 'package:connext_app/pages/auth/log_in_page.dart';
+import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/custom_appbar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
@@ -778,17 +782,74 @@ class _DaftarPageState extends State<DaftarPage> {
       _pendingOtpExpiresAt = null;
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Registration success. Please login.'),
-          behavior: SnackBarBehavior.floating,
-        ),
+
+      final pref = PreferenceHandler();
+      await pref.init();
+
+      final normalizedPhone = FirebaseServices.normalizePhoneToE164(
+        phoneController.text.trim(),
+        countryDialCode: _selectedCountry.dialCode,
       );
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LogInPage()),
+      final loggedInUser = await FirebaseServices.loginUser(
+        phone: normalizedPhone,
+        password: passwordController.text,
       );
+
+      if (loggedInUser == null) {
+        throw FirebaseAuthException(
+          code: 'registration-error',
+          message: 'Registration succeeded but automatic login failed.',
+        );
+      }
+
+      int? resolvedUserId = loggedInUser.id;
+      if (resolvedUserId == null || resolvedUserId <= 0) {
+        final profile = await FirebaseServices.getCurrentUserProfile();
+        final profileId = profile?.id;
+        if (profileId != null && profileId > 0) {
+          resolvedUserId = profileId;
+        }
+      }
+
+      if (resolvedUserId == null || resolvedUserId <= 0) {
+        throw FirebaseAuthException(
+          code: 'registration-error',
+          message: 'Registration succeeded but could not resolve user ID.',
+        );
+      }
+
+      await pref.saveUser(resolvedUserId, loggedInUser.nama, loggedInUser.role);
+
+      final pendingJoinEventId = pref.getPendingJoinEventId();
+      if (!mounted) return;
+
+      if (pendingJoinEventId > 0) {
+        final alreadyJoined = await EventParticipantController.isJoined(
+          resolvedUserId,
+          pendingJoinEventId,
+        );
+
+        await pref.clearPendingJoinEventId();
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => alreadyJoined
+                ? AttendeeEventPage(
+                    userId: resolvedUserId!,
+                    eventId: pendingJoinEventId,
+                  )
+                : EventInvitePage(eventId: pendingJoinEventId),
+          ),
+          (route) => false,
+        );
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+          (route) => false,
+        );
+      }
     } on FirebaseAuthException catch (e) {
       final friendlyMessage = _friendlyAuthError(e);
       final errorCode = e.code.toLowerCase();
