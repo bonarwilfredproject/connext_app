@@ -24,7 +24,15 @@ class EventInviteLinkService {
     );
   }
 
-  static Uri buildPlayStoreUri() => Uri.parse(playStoreUrl);
+  static Uri buildPlayStoreUri({int? eventId}) {
+    if (eventId == null || eventId <= 0) return Uri.parse(playStoreUrl);
+
+    final parsed = Uri.parse(playStoreUrl);
+    final query = Map<String, String>.from(parsed.queryParameters);
+    query['referrer'] = 'eventId=$eventId';
+
+    return parsed.replace(queryParameters: query);
+  }
 
   static int? parseEventId(Uri uri) {
     final isCustomScheme = uri.scheme == scheme && uri.host == host;

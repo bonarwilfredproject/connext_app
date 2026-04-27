@@ -5,6 +5,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Join Event - Connext</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --bg-a: #0f1026;
@@ -112,7 +116,8 @@
         <h1>Opening your event invite</h1>
         <p>
             We will try to open Connext automatically. If the app is not installed yet,
-            continue to Play Store and install it first. After installing, open the same invite link again.
+            continue to Play Store and install/update it first. After opening Connext,
+            we will continue this invite automatically.
         </p>
         <div id="eventMeta" class="meta">Event ID: -</div>
 
@@ -122,14 +127,12 @@
                 href="https://play.google.com/store/apps/details?id=com.ppkd.connext">Install Connext (Play Store)</a>
         </div>
 
-        <p class="hint">
-            After app opens: register/login if needed, then continue to join the event.
-        </p>
+        <p class="hint">After app opens: login/register if needed, then continue joining this event.</p>
     </main>
 
     <script>
         (function () {
-            const installUrl = 'https://play.google.com/store/apps/details?id=com.ppkd.connext';
+            const baseInstallUrl = 'https://play.google.com/store/apps/details?id=com.ppkd.connext';
             const currentUrl = new URL(window.location.href);
             let eventId = currentUrl.searchParams.get('eventId');
 
@@ -147,6 +150,10 @@
             const deepLink = validEventId > 0
                 ? `connext://join-event?eventId=${validEventId}`
                 : 'connext://join-event';
+
+            const installUrl = validEventId > 0
+                ? `${baseInstallUrl}&referrer=${encodeURIComponent(`eventId=${validEventId}`)}`
+                : baseInstallUrl;
 
             document.getElementById('eventMeta').textContent =
                 validEventId > 0 ? `Event ID: ${validEventId}` : 'Event ID not found';

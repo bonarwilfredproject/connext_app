@@ -416,7 +416,9 @@ class _DetailEventPageState extends State<DetailEventPage>
 
     try {
       final inviteLink = _buildInviteLink();
-      final installLink = EventInviteLinkService.buildPlayStoreUri().toString();
+      final installLink = EventInviteLinkService.buildPlayStoreUri(
+        eventId: event?.id ?? widget.eventId,
+      ).toString();
       final directAppLink = EventInviteLinkService.buildDirectAppUri(
         event?.id ?? widget.eventId,
       ).toString();

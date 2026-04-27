@@ -8,6 +8,7 @@ import 'package:connext_app/pages/event_invite_page.dart';
 import 'package:connext_app/pages/splash_screen.dart';
 import 'package:connext_app/services/event_invite_link_service.dart';
 import 'package:connext_app/services/event_participant_controller.dart';
+import 'package:connext_app/services/install_referrer_service.dart';
 import 'package:connext_app/services/preferences_services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -22,6 +23,8 @@ void main() async {
 
   await initializeDateFormatting('id', null);
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await InstallReferrerService.hydratePendingJoinEventId();
 
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
     // Keep Play Integrity as default. Force reCAPTCHA only when explicitly enabled.

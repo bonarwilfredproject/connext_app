@@ -17,6 +17,8 @@ class PreferenceHandler {
   static const String _userId = "userId";
   static const String _phoneAuthMappingsMigrated = "phoneAuthMappingsMigrated";
   static const String _pendingJoinEventId = "pendingJoinEventId";
+  static const String _lastConsumedInstallReferrer =
+      "lastConsumedInstallReferrer";
 
   /// SAVE USER SAAT LOGIN / REGISTER
   Future<void> saveUser(int userId, String nama, String role) async {
@@ -74,6 +76,14 @@ class PreferenceHandler {
 
   Future<void> clearPendingJoinEventId() async {
     await _preferences.remove(_pendingJoinEventId);
+  }
+
+  String? getLastConsumedInstallReferrer() {
+    return _preferences.getString(_lastConsumedInstallReferrer);
+  }
+
+  Future<void> saveLastConsumedInstallReferrer(String referrer) async {
+    await _preferences.setString(_lastConsumedInstallReferrer, referrer);
   }
 
   /// LOGOUT
