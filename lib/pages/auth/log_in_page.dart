@@ -194,256 +194,261 @@ class _LogInPageState extends State<LogInPage> {
           // ellipse di belakang layar (background)
           EllipseBackground(),
           //logo, dan field serta tombol
-          Center(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: AppSectionCard(
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        Center(
-                          child: Image.asset(
-                            "assets/images/logo.png",
-                            width: 80,
-                            height: 80,
-                          ),
-                        ),
-                        SizedBox(height: 24),
-                        //phone field
-                        Row(
-                          children: [
-                            Icon(Icons.phone, color: AppTheme.secondary),
-                            const SizedBox(width: 8),
-                            Text("Phone Number", style: styleText()),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 4,
-                              child: DropdownButtonFormField<_CountryDialOption>(
-                                value: _selectedCountry,
-                                isExpanded: true,
-                                decoration: decorationConstant(
-                                  hintText: 'Country',
-                                ),
-                                items: _countryOptions.map((option) {
-                                  return DropdownMenuItem<_CountryDialOption>(
-                                    value: option,
-                                    child: Text(
-                                      '${option.label} (${option.dialCode})',
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: AppTheme.secondary,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                                onChanged: (value) {
-                                  if (value == null) return;
-                                  setState(() {
-                                    _selectedCountry = value;
-                                  });
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              flex: 6,
-                              child: TextFormField(
-                                keyboardType: TextInputType.number,
-                                validator: (value) {
-                                  final phone = (value ?? '').trim();
-
-                                  if (phone.isEmpty) {
-                                    return "Phone number can't be empty";
-                                  }
-
-                                  if (!RegExp(r'^\d+$').hasMatch(phone)) {
-                                    return "Phone number must contain digits only";
-                                  }
-
-                                  if (phone.length < 8) {
-                                    return "Phone number is too short";
-                                  }
-
-                                  if (phone.length > 15) {
-                                    return "Phone number is too long";
-                                  }
-
-                                  if (_selectedCountry.dialCode == '+62' &&
-                                      !phone.startsWith('8')) {
-                                    return "For Indonesia number, use local format starting with 8";
-                                  }
-
-                                  if (RegExp(r'^(\d)\1+$').hasMatch(phone)) {
-                                    return "Phone number seems invalid";
-                                  }
-
-                                  return null;
-                                },
-                                controller: phoneController,
-                                style: TextStyle(
-                                  color: AppTheme.secondary,
-                                  fontSize: 12,
-                                ),
-                                decoration: decorationConstant(
-                                  hintText: 'Local phone number',
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Enter your local number without country code. Example: 8123456789',
-                            style: TextStyle(
-                              color: AppTheme.secondary.withOpacity(0.7),
-                              fontSize: 11,
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: AppSectionCard(
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          Center(
+                            child: Image.asset(
+                              "assets/images/logo.png",
+                              width: 80,
+                              height: 80,
                             ),
                           ),
-                        ),
-                        SizedBox(height: 12),
-                        //password field
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.password,
-                              color: AppTheme.secondary,
-                            ),
-                            const SizedBox(width: 8),
-                            Text("Password", style: styleText()),
-                          ],
-                        ),
-                        TextFormField(
-                          validator: (value) {
-                            final password = value ?? '';
-                            final hasUppercase = RegExp(
-                              r'[A-Z]',
-                            ).hasMatch(password);
-                            final hasLowercase = RegExp(
-                              r'[a-z]',
-                            ).hasMatch(password);
-                            final hasNumber = RegExp(r'\d').hasMatch(password);
-                            final hasSpecialChar = RegExp(
-                              r'[!@#$%^&*(),.?":{}|<>_\-\\/\[\];\`~+=]',
-                            ).hasMatch(password);
-                            if (password.isEmpty) {
-                              return "Password can't be empty";
-                            }
-
-                            if (password.length < 8 ||
-                                !hasUppercase ||
-                                !hasLowercase ||
-                                !hasNumber ||
-                                !hasSpecialChar) {
-                              return "Password must have at least 8 characters, an uppercase, a lowercase, a number, and a special character";
-                            }
-
-                            return null;
-                          },
-                          controller: passwordController,
-                          obscureText: isVisible ? true : false,
-                          obscuringCharacter: "*",
-                          style: TextStyle(
-                            color: AppTheme.secondary,
-                            fontSize: 12,
-                          ),
-                          decoration: decorationConstant(
-                            hintText: "Please input your password",
-                            suffixIcon: IconButton(
-                              onPressed: () {
-                                isVisible = !isVisible;
-                                setState(() {});
-                              },
-                              icon: isVisible
-                                  ? Icon(
-                                      Icons.visibility_off,
-                                      color: AppTheme.secondary,
-                                    )
-                                  : Icon(
-                                      Icons.visibility,
-                                      color: AppTheme.secondary,
-                                    ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 16),
-
-                        //tombol login as committee button
-                        TombolSementara(
-                          width: double.infinity,
-                          height: 54,
-                          onPressed: login,
-                          icon: Icons.login,
-                          isLoading: isLoadingLogin,
-                          text: "Log In",
-                        ),
-                        const SizedBox(height: 12),
-                        Center(
-                          child: TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const ForgotPasswordPage(),
-                                ),
-                              );
-                            },
-                            child: Text(
-                              'Forgot Password?',
-                              style: styleText().copyWith(
-                                color: AppTheme.third,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Center(
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                          SizedBox(height: 24),
+                          //phone field
+                          Row(
                             children: [
-                              Text(
-                                "Don't have an account? ",
-                                style: TextStyle(
-                                  color: AppTheme.secondary.withOpacity(0.72),
-                                  fontSize: 13,
+                              Icon(Icons.phone, color: AppTheme.secondary),
+                              const SizedBox(width: 8),
+                              Text("Phone Number", style: styleText()),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 4,
+                                child: DropdownButtonFormField<_CountryDialOption>(
+                                  value: _selectedCountry,
+                                  isExpanded: true,
+                                  decoration: decorationConstant(
+                                    hintText: 'Country',
+                                  ),
+                                  items: _countryOptions.map((option) {
+                                    return DropdownMenuItem<_CountryDialOption>(
+                                      value: option,
+                                      child: Text(
+                                        '${option.label} (${option.dialCode})',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: AppTheme.secondary,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    if (value == null) return;
+                                    setState(() {
+                                      _selectedCountry = value;
+                                    });
+                                  },
                                 ),
                               ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const DaftarPage(),
-                                    ),
-                                  );
-                                },
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  minimumSize: const Size(0, 0),
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                child: Text(
-                                  'Sign Up',
-                                  style: styleText().copyWith(
-                                    color: AppTheme.third,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
+                              const SizedBox(width: 8),
+                              Expanded(
+                                flex: 6,
+                                child: TextFormField(
+                                  keyboardType: TextInputType.number,
+                                  validator: (value) {
+                                    final phone = (value ?? '').trim();
+
+                                    if (phone.isEmpty) {
+                                      return "Phone number can't be empty";
+                                    }
+
+                                    if (!RegExp(r'^\d+$').hasMatch(phone)) {
+                                      return "Phone number must contain digits only";
+                                    }
+
+                                    if (phone.length < 8) {
+                                      return "Phone number is too short";
+                                    }
+
+                                    if (phone.length > 15) {
+                                      return "Phone number is too long";
+                                    }
+
+                                    if (_selectedCountry.dialCode == '+62' &&
+                                        !phone.startsWith('8')) {
+                                      return "For Indonesia number, use local format starting with 8";
+                                    }
+
+                                    if (RegExp(r'^(\d)\1+$').hasMatch(phone)) {
+                                      return "Phone number seems invalid";
+                                    }
+
+                                    return null;
+                                  },
+                                  controller: phoneController,
+                                  style: TextStyle(
+                                    color: AppTheme.secondary,
+                                    fontSize: 12,
+                                  ),
+                                  decoration: decorationConstant(
+                                    hintText: 'Local phone number',
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Enter your local number without country code. Example: 8123456789',
+                              style: TextStyle(
+                                color: AppTheme.secondary.withOpacity(0.7),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          //password field
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.password,
+                                color: AppTheme.secondary,
+                              ),
+                              const SizedBox(width: 8),
+                              Text("Password", style: styleText()),
+                            ],
+                          ),
+                          TextFormField(
+                            validator: (value) {
+                              final password = value ?? '';
+                              final hasUppercase = RegExp(
+                                r'[A-Z]',
+                              ).hasMatch(password);
+                              final hasLowercase = RegExp(
+                                r'[a-z]',
+                              ).hasMatch(password);
+                              final hasNumber = RegExp(
+                                r'\d',
+                              ).hasMatch(password);
+                              final hasSpecialChar = RegExp(
+                                r'[!@#$%^&*(),.?":{}|<>_\-\\/\[\];\`~+=]',
+                              ).hasMatch(password);
+                              if (password.isEmpty) {
+                                return "Password can't be empty";
+                              }
+
+                              if (password.length < 8 ||
+                                  !hasUppercase ||
+                                  !hasLowercase ||
+                                  !hasNumber ||
+                                  !hasSpecialChar) {
+                                return "Password must have at least 8 characters, an uppercase, a lowercase, a number, and a special character";
+                              }
+
+                              return null;
+                            },
+                            controller: passwordController,
+                            obscureText: isVisible ? true : false,
+                            obscuringCharacter: "*",
+                            style: TextStyle(
+                              color: AppTheme.secondary,
+                              fontSize: 12,
+                            ),
+                            decoration: decorationConstant(
+                              hintText: "Please input your password",
+                              suffixIcon: IconButton(
+                                onPressed: () {
+                                  isVisible = !isVisible;
+                                  setState(() {});
+                                },
+                                icon: isVisible
+                                    ? Icon(
+                                        Icons.visibility_off,
+                                        color: AppTheme.secondary,
+                                      )
+                                    : Icon(
+                                        Icons.visibility,
+                                        color: AppTheme.secondary,
+                                      ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+
+                          //tombol login as committee button
+                          TombolSementara(
+                            width: double.infinity,
+                            height: 54,
+                            onPressed: login,
+                            icon: Icons.login,
+                            isLoading: isLoadingLogin,
+                            text: "Log In",
+                          ),
+                          const SizedBox(height: 12),
+                          Center(
+                            child: TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const ForgotPasswordPage(),
+                                  ),
+                                );
+                              },
+                              child: Text(
+                                'Forgot Password?',
+                                style: styleText().copyWith(
+                                  color: AppTheme.third,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  "Don't have an account? ",
+                                  style: TextStyle(
+                                    color: AppTheme.secondary.withOpacity(0.72),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const DaftarPage(),
+                                      ),
+                                    );
+                                  },
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: const Size(0, 0),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: Text(
+                                    'Sign Up',
+                                    style: styleText().copyWith(
+                                      color: AppTheme.third,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

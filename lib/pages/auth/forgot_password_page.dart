@@ -519,235 +519,237 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       body: Stack(
         children: [
           EllipseBackground(),
-          Center(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: AppSectionCard(
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        Center(
-                          child: Image.asset(
-                            "assets/images/logo.png",
-                            width: 80,
-                            height: 80,
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                  child: AppSectionCard(
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          Center(
+                            child: Image.asset(
+                              "assets/images/logo.png",
+                              width: 80,
+                              height: 80,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Reset Your Password',
-                          style: styleText().copyWith(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                          const SizedBox(height: 24),
+                          Text(
+                            'Reset Your Password',
+                            style: styleText().copyWith(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Enter your phone number and new password',
-                          style: styleText().copyWith(
-                            fontSize: 12,
-                            color: AppTheme.secondary.withAlpha(200),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Enter your phone number and new password',
+                            style: styleText().copyWith(
+                              fontSize: 12,
+                              color: AppTheme.secondary.withAlpha(200),
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 24),
-                        Row(
-                          children: [
-                            Icon(Icons.phone, color: AppTheme.secondary),
-                            const SizedBox(width: 8),
-                            Text("Phone Number", style: styleText()),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 4,
-                              child: DropdownButtonFormField<_CountryDialOption>(
-                                value: _selectedCountry,
-                                isExpanded: true,
-                                decoration: decorationConstant(
-                                  hintText: 'Country',
-                                ),
-                                items: _countryOptions.map((option) {
-                                  return DropdownMenuItem<_CountryDialOption>(
-                                    value: option,
-                                    child: Text(
-                                      '${option.label} (${option.dialCode})',
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: AppTheme.secondary,
-                                        fontSize: 12,
+                          const SizedBox(height: 24),
+                          Row(
+                            children: [
+                              Icon(Icons.phone, color: AppTheme.secondary),
+                              const SizedBox(width: 8),
+                              Text("Phone Number", style: styleText()),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 4,
+                                child: DropdownButtonFormField<_CountryDialOption>(
+                                  value: _selectedCountry,
+                                  isExpanded: true,
+                                  decoration: decorationConstant(
+                                    hintText: 'Country',
+                                  ),
+                                  items: _countryOptions.map((option) {
+                                    return DropdownMenuItem<_CountryDialOption>(
+                                      value: option,
+                                      child: Text(
+                                        '${option.label} (${option.dialCode})',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: AppTheme.secondary,
+                                          fontSize: 12,
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                }).toList(),
-                                onChanged: (value) {
-                                  if (value == null) return;
-                                  setState(() {
-                                    _selectedCountry = value;
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    if (value == null) return;
+                                    setState(() {
+                                      _selectedCountry = value;
+                                      _pendingOtpTargetPhone = null;
+                                      _pendingOtpVerificationId = null;
+                                      _pendingOtpExpiresAt = null;
+                                    });
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                flex: 6,
+                                child: TextFormField(
+                                  keyboardType: TextInputType.number,
+                                  controller: phoneController,
+                                  onChanged: (_) {
                                     _pendingOtpTargetPhone = null;
                                     _pendingOtpVerificationId = null;
                                     _pendingOtpExpiresAt = null;
+                                  },
+                                  validator: (value) {
+                                    final phone = (value ?? '').trim();
+                                    if (phone.isEmpty) {
+                                      return "Phone number can't be empty";
+                                    }
+                                    if (!RegExp(r'^\d+$').hasMatch(phone)) {
+                                      return "Phone number must contain digits only";
+                                    }
+                                    if (phone.length < 4) {
+                                      return "Phone number is too short";
+                                    }
+                                    if (phone.length > 15) {
+                                      return "Phone number is too long";
+                                    }
+                                    return null;
+                                  },
+                                  style: TextStyle(
+                                    color: AppTheme.secondary,
+                                    fontSize: 12,
+                                  ),
+                                  decoration: decorationConstant(
+                                    hintText: 'Local phone number',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Enter your local number without country code. Example: 8123456789',
+                              style: TextStyle(
+                                color: AppTheme.secondary.withOpacity(0.7),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.password,
+                                color: AppTheme.secondary,
+                              ),
+                              const SizedBox(width: 8),
+                              Text("New Password", style: styleText()),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: newPasswordController,
+                            obscureText: !showNewPassword,
+                            obscuringCharacter: "*",
+                            style: TextStyle(
+                              color: AppTheme.secondary,
+                              fontSize: 12,
+                            ),
+                            validator: (value) {
+                              return validateStrongPassword(value);
+                            },
+                            decoration: decorationConstant(
+                              hintText: 'Please input your password',
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  showNewPassword
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                  color: AppTheme.secondary,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    showNewPassword = !showNewPassword;
                                   });
                                 },
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              flex: 6,
-                              child: TextFormField(
-                                keyboardType: TextInputType.number,
-                                controller: phoneController,
-                                onChanged: (_) {
-                                  _pendingOtpTargetPhone = null;
-                                  _pendingOtpVerificationId = null;
-                                  _pendingOtpExpiresAt = null;
-                                },
-                                validator: (value) {
-                                  final phone = (value ?? '').trim();
-                                  if (phone.isEmpty) {
-                                    return "Phone number can't be empty";
-                                  }
-                                  if (!RegExp(r'^\d+$').hasMatch(phone)) {
-                                    return "Phone number must contain digits only";
-                                  }
-                                  if (phone.length < 4) {
-                                    return "Phone number is too short";
-                                  }
-                                  if (phone.length > 15) {
-                                    return "Phone number is too long";
-                                  }
-                                  return null;
-                                },
-                                style: TextStyle(
-                                  color: AppTheme.secondary,
-                                  fontSize: 12,
-                                ),
-                                decoration: decorationConstant(
-                                  hintText: 'Local phone number',
-                                ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.password,
+                                color: AppTheme.secondary,
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Enter your local number without country code. Example: 8123456789',
+                              const SizedBox(width: 8),
+                              Text("Confirm Password", style: styleText()),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: confirmPasswordController,
+                            obscureText: !showConfirmPassword,
+                            obscuringCharacter: "*",
                             style: TextStyle(
-                              color: AppTheme.secondary.withOpacity(0.7),
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.password,
                               color: AppTheme.secondary,
+                              fontSize: 12,
                             ),
-                            const SizedBox(width: 8),
-                            Text("New Password", style: styleText()),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: newPasswordController,
-                          obscureText: !showNewPassword,
-                          obscuringCharacter: "*",
-                          style: TextStyle(
-                            color: AppTheme.secondary,
-                            fontSize: 12,
-                          ),
-                          validator: (value) {
-                            return validateStrongPassword(value);
-                          },
-                          decoration: decorationConstant(
-                            hintText: 'Please input your password',
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                showNewPassword
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                                color: AppTheme.secondary,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please confirm your password';
+                              }
+                              final passwordError = validateStrongPassword(
+                                newPasswordController.text,
+                              );
+                              if (passwordError != null) {
+                                return passwordError;
+                              }
+                              if (value != newPasswordController.text) {
+                                return 'Passwords do not match';
+                              }
+                              return null;
+                            },
+                            decoration: decorationConstant(
+                              hintText: 'Please re-input your password',
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  showConfirmPassword
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                  color: AppTheme.secondary,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    showConfirmPassword = !showConfirmPassword;
+                                  });
+                                },
                               ),
-                              onPressed: () {
-                                setState(() {
-                                  showNewPassword = !showNewPassword;
-                                });
-                              },
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.password,
-                              color: AppTheme.secondary,
-                            ),
-                            const SizedBox(width: 8),
-                            Text("Confirm Password", style: styleText()),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: confirmPasswordController,
-                          obscureText: !showConfirmPassword,
-                          obscuringCharacter: "*",
-                          style: TextStyle(
-                            color: AppTheme.secondary,
-                            fontSize: 12,
+                          const SizedBox(height: 24),
+                          TombolSementara(
+                            text: isLoadingResetPassword
+                                ? 'Resetting...'
+                                : 'Reset Password',
+                            width: double.infinity,
+                            height: 54,
+                            onPressed: isLoadingResetPassword
+                                ? null
+                                : _resetPasswordWithOtp,
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please confirm your password';
-                            }
-                            final passwordError = validateStrongPassword(
-                              newPasswordController.text,
-                            );
-                            if (passwordError != null) {
-                              return passwordError;
-                            }
-                            if (value != newPasswordController.text) {
-                              return 'Passwords do not match';
-                            }
-                            return null;
-                          },
-                          decoration: decorationConstant(
-                            hintText: 'Please re-input your password',
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                showConfirmPassword
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                                color: AppTheme.secondary,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  showConfirmPassword = !showConfirmPassword;
-                                });
-                              },
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        TombolSementara(
-                          text: isLoadingResetPassword
-                              ? 'Resetting...'
-                              : 'Reset Password',
-                          width: double.infinity,
-                          height: 54,
-                          onPressed: isLoadingResetPassword
-                              ? null
-                              : _resetPasswordWithOtp,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

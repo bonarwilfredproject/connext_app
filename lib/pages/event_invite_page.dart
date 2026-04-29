@@ -304,315 +304,236 @@ class _EventInvitePageState extends State<EventInvitePage> {
       body: Stack(
         children: [
           EllipseBackground(),
-          isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : event == null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text(
-                      'Event not found or link is invalid.',
-                      textAlign: TextAlign.center,
-                      style: styleText(),
+          SafeArea(
+            top: false,
+            bottom: true,
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : event == null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        'Event not found or link is invalid.',
+                        textAlign: TextAlign.center,
+                        style: styleText(),
+                      ),
                     ),
-                  ),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: AppSectionCard(
-                    title: 'Do you want to join event?',
-                    icon: Icons.how_to_reg,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppTheme.third.withOpacity(0.95),
-                                AppTheme.fourth.withOpacity(0.95),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: AppSectionCard(
+                      title: 'Do you want to join event?',
+                      icon: Icons.how_to_reg,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  AppTheme.third.withOpacity(0.95),
+                                  AppTheme.fourth.withOpacity(0.95),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(22),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.third.withOpacity(0.18),
+                                  blurRadius: 24,
+                                  offset: const Offset(0, 12),
+                                ),
                               ],
                             ),
-                            borderRadius: BorderRadius.circular(22),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.third.withOpacity(0.18),
-                                blurRadius: 24,
-                                offset: const Offset(0, 12),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primary.withOpacity(0.18),
-                                      borderRadius: BorderRadius.circular(14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primary.withOpacity(
+                                          0.18,
+                                        ),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: const Icon(
+                                        Icons.event,
+                                        color: AppTheme.primary,
+                                      ),
                                     ),
-                                    child: const Icon(
-                                      Icons.event,
-                                      color: AppTheme.primary,
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        event!.title,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: styleText().copyWith(
+                                          color: AppTheme.primary,
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w900,
+                                          height: 1.1,
+                                        ),
+                                      ),
                                     ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Event invitation',
+                                  style: styleText().copyWith(
+                                    color: AppTheme.primary.withOpacity(0.8),
+                                    fontSize: 12,
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
+                                ),
+                                if (isEventExpired) ...[
+                                  const SizedBox(height: 10),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primary.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
                                     child: Text(
-                                      event!.title,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
+                                      'Event has ended',
                                       style: styleText().copyWith(
                                         color: AppTheme.primary,
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w900,
-                                        height: 1.1,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 12,
                                       ),
                                     ),
                                   ),
                                 ],
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                'Event invitation',
-                                style: styleText().copyWith(
-                                  color: AppTheme.primary.withOpacity(0.8),
-                                  fontSize: 12,
-                                ),
-                              ),
-                              if (isEventExpired) ...[
-                                const SizedBox(height: 10),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primary.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(999),
-                                  ),
-                                  child: Text(
-                                    'Event has ended',
-                                    style: styleText().copyWith(
-                                      color: AppTheme.primary,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
                               ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.location_pin,
+                                color: Color(0xFF73E8D7),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  event!.locationName?.trim().isNotEmpty == true
+                                      ? event!.locationName!.trim()
+                                      : event!.location,
+                                  style: styleText().copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.third,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.location_pin,
-                              color: Color(0xFF73E8D7),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                event!.locationName?.trim().isNotEmpty == true
-                                    ? event!.locationName!.trim()
-                                    : event!.location,
-                                style: styleText().copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.third,
+                          const SizedBox(height: 8),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: _openMaps,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                color: const Color(0xFF171A33),
+                                border: Border.all(
+                                  color: AppTheme.third.withOpacity(0.24),
                                 ),
                               ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.location_pin,
+                                    color: AppTheme.third,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Open in Google Maps',
+                                      style: styleText().copyWith(
+                                        color: AppTheme.secondary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.open_in_new,
+                                    color: AppTheme.third,
+                                    size: 18,
+                                  ),
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: _openMaps,
-                          child: Container(
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 12,
-                            ),
+                            padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
                               color: const Color(0xFF171A33),
                               border: Border.all(
-                                color: AppTheme.third.withOpacity(0.24),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.location_pin,
-                                  color: AppTheme.third,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    'Open in Google Maps',
-                                    style: styleText().copyWith(
-                                      color: AppTheme.secondary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Icon(
-                                  Icons.open_in_new,
-                                  color: AppTheme.third,
-                                  size: 18,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            color: const Color(0xFF171A33),
-                            border: Border.all(
-                              color: AppTheme.third.withOpacity(0.14),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Event Time',
-                                style: styleText().copyWith(
-                                  fontSize: 12,
-                                  color: AppTheme.third,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _buildEventScheduleLabel(),
-                                style: styleText().copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                'Created by',
-                                style: styleText().copyWith(
-                                  fontSize: 12,
-                                  color: AppTheme.third,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  ProfileAvatar(
-                                    imagePath: creatorProfileImage,
-                                    radius: 12,
-                                    backgroundColor: AppTheme.third,
-                                    iconColor: AppTheme.primary,
-                                    iconSize: 14,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _buildCreatorLabel(),
-                                      style: styleText().copyWith(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(
-                              Icons.description,
-                              color: Color(0xFF73E8D7),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                event!.description.isEmpty
-                                    ? 'No description'
-                                    : event!.description,
-                                style: styleText(),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        if (userId <= 0) ...[
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF171A33),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: AppTheme.third.withOpacity(0.18),
+                                color: AppTheme.third.withOpacity(0.14),
                               ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'You need an account before joining this event.',
+                                  'Event Time',
+                                  style: styleText().copyWith(
+                                    fontSize: 12,
+                                    color: AppTheme.third,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _buildEventScheduleLabel(),
                                   style: styleText().copyWith(
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Created by',
+                                  style: styleText().copyWith(
+                                    fontSize: 12,
+                                    color: AppTheme.third,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    Expanded(
-                                      child: TombolSementara(
-                                        icon: Icons.login,
-                                        text: 'Log In',
-                                        width: double.infinity,
-                                        height: 48,
-                                        onPressed: () async {
-                                          await Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => const LogInPage(),
-                                            ),
-                                          );
-                                          await _loadData();
-                                        },
-                                      ),
+                                    ProfileAvatar(
+                                      imagePath: creatorProfileImage,
+                                      radius: 12,
+                                      backgroundColor: AppTheme.third,
+                                      iconColor: AppTheme.primary,
+                                      iconSize: 14,
                                     ),
-                                    const SizedBox(width: 12),
+                                    const SizedBox(width: 8),
                                     Expanded(
-                                      child: TombolSementara(
-                                        icon: Icons.app_registration,
-                                        text: 'Register',
-                                        width: double.infinity,
-                                        height: 48,
-                                        onPressed: () async {
-                                          await Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const DaftarPage(),
-                                            ),
-                                          );
-                                          await _loadData();
-                                        },
+                                      child: Text(
+                                        _buildCreatorLabel(),
+                                        style: styleText().copyWith(
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -620,30 +541,116 @@ class _EventInvitePageState extends State<EventInvitePage> {
                               ],
                             ),
                           ),
+                          const SizedBox(height: 10),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(
+                                Icons.description,
+                                color: Color(0xFF73E8D7),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  event!.description.isEmpty
+                                      ? 'No description'
+                                      : event!.description,
+                                  style: styleText(),
+                                ),
+                              ),
+                            ],
+                          ),
                           const SizedBox(height: 18),
+                          if (userId <= 0) ...[
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF171A33),
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(
+                                  color: AppTheme.third.withOpacity(0.18),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'You need an account before joining this event.',
+                                    style: styleText().copyWith(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: TombolSementara(
+                                          icon: Icons.login,
+                                          text: 'Log In',
+                                          width: double.infinity,
+                                          height: 48,
+                                          onPressed: () async {
+                                            await Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const LogInPage(),
+                                              ),
+                                            );
+                                            await _loadData();
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: TombolSementara(
+                                          icon: Icons.app_registration,
+                                          text: 'Register',
+                                          width: double.infinity,
+                                          height: 48,
+                                          onPressed: () async {
+                                            await Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const DaftarPage(),
+                                              ),
+                                            );
+                                            await _loadData();
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 18),
+                          ],
+                          TombolSementara(
+                            icon: isOwner
+                                ? Icons.person_off
+                                : isEventExpired
+                                ? Icons.event_busy
+                                : Icons.person_add_alt_1,
+                            text: isOwner
+                                ? 'Your Event'
+                                : isEventExpired
+                                ? 'Event Ended'
+                                : 'Join Event',
+                            width: double.infinity,
+                            height: 52,
+                            isLoading: isJoining,
+                            onPressed: isEventExpired || isOwner
+                                ? null
+                                : _joinEvent,
+                          ),
                         ],
-                        TombolSementara(
-                          icon: isOwner
-                              ? Icons.person_off
-                              : isEventExpired
-                              ? Icons.event_busy
-                              : Icons.person_add_alt_1,
-                          text: isOwner
-                              ? 'Your Event'
-                              : isEventExpired
-                              ? 'Event Ended'
-                              : 'Join Event',
-                          width: double.infinity,
-                          height: 52,
-                          isLoading: isJoining,
-                          onPressed: isEventExpired || isOwner
-                              ? null
-                              : _joinEvent,
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+          ),
         ],
       ),
     );

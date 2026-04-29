@@ -744,547 +744,538 @@ class _HomePageState extends State<HomePage> {
       body: Stack(
         children: [
           EllipseBackground(),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (role == "Committee") ...[
-                  TombolSementara(
-                    onPressed: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => CreateEvent()),
-                      );
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20.0, 16.0, 20.0, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (role == "Committee") ...[
+                    TombolSementara(
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => CreateEvent()),
+                        );
 
-                      if (result == true) {
-                        loadCommitteeEvents();
-                      }
-                    },
-                    height: 54,
-                    width: double.infinity,
-                    icon: Icons.add_circle,
-                    text: "Create New Event",
-                  ),
-                  const SizedBox(height: 6),
-                  Center(
-                    child: Text(
-                      "Tap to add a new event and publish it for attendees",
-                      style: styleText().copyWith(
-                        fontSize: 11,
-                        color: AppTheme.third,
-                        fontWeight: FontWeight.w600,
+                        if (result == true) {
+                          loadCommitteeEvents();
+                        }
+                      },
+                      height: 54,
+                      width: double.infinity,
+                      icon: Icons.add_circle,
+                      text: "Create New Event",
+                    ),
+                    const SizedBox(height: 6),
+                    Center(
+                      child: Text(
+                        "Tap to add a new event and publish it for attendees",
+                        style: styleText().copyWith(
+                          fontSize: 11,
+                          color: AppTheme.third,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                  SizedBox(height: 20),
+                    SizedBox(height: 20),
 
-                  Expanded(
-                    child: AppSectionCard(
-                      icon: Icons.event_note,
-                      title: "Your Event",
-                      child: Expanded(
-                        child: isLoadingCommittee
+                    Expanded(
+                      child: AppSectionCard(
+                        icon: Icons.event_note,
+                        title: "Your Event",
+                        child: Expanded(
+                          child: isLoadingCommittee
+                              ? const Center(child: CircularProgressIndicator())
+                              : committeeEvents.isEmpty
+                              ? Column(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: [
+                                    Lottie.asset(
+                                      "assets/lottie/empty_bookings.json",
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      "There is no event",
+                                      style: styleText(),
+                                    ),
+                                  ],
+                                )
+                              : ListView.separated(
+                                  separatorBuilder: (context, index) =>
+                                      const SizedBox(height: 20),
+                                  itemCount: committeeEvents.length,
+                                  itemBuilder: (context, index) {
+                                    final event = committeeEvents[index];
+
+                                    return Dismissible(
+                                      key: Key(event.id.toString()),
+                                      direction: DismissDirection.endToStart,
+                                      movementDuration: const Duration(
+                                        milliseconds: 250,
+                                      ),
+                                      resizeDuration: const Duration(
+                                        milliseconds: 200,
+                                      ),
+
+                                      background: Container(
+                                        alignment: Alignment.centerRight,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.fourth,
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: const [
+                                            Icon(
+                                              Icons.delete_outline,
+                                              color: AppTheme.primary,
+                                            ),
+                                            SizedBox(width: 6),
+                                            Text(
+                                              "Delete",
+                                              style: TextStyle(
+                                                color: AppTheme.primary,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+
+                                      confirmDismiss: (direction) async {
+                                        return await showDialog(
+                                          context: context,
+                                          builder: (_) => AlertDialog(
+                                            backgroundColor: const Color(
+                                              0xFF171A33,
+                                            ),
+                                            title: Text(
+                                              "Delete Event",
+                                              style: styleText(),
+                                            ),
+                                            content: Text.rich(
+                                              style: styleText(),
+                                              TextSpan(
+                                                children: [
+                                                  TextSpan(
+                                                    text:
+                                                        "Are you sure want to delete ",
+                                                  ),
+                                                  TextSpan(
+                                                    text: event.title,
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  TextSpan(text: "?"),
+                                                ],
+                                              ),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  false,
+                                                ),
+                                                child: Text(
+                                                  "Cancel",
+                                                  style: styleText(),
+                                                ),
+                                              ),
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  true,
+                                                ),
+                                                child: Text(
+                                                  "Delete",
+                                                  style: styleText().copyWith(
+                                                    color: AppTheme.fourth,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+
+                                      onDismissed: (direction) async {
+                                        final removedIndex = committeeEvents
+                                            .indexWhere(
+                                              (e) => e.id == event.id,
+                                            );
+                                        if (removedIndex == -1) return;
+
+                                        setState(() {
+                                          committeeEvents.removeAt(
+                                            removedIndex,
+                                          );
+                                          eventParticipantCount.remove(
+                                            event.id!,
+                                          );
+                                        });
+
+                                        try {
+                                          await EventController.deleteEvent(
+                                            event.id!,
+                                          ).timeout(
+                                            const Duration(seconds: 10),
+                                          );
+
+                                          if (mounted) {
+                                            try {
+                                              ScaffoldMessenger.of(
+                                                this.context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    "Event deleted succesfully",
+                                                  ),
+                                                  behavior:
+                                                      SnackBarBehavior.floating,
+                                                ),
+                                              );
+                                            } catch (_) {}
+                                          }
+                                        } catch (_) {
+                                          if (mounted) {
+                                            try {
+                                              ScaffoldMessenger.of(
+                                                this.context,
+                                              ).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    "Failed to delete event. Check connection and try again",
+                                                  ),
+                                                  behavior:
+                                                      SnackBarBehavior.floating,
+                                                ),
+                                              );
+                                            } catch (_) {}
+                                          }
+                                        }
+
+                                        if (mounted) {
+                                          await loadCommitteeEvents();
+                                        }
+                                      },
+
+                                      child: InkWell(
+                                        onTap: () async {
+                                          final result = await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => DetailEventPage(
+                                                eventId: event.id!,
+                                                initialEvent: event,
+                                              ),
+                                            ),
+                                          );
+
+                                          if (result == true) {
+                                            loadCommitteeEvents();
+                                          }
+                                        },
+                                        child: AppListCard(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              /// HEADER EVENT
+                                              Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Icon(
+                                                    Icons.event,
+                                                    color: AppTheme.third,
+                                                    size: 20,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      event.title,
+                                                      style: styleText()
+                                                          .copyWith(
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                      maxLines: 2,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 4,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: AppTheme.third
+                                                          .withOpacity(0.18),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            999,
+                                                          ),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize:
+                                                          MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          Icons.touch_app,
+                                                          color: AppTheme.third,
+                                                          size: 14,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 4,
+                                                        ),
+                                                        Text(
+                                                          'Detail',
+                                                          style: styleText()
+                                                              .copyWith(
+                                                                fontSize: 10,
+                                                                color: AppTheme
+                                                                    .third,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                              ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+
+                                              const SizedBox(height: 8),
+
+                                              buildRow(
+                                                Icons.location_pin,
+                                                event.location,
+                                                iconColor: AppTheme.third,
+                                              ),
+
+                                              const SizedBox(height: 6),
+
+                                              buildRow(
+                                                Icons
+                                                    .event_available, // 🔥 icon baru
+                                                event.eventDate != null
+                                                    ? "${DateFormat('EE, d MMMM yyyy').format(DateTime.parse(event.eventDate!))} • ${event.eventTime}"
+                                                    : "-",
+                                                iconColor: const Color(
+                                                  0xFF73E8D7,
+                                                ),
+                                              ),
+
+                                              const SizedBox(height: 6),
+
+                                              buildRow(
+                                                Icons.people,
+                                                "${eventParticipantCount[event.id] ?? 0} joined",
+                                                iconColor: const Color(
+                                                  0xFF00C2FF,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 10),
+                                              Container(
+                                                width: double.infinity,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 8,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: AppTheme.third
+                                                      .withOpacity(0.14),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.open_in_new,
+                                                      size: 16,
+                                                      color: AppTheme.third,
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      'Tap this card to open detail event',
+                                                      style: styleText()
+                                                          .copyWith(
+                                                            color:
+                                                                AppTheme.third,
+                                                            fontSize: 11,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                      ),
+                    ),
+                  ] else if (role == "Attendee") ...[
+                    Expanded(
+                      child: AppSectionCard(
+                        title: "Event Available",
+                        icon: Icons.event,
+                        child: isLoadingAttendee && attendeeEvents.isEmpty
                             ? const Center(child: CircularProgressIndicator())
-                            : committeeEvents.isEmpty
+                            : attendeeEvents.isEmpty
                             ? Column(
-                                mainAxisAlignment: MainAxisAlignment.start,
                                 children: [
                                   Lottie.asset(
                                     "assets/lottie/empty_bookings.json",
                                   ),
                                   const SizedBox(height: 12),
-                                  Text("There is no event", style: styleText()),
+                                  Text(
+                                    "There is no event available",
+                                    style: styleText(),
+                                  ),
                                 ],
                               )
-                            : ListView.separated(
-                                separatorBuilder: (context, index) =>
-                                    const SizedBox(height: 20),
-                                itemCount: committeeEvents.length,
-                                itemBuilder: (context, index) {
-                                  final event = committeeEvents[index];
-
-                                  return Dismissible(
-                                    key: Key(event.id.toString()),
-                                    direction: DismissDirection.endToStart,
-                                    movementDuration: const Duration(
-                                      milliseconds: 250,
-                                    ),
-                                    resizeDuration: const Duration(
-                                      milliseconds: 200,
-                                    ),
-
-                                    background: Container(
-                                      alignment: Alignment.centerRight,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 24,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.fourth,
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.end,
-                                        children: const [
-                                          Icon(
-                                            Icons.delete_outline,
-                                            color: AppTheme.primary,
-                                          ),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            "Delete",
-                                            style: TextStyle(
-                                              color: AppTheme.primary,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                    confirmDismiss: (direction) async {
-                                      return await showDialog(
-                                        context: context,
-                                        builder: (_) => AlertDialog(
-                                          backgroundColor: const Color(
-                                            0xFF171A33,
-                                          ),
-                                          title: Text(
-                                            "Delete Event",
-                                            style: styleText(),
-                                          ),
-                                          content: Text.rich(
-                                            style: styleText(),
-                                            TextSpan(
-                                              children: [
-                                                TextSpan(
-                                                  text:
-                                                      "Are you sure want to delete ",
-                                                ),
-                                                TextSpan(
-                                                  text: event.title,
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                TextSpan(text: "?"),
-                                              ],
-                                            ),
-                                          ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context, false),
-                                              child: Text(
-                                                "Cancel",
-                                                style: styleText(),
-                                              ),
-                                            ),
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context, true),
-                                              child: Text(
-                                                "Delete",
-                                                style: styleText().copyWith(
-                                                  color: AppTheme.fourth,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
+                            : Expanded(
+                                child: ListView.separated(
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 16),
+                                  itemCount: attendeeEvents.length,
+                                  itemBuilder: (context, index) {
+                                    final event = attendeeEvents[index];
+                                    final eventId = event.id;
+                                    final creator =
+                                        eventCreators[event.createdBy];
+                                    final joined =
+                                        eventId != null &&
+                                        joinedEventIds.contains(eventId);
+                                    final checkedIn =
+                                        eventId != null &&
+                                        checkedInEventIds.contains(eventId);
+                                    final isJoiningEvent =
+                                        eventId != null &&
+                                        _joiningEventIds.contains(eventId);
+                                    final isExpired = isEventPassed(event);
+                                    final showJoinedBadge =
+                                        joined && !checkedIn && !isJoiningEvent;
+                                    final statusBadges = <Widget>[
+                                      if (isJoiningEvent) _buildJoiningBadge(),
+                                      if (showJoinedBadge)
+                                        _buildStatusBadge(
+                                          label: "JOINED",
+                                          color: const Color(0xFF73E8D7),
+                                          fontWeight: FontWeight.w600,
                                         ),
-                                      );
-                                    },
-
-                                    onDismissed: (direction) async {
-                                      final removedIndex = committeeEvents
-                                          .indexWhere((e) => e.id == event.id);
-                                      if (removedIndex == -1) return;
-
-                                      setState(() {
-                                        committeeEvents.removeAt(removedIndex);
-                                        eventParticipantCount.remove(event.id!);
-                                      });
-
-                                      try {
-                                        await EventController.deleteEvent(
-                                          event.id!,
-                                        ).timeout(const Duration(seconds: 10));
-
-                                        if (mounted) {
-                                          try {
-                                            ScaffoldMessenger.of(
-                                              this.context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  "Event deleted succesfully",
-                                                ),
-                                                behavior:
-                                                    SnackBarBehavior.floating,
-                                              ),
-                                            );
-                                          } catch (_) {}
-                                        }
-                                      } catch (_) {
-                                        if (mounted) {
-                                          try {
-                                            ScaffoldMessenger.of(
-                                              this.context,
-                                            ).showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                  "Failed to delete event. Check connection and try again",
-                                                ),
-                                                behavior:
-                                                    SnackBarBehavior.floating,
-                                              ),
-                                            );
-                                          } catch (_) {}
-                                        }
-                                      }
-
-                                      if (mounted) {
-                                        await loadCommitteeEvents();
-                                      }
-                                    },
-
-                                    child: InkWell(
-                                      onTap: () async {
-                                        final result = await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => DetailEventPage(
-                                              eventId: event.id!,
-                                              initialEvent: event,
-                                            ),
+                                      if (checkedIn)
+                                        _buildStatusBadge(
+                                          label: "CHECKED IN",
+                                          color: const Color(0xFF8BE39A),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      if (isExpired)
+                                        _buildStatusBadge(
+                                          label: "EXPIRED",
+                                          color: AppTheme.fourth.withOpacity(
+                                            0.75,
                                           ),
-                                        );
-
-                                        if (result == true) {
-                                          loadCommitteeEvents();
-                                        }
-                                      },
-                                      child: AppListCard(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            /// HEADER EVENT
-                                            Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Icon(
-                                                  Icons.event,
-                                                  color: AppTheme.third,
-                                                  size: 20,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Expanded(
-                                                  child: Text(
-                                                    event.title,
-                                                    style: styleText().copyWith(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                    maxLines: 2,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 4,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: AppTheme.third
-                                                        .withOpacity(0.18),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          999,
-                                                        ),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      Icon(
-                                                        Icons.touch_app,
-                                                        color: AppTheme.third,
-                                                        size: 14,
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        'Detail',
-                                                        style: styleText()
-                                                            .copyWith(
-                                                              fontSize: 10,
-                                                              color: AppTheme
-                                                                  .third,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w700,
-                                                            ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-
-                                            const SizedBox(height: 8),
-
-                                            buildRow(
-                                              Icons.location_pin,
-                                              event.location,
-                                              iconColor: AppTheme.third,
-                                            ),
-
-                                            const SizedBox(height: 6),
-
-                                            buildRow(
-                                              Icons
-                                                  .event_available, // 🔥 icon baru
-                                              event.eventDate != null
-                                                  ? "${DateFormat('EE, d MMMM yyyy').format(DateTime.parse(event.eventDate!))} • ${event.eventTime}"
-                                                  : "-",
-                                              iconColor: const Color(
-                                                0xFF73E8D7,
-                                              ),
-                                            ),
-
-                                            const SizedBox(height: 6),
-
-                                            buildRow(
-                                              Icons.people,
-                                              "${eventParticipantCount[event.id] ?? 0} joined",
-                                              iconColor: const Color(
-                                                0xFF00C2FF,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 10),
-                                            Container(
-                                              width: double.infinity,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 8,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: AppTheme.third
-                                                    .withOpacity(0.14),
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                              ),
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.open_in_new,
-                                                    size: 16,
-                                                    color: AppTheme.third,
-                                                  ),
-                                                  const SizedBox(width: 6),
-                                                  Text(
-                                                    'Tap this card to open detail event',
-                                                    style: styleText().copyWith(
-                                                      color: AppTheme.third,
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
                                         ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                      ),
-                    ),
-                  ),
-                ] else if (role == "Attendee") ...[
-                  Expanded(
-                    child: AppSectionCard(
-                      title: "Event Available",
-                      icon: Icons.event,
-                      child: isLoadingAttendee && attendeeEvents.isEmpty
-                          ? const Center(child: CircularProgressIndicator())
-                          : attendeeEvents.isEmpty
-                          ? Column(
-                              children: [
-                                Lottie.asset(
-                                  "assets/lottie/empty_bookings.json",
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  "There is no event available",
-                                  style: styleText(),
-                                ),
-                              ],
-                            )
-                          : Expanded(
-                              child: ListView.separated(
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(height: 16),
-                                itemCount: attendeeEvents.length,
-                                itemBuilder: (context, index) {
-                                  final event = attendeeEvents[index];
-                                  final eventId = event.id;
-                                  final creator =
-                                      eventCreators[event.createdBy];
-                                  final joined =
-                                      eventId != null &&
-                                      joinedEventIds.contains(eventId);
-                                  final checkedIn =
-                                      eventId != null &&
-                                      checkedInEventIds.contains(eventId);
-                                  final isJoiningEvent =
-                                      eventId != null &&
-                                      _joiningEventIds.contains(eventId);
-                                  final isExpired = isEventPassed(event);
-                                  final showJoinedBadge =
-                                      joined && !checkedIn && !isJoiningEvent;
-                                  final statusBadges = <Widget>[
-                                    if (isJoiningEvent) _buildJoiningBadge(),
-                                    if (showJoinedBadge)
-                                      _buildStatusBadge(
-                                        label: "JOINED",
-                                        color: const Color(0xFF73E8D7),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    if (checkedIn)
-                                      _buildStatusBadge(
-                                        label: "CHECKED IN",
-                                        color: const Color(0xFF8BE39A),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    if (isExpired)
-                                      _buildStatusBadge(
-                                        label: "EXPIRED",
-                                        color: AppTheme.fourth.withOpacity(
-                                          0.75,
-                                        ),
-                                      ),
-                                  ];
-                                  final hasAnyBadge = statusBadges.isNotEmpty;
+                                    ];
+                                    final hasAnyBadge = statusBadges.isNotEmpty;
 
-                                  return AppListCard(
-                                    child: InkWell(
-                                      onTap: isJoiningEvent
-                                          ? null
-                                          : () async {
-                                              try {
-                                                final activeUserId =
-                                                    await _resolveCurrentUserId();
-                                                if (activeUserId == null ||
-                                                    activeUserId <= 0) {
-                                                  if (!mounted) return;
-                                                  try {
-                                                    ScaffoldMessenger.of(
-                                                      this.context,
-                                                    ).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text(
-                                                          "User session is not ready. Please login again.",
-                                                        ),
-                                                      ),
-                                                    );
-                                                  } catch (_) {}
-                                                  return;
-                                                }
-
-                                                if (eventId == null) return;
-                                                if (_joiningEventIds.contains(
-                                                  eventId,
-                                                )) {
-                                                  return;
-                                                }
-
-                                                final isOwnerEvent =
-                                                    event.createdBy ==
-                                                    activeUserId;
-
-                                                if (isOwnerEvent) {
-                                                  if (!mounted) return;
-                                                  await showDialog(
-                                                    context: context,
-                                                    builder: (_) => AlertDialog(
-                                                      backgroundColor:
-                                                          const Color(
-                                                            0xFF171A33,
-                                                          ),
-                                                      title: Text(
-                                                        'Owner restriction',
-                                                        style: styleText(),
-                                                      ),
-                                                      content: Text(
-                                                        'You cannot join your own event as attendee',
-                                                        style: styleText(),
-                                                      ),
-                                                      actions: [
-                                                        TextButton(
-                                                          onPressed: () =>
-                                                              Navigator.pop(
-                                                                context,
-                                                              ),
-                                                          child: Text(
-                                                            'OK',
-                                                            style: styleText()
-                                                                .copyWith(
-                                                                  color: AppTheme
-                                                                      .third,
-                                                                ),
+                                    return AppListCard(
+                                      child: InkWell(
+                                        onTap: isJoiningEvent
+                                            ? null
+                                            : () async {
+                                                try {
+                                                  final activeUserId =
+                                                      await _resolveCurrentUserId();
+                                                  if (activeUserId == null ||
+                                                      activeUserId <= 0) {
+                                                    if (!mounted) return;
+                                                    try {
+                                                      ScaffoldMessenger.of(
+                                                        this.context,
+                                                      ).showSnackBar(
+                                                        const SnackBar(
+                                                          content: Text(
+                                                            "User session is not ready. Please login again.",
                                                           ),
                                                         ),
-                                                      ],
-                                                    ),
-                                                  );
-                                                  return;
-                                                }
-
-                                                // Use local joined state first so joined events open directly.
-                                                if (joined) {
-                                                  await _openAttendeeEventPage(
-                                                    userId: activeUserId,
-                                                    eventId: eventId,
-                                                  );
-                                                  return;
-                                                }
-
-                                                /// ❌ JIKA BELUM JOIN & EVENT SUDAH LEWAT → BLOCK
-                                                if (isEventPassed(event)) {
-                                                  bool serverJoined = false;
-                                                  try {
-                                                    serverJoined =
-                                                        await EventParticipantController.isJoined(
-                                                          activeUserId,
-                                                          eventId,
-                                                        );
-                                                  } catch (_) {
-                                                    serverJoined = false;
+                                                      );
+                                                    } catch (_) {}
+                                                    return;
                                                   }
 
-                                                  if (serverJoined) {
-                                                    if (mounted &&
-                                                        !joinedEventIds
-                                                            .contains(
-                                                              eventId,
-                                                            )) {
-                                                      setState(() {
-                                                        joinedEventIds.add(
-                                                          eventId,
-                                                        );
-                                                      });
-                                                    }
+                                                  if (eventId == null) return;
+                                                  if (_joiningEventIds.contains(
+                                                    eventId,
+                                                  )) {
+                                                    return;
+                                                  }
 
+                                                  final isOwnerEvent =
+                                                      event.createdBy ==
+                                                      activeUserId;
+
+                                                  if (isOwnerEvent) {
+                                                    if (!mounted) return;
+                                                    await showDialog(
+                                                      context: context,
+                                                      builder: (_) => AlertDialog(
+                                                        backgroundColor:
+                                                            const Color(
+                                                              0xFF171A33,
+                                                            ),
+                                                        title: Text(
+                                                          'Owner restriction',
+                                                          style: styleText(),
+                                                        ),
+                                                        content: Text(
+                                                          'You cannot join your own event as attendee',
+                                                          style: styleText(),
+                                                        ),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () =>
+                                                                Navigator.pop(
+                                                                  context,
+                                                                ),
+                                                            child: Text(
+                                                              'OK',
+                                                              style: styleText()
+                                                                  .copyWith(
+                                                                    color: AppTheme
+                                                                        .third,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    );
+                                                    return;
+                                                  }
+
+                                                  // Use local joined state first so joined events open directly.
+                                                  if (joined) {
                                                     await _openAttendeeEventPage(
                                                       userId: activeUserId,
                                                       eventId: eventId,
@@ -1292,142 +1283,8 @@ class _HomePageState extends State<HomePage> {
                                                     return;
                                                   }
 
-                                                  await showDialog(
-                                                    context: context,
-                                                    builder: (_) => AlertDialog(
-                                                      backgroundColor:
-                                                          const Color(
-                                                            0xFF171A33,
-                                                          ),
-                                                      title: Text(
-                                                        "Event ended",
-                                                        style: styleText(),
-                                                      ),
-                                                      content: Text(
-                                                        "Can not join event, the event has ended",
-                                                        style: styleText(),
-                                                      ),
-                                                      actions: [
-                                                        TextButton(
-                                                          onPressed: () =>
-                                                              Navigator.pop(
-                                                                context,
-                                                              ),
-                                                          child: Text(
-                                                            "OK",
-                                                            style: styleText()
-                                                                .copyWith(
-                                                                  color: AppTheme
-                                                                      .third,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  );
-                                                  if (mounted) setState(() {});
-                                                  return;
-                                                }
-
-                                                /// ✅ JIKA BELUM JOIN & MASIH AKTIF → BISA JOIN
-                                                final confirm = await showDialog(
-                                                  context: context,
-                                                  builder: (_) => AlertDialog(
-                                                    backgroundColor:
-                                                        const Color(0xFF171A33),
-                                                    title: Text(
-                                                      "Join Event",
-                                                      style: styleText(),
-                                                    ),
-                                                    content: Text.rich(
-                                                      style: styleText(),
-                                                      TextSpan(
-                                                        children: [
-                                                          TextSpan(
-                                                            text: "Join to ",
-                                                          ),
-                                                          TextSpan(
-                                                            text: event.title,
-                                                            style: TextStyle(
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                            ),
-                                                          ),
-                                                          TextSpan(text: "?"),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    actions: [
-                                                      TextButton(
-                                                        onPressed: () =>
-                                                            Navigator.pop(
-                                                              context,
-                                                              false,
-                                                            ),
-                                                        child: Text(
-                                                          "Cancel",
-                                                          style: styleText(),
-                                                        ),
-                                                      ),
-                                                      TextButton(
-                                                        onPressed: () =>
-                                                            Navigator.pop(
-                                                              context,
-                                                              true,
-                                                            ),
-                                                        child: Text(
-                                                          "Join",
-                                                          style: styleText()
-                                                              .copyWith(
-                                                                color: AppTheme
-                                                                    .third,
-                                                              ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                );
-
-                                                if (confirm == true) {
-                                                  if (mounted) {
-                                                    setState(() {
-                                                      _joiningEventIds.add(
-                                                        eventId,
-                                                      );
-                                                    });
-                                                  }
-
-                                                  try {
-                                                    await EventParticipantController.joinEvent(
-                                                      activeUserId,
-                                                      eventId,
-                                                    );
-
-                                                    if (mounted) {
-                                                      setState(() {
-                                                        if (!joinedEventIds
-                                                            .contains(
-                                                              eventId,
-                                                            )) {
-                                                          joinedEventIds.add(
-                                                            eventId,
-                                                          );
-                                                        }
-
-                                                        final currentCount =
-                                                            eventParticipantCount[eventId] ??
-                                                            0;
-                                                        eventParticipantCount[eventId] =
-                                                            currentCount + 1;
-                                                      });
-                                                    }
-
-                                                    await _openAttendeeEventPage(
-                                                      userId: activeUserId,
-                                                      eventId: eventId,
-                                                    );
-                                                  } catch (e) {
+                                                  /// ❌ JIKA BELUM JOIN & EVENT SUDAH LEWAT → BLOCK
+                                                  if (isEventPassed(event)) {
                                                     bool serverJoined = false;
                                                     try {
                                                       serverJoined =
@@ -1459,243 +1316,419 @@ class _HomePageState extends State<HomePage> {
                                                       return;
                                                     }
 
-                                                    if (mounted) {
-                                                      try {
-                                                        ScaffoldMessenger.of(
-                                                          context,
-                                                        ).showSnackBar(
-                                                          SnackBar(
-                                                            content: Text(
-                                                              'Error: $e',
+                                                    await showDialog(
+                                                      context: context,
+                                                      builder: (_) => AlertDialog(
+                                                        backgroundColor:
+                                                            const Color(
+                                                              0xFF171A33,
+                                                            ),
+                                                        title: Text(
+                                                          "Event ended",
+                                                          style: styleText(),
+                                                        ),
+                                                        content: Text(
+                                                          "Can not join event, the event has ended",
+                                                          style: styleText(),
+                                                        ),
+                                                        actions: [
+                                                          TextButton(
+                                                            onPressed: () =>
+                                                                Navigator.pop(
+                                                                  context,
+                                                                ),
+                                                            child: Text(
+                                                              "OK",
+                                                              style: styleText()
+                                                                  .copyWith(
+                                                                    color: AppTheme
+                                                                        .third,
+                                                                  ),
                                                             ),
                                                           ),
-                                                        );
-                                                      } catch (_) {}
-                                                    }
-                                                  } finally {
-                                                    if (mounted) {
-                                                      setState(() {
-                                                        _joiningEventIds.remove(
-                                                          eventId,
-                                                        );
-                                                      });
-                                                    }
+                                                        ],
+                                                      ),
+                                                    );
+                                                    if (mounted)
+                                                      setState(() {});
+                                                    return;
                                                   }
-                                                }
-                                              } catch (_) {
-                                                // Silently handle top-level errors
-                                              }
-                                            },
-                                      child: AnimatedOpacity(
-                                        opacity: isJoiningEvent ? 0.55 : 1,
-                                        duration: const Duration(
-                                          milliseconds: 150,
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            /// TITLE
-                                            Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Icon(
-                                                  Icons.event,
-                                                  color: AppTheme.third,
-                                                  size: 20,
-                                                ),
 
-                                                const SizedBox(width: 8),
-
-                                                /// TITLE EVENT
-                                                Expanded(
-                                                  child: Row(
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      Expanded(
-                                                        child: Text(
-                                                          event.title,
-                                                          style: styleText()
-                                                              .copyWith(
+                                                  /// ✅ JIKA BELUM JOIN & MASIH AKTIF → BISA JOIN
+                                                  final confirm = await showDialog(
+                                                    context: context,
+                                                    builder: (_) => AlertDialog(
+                                                      backgroundColor:
+                                                          const Color(
+                                                            0xFF171A33,
+                                                          ),
+                                                      title: Text(
+                                                        "Join Event",
+                                                        style: styleText(),
+                                                      ),
+                                                      content: Text.rich(
+                                                        style: styleText(),
+                                                        TextSpan(
+                                                          children: [
+                                                            TextSpan(
+                                                              text: "Join to ",
+                                                            ),
+                                                            TextSpan(
+                                                              text: event.title,
+                                                              style: TextStyle(
                                                                 fontWeight:
                                                                     FontWeight
                                                                         .bold,
                                                               ),
-                                                          overflow: TextOverflow
-                                                              .ellipsis,
-                                                          maxLines: 2,
+                                                            ),
+                                                            TextSpan(text: "?"),
+                                                          ],
                                                         ),
                                                       ),
-                                                      if (hasAnyBadge) ...[
-                                                        const SizedBox(
-                                                          width: 8,
-                                                        ),
-                                                        Flexible(
-                                                          child: Align(
-                                                            alignment: Alignment
-                                                                .topRight,
-                                                            child: SingleChildScrollView(
-                                                              scrollDirection:
-                                                                  Axis.horizontal,
-                                                              reverse: true,
-                                                              child: Row(
-                                                                mainAxisSize:
-                                                                    MainAxisSize
-                                                                        .min,
-                                                                children: [
-                                                                  for (
-                                                                    int i = 0;
-                                                                    i <
-                                                                        statusBadges
-                                                                            .length;
-                                                                    i++
-                                                                  ) ...[
-                                                                    statusBadges[i],
-                                                                    if (i !=
-                                                                        statusBadges.length -
-                                                                            1)
-                                                                      const SizedBox(
-                                                                        width:
-                                                                            8,
-                                                                      ),
-                                                                  ],
-                                                                ],
+                                                      actions: [
+                                                        TextButton(
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                context,
+                                                                false,
                                                               ),
-                                                            ),
+                                                          child: Text(
+                                                            "Cancel",
+                                                            style: styleText(),
+                                                          ),
+                                                        ),
+                                                        TextButton(
+                                                          onPressed: () =>
+                                                              Navigator.pop(
+                                                                context,
+                                                                true,
+                                                              ),
+                                                          child: Text(
+                                                            "Join",
+                                                            style: styleText()
+                                                                .copyWith(
+                                                                  color: AppTheme
+                                                                      .third,
+                                                                ),
                                                           ),
                                                         ),
                                                       ],
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-
-                                            const SizedBox(height: 10),
-
-                                            /// LOCATION
-                                            buildRow(
-                                              Icons.location_pin,
-                                              event.location,
-                                              iconColor: AppTheme.third,
-                                            ),
-
-                                            const SizedBox(height: 8),
-
-                                            /// TOTAL PESERTA
-                                            buildRow(
-                                              Icons.people,
-                                              "${eventParticipantCount[event.id] ?? 0} joined",
-                                              iconColor: const Color(
-                                                0xFF00C2FF,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 8),
-
-                                            buildRow(
-                                              Icons.event_available,
-                                              event.eventDate != null
-                                                  ? "${DateFormat('EE, d MMMM yyyy').format(DateTime.parse(event.eventDate!))} • ${event.eventTime ?? '-'}"
-                                                  : "-",
-                                              iconColor: const Color(
-                                                0xFF73E8D7,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 8),
-
-                                            /// PANITIA PEMBUAT EVENT
-                                            if (creator != null)
-                                              Row(
-                                                children: [
-                                                  CircleAvatar(
-                                                    radius: 12,
-                                                    backgroundColor:
-                                                        AppTheme.third,
-                                                    child: ProfileAvatar(
-                                                      imagePath:
-                                                          creator.profileImage,
-                                                      radius: 12,
-                                                      backgroundColor:
-                                                          AppTheme.third,
-                                                      iconSize: 16,
                                                     ),
+                                                  );
+
+                                                  if (confirm == true) {
+                                                    if (mounted) {
+                                                      setState(() {
+                                                        _joiningEventIds.add(
+                                                          eventId,
+                                                        );
+                                                      });
+                                                    }
+
+                                                    try {
+                                                      await EventParticipantController.joinEvent(
+                                                        activeUserId,
+                                                        eventId,
+                                                      );
+
+                                                      if (mounted) {
+                                                        setState(() {
+                                                          if (!joinedEventIds
+                                                              .contains(
+                                                                eventId,
+                                                              )) {
+                                                            joinedEventIds.add(
+                                                              eventId,
+                                                            );
+                                                          }
+
+                                                          final currentCount =
+                                                              eventParticipantCount[eventId] ??
+                                                              0;
+                                                          eventParticipantCount[eventId] =
+                                                              currentCount + 1;
+                                                        });
+                                                      }
+
+                                                      await _openAttendeeEventPage(
+                                                        userId: activeUserId,
+                                                        eventId: eventId,
+                                                      );
+                                                    } catch (e) {
+                                                      bool serverJoined = false;
+                                                      try {
+                                                        serverJoined =
+                                                            await EventParticipantController.isJoined(
+                                                              activeUserId,
+                                                              eventId,
+                                                            );
+                                                      } catch (_) {
+                                                        serverJoined = false;
+                                                      }
+
+                                                      if (serverJoined) {
+                                                        if (mounted &&
+                                                            !joinedEventIds
+                                                                .contains(
+                                                                  eventId,
+                                                                )) {
+                                                          setState(() {
+                                                            joinedEventIds.add(
+                                                              eventId,
+                                                            );
+                                                          });
+                                                        }
+
+                                                        await _openAttendeeEventPage(
+                                                          userId: activeUserId,
+                                                          eventId: eventId,
+                                                        );
+                                                        return;
+                                                      }
+
+                                                      if (mounted) {
+                                                        try {
+                                                          ScaffoldMessenger.of(
+                                                            context,
+                                                          ).showSnackBar(
+                                                            SnackBar(
+                                                              content: Text(
+                                                                'Error: $e',
+                                                              ),
+                                                            ),
+                                                          );
+                                                        } catch (_) {}
+                                                      }
+                                                    } finally {
+                                                      if (mounted) {
+                                                        setState(() {
+                                                          _joiningEventIds
+                                                              .remove(eventId);
+                                                        });
+                                                      }
+                                                    }
+                                                  }
+                                                } catch (_) {
+                                                  // Silently handle top-level errors
+                                                }
+                                              },
+                                        child: AnimatedOpacity(
+                                          opacity: isJoiningEvent ? 0.55 : 1,
+                                          duration: const Duration(
+                                            milliseconds: 150,
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              /// TITLE
+                                              Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Icon(
+                                                    Icons.event,
+                                                    color: AppTheme.third,
+                                                    size: 20,
                                                   ),
+
                                                   const SizedBox(width: 8),
+
+                                                  /// TITLE EVENT
                                                   Expanded(
-                                                    child: Text(
-                                                      "by ${creator.nama}",
-                                                      style: styleText(),
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
+                                                    child: Row(
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
+                                                      children: [
+                                                        Expanded(
+                                                          child: Text(
+                                                            event.title,
+                                                            style: styleText()
+                                                                .copyWith(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                ),
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                            maxLines: 2,
+                                                          ),
+                                                        ),
+                                                        if (hasAnyBadge) ...[
+                                                          const SizedBox(
+                                                            width: 8,
+                                                          ),
+                                                          Flexible(
+                                                            child: Align(
+                                                              alignment:
+                                                                  Alignment
+                                                                      .topRight,
+                                                              child: SingleChildScrollView(
+                                                                scrollDirection:
+                                                                    Axis.horizontal,
+                                                                reverse: true,
+                                                                child: Row(
+                                                                  mainAxisSize:
+                                                                      MainAxisSize
+                                                                          .min,
+                                                                  children: [
+                                                                    for (
+                                                                      int i = 0;
+                                                                      i <
+                                                                          statusBadges
+                                                                              .length;
+                                                                      i++
+                                                                    ) ...[
+                                                                      statusBadges[i],
+                                                                      if (i !=
+                                                                          statusBadges.length -
+                                                                              1)
+                                                                        const SizedBox(
+                                                                          width:
+                                                                              8,
+                                                                        ),
+                                                                    ],
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ],
                                                     ),
                                                   ),
                                                 ],
                                               ),
-                                            const SizedBox(height: 10),
-                                            Container(
-                                              width: double.infinity,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 8,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: joined || checkedIn
-                                                    ? const Color(
-                                                        0xFF73E8D7,
-                                                      ).withOpacity(0.2)
-                                                    : AppTheme.third
-                                                          .withOpacity(0.14),
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
+
+                                              const SizedBox(height: 10),
+
+                                              /// LOCATION
+                                              buildRow(
+                                                Icons.location_pin,
+                                                event.location,
+                                                iconColor: AppTheme.third,
                                               ),
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    joined || checkedIn
-                                                        ? Icons.open_in_new
-                                                        : Icons.touch_app,
-                                                    size: 16,
-                                                    color: joined || checkedIn
-                                                        ? const Color(
-                                                            0xFF73E8D7,
-                                                          )
-                                                        : AppTheme.third,
-                                                  ),
-                                                  const SizedBox(width: 6),
-                                                  Text(
-                                                    joined || checkedIn
-                                                        ? 'Tap this card to open your event'
-                                                        : 'Tap this card to join this event',
-                                                    style: styleText().copyWith(
+
+                                              const SizedBox(height: 8),
+
+                                              /// TOTAL PESERTA
+                                              buildRow(
+                                                Icons.people,
+                                                "${eventParticipantCount[event.id] ?? 0} joined",
+                                                iconColor: const Color(
+                                                  0xFF00C2FF,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+
+                                              buildRow(
+                                                Icons.event_available,
+                                                event.eventDate != null
+                                                    ? "${DateFormat('EE, d MMMM yyyy').format(DateTime.parse(event.eventDate!))} • ${event.eventTime ?? '-'}"
+                                                    : "-",
+                                                iconColor: const Color(
+                                                  0xFF73E8D7,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+
+                                              /// PANITIA PEMBUAT EVENT
+                                              if (creator != null)
+                                                Row(
+                                                  children: [
+                                                    CircleAvatar(
+                                                      radius: 12,
+                                                      backgroundColor:
+                                                          AppTheme.third,
+                                                      child: ProfileAvatar(
+                                                        imagePath: creator
+                                                            .profileImage,
+                                                        radius: 12,
+                                                        backgroundColor:
+                                                            AppTheme.third,
+                                                        iconSize: 16,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Expanded(
+                                                      child: Text(
+                                                        "by ${creator.nama}",
+                                                        style: styleText(),
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              const SizedBox(height: 10),
+                                              Container(
+                                                width: double.infinity,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 8,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: joined || checkedIn
+                                                      ? const Color(
+                                                          0xFF73E8D7,
+                                                        ).withOpacity(0.2)
+                                                      : AppTheme.third
+                                                            .withOpacity(0.14),
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      joined || checkedIn
+                                                          ? Icons.open_in_new
+                                                          : Icons.touch_app,
+                                                      size: 16,
                                                       color: joined || checkedIn
                                                           ? const Color(
                                                               0xFF73E8D7,
                                                             )
                                                           : AppTheme.third,
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                          FontWeight.w700,
                                                     ),
-                                                  ),
-                                                ],
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      joined || checkedIn
+                                                          ? 'Tap this card to open your event'
+                                                          : 'Tap this card to join this event',
+                                                      style: styleText()
+                                                          .copyWith(
+                                                            color:
+                                                                joined ||
+                                                                    checkedIn
+                                                                ? const Color(
+                                                                    0xFF73E8D7,
+                                                                  )
+                                                                : AppTheme
+                                                                      .third,
+                                                            fontSize: 11,
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                          ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  );
-                                },
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ],

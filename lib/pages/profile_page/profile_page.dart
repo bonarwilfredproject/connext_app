@@ -494,288 +494,452 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-              ),
-              child: Wrap(
-                children: [
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      /// HANDLE
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: AppTheme.secondary,
-                          borderRadius: BorderRadius.circular(10),
+        return SafeArea(
+          top: false,
+          child: StatefulBuilder(
+            builder: (context, setModalState) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  top: 20,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                ),
+                child: Wrap(
+                  children: [
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        /// HANDLE
+                        Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppTheme.secondary,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Form(
-                        key: _formKey,
-                        child: AppSectionCard(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                "Edit Profile",
-                                style: styleText().copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                ),
-                              ),
-
-                              const SizedBox(height: 20),
-
-                              GestureDetector(
-                                onTap: () => pickImageSource(setModalState),
-                                child: Stack(
-                                  alignment: Alignment.bottomRight,
-                                  children: [
-                                    ProfileAvatar(
-                                      imagePath: tempImage != null
-                                          ? tempImage
-                                          : user.profileImage,
-                                      radius: 45,
-                                      backgroundColor: AppTheme.third,
-                                      iconSize: 45,
-                                    ),
-
-                                    Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.secondary,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.camera_alt,
-                                        size: 18,
-                                        color: AppTheme.primary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              const SizedBox(height: 20),
-
-                              /// NAMA
-                              TextFormField(
-                                style: TextStyle(
-                                  color: AppTheme.secondary,
-                                  fontSize: 14,
-                                ),
-                                controller: nameController,
-                                decoration: decorationConstant(
-                                  labelText: "Name",
-                                  hintText: nameController.text,
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return "Name can't be empty";
-                                  }
-                                  return null;
-                                },
-                              ),
-
-                              const SizedBox(height: 16),
-
-                              /// PHONE
-                              LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final isCompact = constraints.maxWidth < 380;
-
-                                  final countryField =
-                                      DropdownButtonFormField<
-                                        _CountryDialOption
-                                      >(
-                                        value: _selectedCountry,
-                                        isExpanded: true,
-                                        decoration: decorationConstant(
-                                          labelText: isCompact
-                                              ? null
-                                              : "Phone Number",
-                                          hintText: 'Country',
-                                        ),
-                                        items: _countryOptions.map((option) {
-                                          return DropdownMenuItem<
-                                            _CountryDialOption
-                                          >(
-                                            value: option,
-                                            child: Text(
-                                              '${option.label} (${option.dialCode})',
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                color: AppTheme.secondary,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          );
-                                        }).toList(),
-                                        onChanged: (value) {
-                                          if (value == null) return;
-                                          setModalState(() {
-                                            _selectedCountry = value;
-                                            phoneError = null;
-                                            _pendingOtpTargetPhone = null;
-                                            _pendingOtpVerificationId = null;
-                                            _pendingOtpExpiresAt = null;
-                                          });
-                                        },
-                                      );
-
-                                  final phoneField = TextFormField(
-                                    style: TextStyle(
-                                      color: AppTheme.secondary,
-                                      fontSize: 14,
-                                    ),
-                                    controller: phoneController,
-                                    keyboardType: TextInputType.number,
-                                    decoration: decorationConstant(
-                                      labelText: isCompact
-                                          ? "Phone Number"
-                                          : null,
-                                      hintText: 'Local phone number',
-                                    ),
-                                    validator: (value) {
-                                      final phone = (value ?? '').trim();
-
-                                      if (phone.isEmpty) {
-                                        return "Phone number must be filled";
-                                      }
-
-                                      if (!RegExp(r'^\d+$').hasMatch(phone)) {
-                                        return "Phone number must contain digits only";
-                                      }
-
-                                      if (phone.length < 4) {
-                                        return "Phone number is too short";
-                                      }
-
-                                      if (phone.length > 15) {
-                                        return "Phone number is too long";
-                                      }
-
-                                      if (phoneError != null) {
-                                        return phoneError;
-                                      }
-
-                                      return null;
-                                    },
-                                    onChanged: (value) {
-                                      if (phoneError != null) {
-                                        setModalState(() {
-                                          phoneError = null;
-                                        });
-                                      }
-
-                                      _pendingOtpTargetPhone = null;
-                                      _pendingOtpVerificationId = null;
-                                      _pendingOtpExpiresAt = null;
-                                    },
-                                  );
-
-                                  if (isCompact) {
-                                    return Column(
-                                      children: [
-                                        countryField,
-                                        const SizedBox(height: 8),
-                                        phoneField,
-                                      ],
-                                    );
-                                  }
-
-                                  return Row(
-                                    children: [
-                                      Expanded(flex: 4, child: countryField),
-                                      const SizedBox(width: 8),
-                                      Expanded(flex: 6, child: phoneField),
-                                    ],
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 4),
-                              Align(
-                                alignment: Alignment.centerLeft,
-                                child: Text(
-                                  'Enter your local number without country code. Example: 8123456789',
-                                  style: TextStyle(
-                                    color: AppTheme.secondary.withOpacity(0.7),
-                                    fontSize: 11,
+                        const SizedBox(height: 16),
+                        Form(
+                          key: _formKey,
+                          child: AppSectionCard(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  "Edit Profile",
+                                  style: styleText().copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
                                   ),
                                 ),
-                              ),
 
-                              const SizedBox(height: 24),
+                                const SizedBox(height: 20),
 
-                              /// SAVE BUTTON
-                              TombolSementara(
-                                icon: Icons.save,
-                                text: "Save",
-                                width: double.infinity,
-                                height: 50,
-                                isLoading: isSavingProfile,
-                                onPressed: () async {
-                                  if (isSavingProfile) return;
+                                GestureDetector(
+                                  onTap: () => pickImageSource(setModalState),
+                                  child: Stack(
+                                    alignment: Alignment.bottomRight,
+                                    children: [
+                                      ProfileAvatar(
+                                        imagePath: tempImage != null
+                                            ? tempImage
+                                            : user.profileImage,
+                                        radius: 45,
+                                        backgroundColor: AppTheme.third,
+                                        iconSize: 45,
+                                      ),
 
-                                  if (phoneError != null) {
-                                    setModalState(() {
-                                      phoneError = null;
-                                    });
-                                  }
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.secondary,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.camera_alt,
+                                          size: 18,
+                                          color: AppTheme.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
 
-                                  if (!_formKey.currentState!.validate())
-                                    return;
+                                const SizedBox(height: 20),
 
-                                  setModalState(() {
-                                    isSavingProfile = true;
-                                  });
+                                /// NAMA
+                                TextFormField(
+                                  style: TextStyle(
+                                    color: AppTheme.secondary,
+                                    fontSize: 14,
+                                  ),
+                                  controller: nameController,
+                                  decoration: decorationConstant(
+                                    labelText: "Name",
+                                    hintText: nameController.text,
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return "Name can't be empty";
+                                    }
+                                    return null;
+                                  },
+                                ),
 
-                                  try {
-                                    String newName = nameController.text.trim();
-                                    final localPhone = phoneController.text
-                                        .trim();
+                                const SizedBox(height: 16),
 
-                                    final newPhone =
-                                        FirebaseServices.normalizePhoneToE164(
-                                          localPhone,
-                                          countryDialCode:
-                                              _selectedCountry.dialCode,
+                                /// PHONE
+                                LayoutBuilder(
+                                  builder: (context, constraints) {
+                                    final isCompact =
+                                        constraints.maxWidth < 380;
+
+                                    final countryField =
+                                        DropdownButtonFormField<
+                                          _CountryDialOption
+                                        >(
+                                          value: _selectedCountry,
+                                          isExpanded: true,
+                                          decoration: decorationConstant(
+                                            labelText: isCompact
+                                                ? null
+                                                : "Phone Number",
+                                            hintText: 'Country',
+                                          ),
+                                          items: _countryOptions.map((option) {
+                                            return DropdownMenuItem<
+                                              _CountryDialOption
+                                            >(
+                                              value: option,
+                                              child: Text(
+                                                '${option.label} (${option.dialCode})',
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  color: AppTheme.secondary,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                          onChanged: (value) {
+                                            if (value == null) return;
+                                            setModalState(() {
+                                              _selectedCountry = value;
+                                              phoneError = null;
+                                              _pendingOtpTargetPhone = null;
+                                              _pendingOtpVerificationId = null;
+                                              _pendingOtpExpiresAt = null;
+                                            });
+                                          },
                                         );
 
-                                    final authPhone = FirebaseAuth
-                                        .instance
-                                        .currentUser
-                                        ?.phoneNumber;
+                                    final phoneField = TextFormField(
+                                      style: TextStyle(
+                                        color: AppTheme.secondary,
+                                        fontSize: 14,
+                                      ),
+                                      controller: phoneController,
+                                      keyboardType: TextInputType.number,
+                                      decoration: decorationConstant(
+                                        labelText: isCompact
+                                            ? "Phone Number"
+                                            : null,
+                                        hintText: 'Local phone number',
+                                      ),
+                                      validator: (value) {
+                                        final phone = (value ?? '').trim();
 
-                                    final currentPhone =
-                                        (authPhone ?? '').trim().isNotEmpty
-                                        ? FirebaseServices.normalizePhoneToE164(
-                                            authPhone!,
-                                          )
-                                        : FirebaseServices.normalizePhoneToE164(
-                                            user.phone,
+                                        if (phone.isEmpty) {
+                                          return "Phone number must be filled";
+                                        }
+
+                                        if (!RegExp(r'^\d+$').hasMatch(phone)) {
+                                          return "Phone number must contain digits only";
+                                        }
+
+                                        if (phone.length < 4) {
+                                          return "Phone number is too short";
+                                        }
+
+                                        if (phone.length > 15) {
+                                          return "Phone number is too long";
+                                        }
+
+                                        if (phoneError != null) {
+                                          return phoneError;
+                                        }
+
+                                        return null;
+                                      },
+                                      onChanged: (value) {
+                                        if (phoneError != null) {
+                                          setModalState(() {
+                                            phoneError = null;
+                                          });
+                                        }
+
+                                        _pendingOtpTargetPhone = null;
+                                        _pendingOtpVerificationId = null;
+                                        _pendingOtpExpiresAt = null;
+                                      },
+                                    );
+
+                                    if (isCompact) {
+                                      return Column(
+                                        children: [
+                                          countryField,
+                                          const SizedBox(height: 8),
+                                          phoneField,
+                                        ],
+                                      );
+                                    }
+
+                                    return Row(
+                                      children: [
+                                        Expanded(flex: 4, child: countryField),
+                                        const SizedBox(width: 8),
+                                        Expanded(flex: 6, child: phoneField),
+                                      ],
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 4),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    'Enter your local number without country code. Example: 8123456789',
+                                    style: TextStyle(
+                                      color: AppTheme.secondary.withOpacity(
+                                        0.7,
+                                      ),
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(height: 24),
+
+                                /// SAVE BUTTON
+                                TombolSementara(
+                                  icon: Icons.save,
+                                  text: "Save",
+                                  width: double.infinity,
+                                  height: 50,
+                                  isLoading: isSavingProfile,
+                                  onPressed: () async {
+                                    if (isSavingProfile) return;
+
+                                    if (phoneError != null) {
+                                      setModalState(() {
+                                        phoneError = null;
+                                      });
+                                    }
+
+                                    if (!_formKey.currentState!.validate())
+                                      return;
+
+                                    setModalState(() {
+                                      isSavingProfile = true;
+                                    });
+
+                                    try {
+                                      String newName = nameController.text
+                                          .trim();
+                                      final localPhone = phoneController.text
+                                          .trim();
+
+                                      final newPhone =
+                                          FirebaseServices.normalizePhoneToE164(
+                                            localPhone,
                                             countryDialCode:
                                                 _selectedCountry.dialCode,
                                           );
 
-                                    if (newPhone != currentPhone) {
-                                      final hasReusableSession =
-                                          _pendingOtpTargetPhone == newPhone &&
-                                          (_pendingOtpVerificationId ?? '')
-                                              .isNotEmpty &&
-                                          _pendingOtpExpiresAt != null &&
-                                          DateTime.now().isBefore(
-                                            _pendingOtpExpiresAt!,
-                                          );
+                                      final authPhone = FirebaseAuth
+                                          .instance
+                                          .currentUser
+                                          ?.phoneNumber;
+
+                                      final currentPhone =
+                                          (authPhone ?? '').trim().isNotEmpty
+                                          ? FirebaseServices.normalizePhoneToE164(
+                                              authPhone!,
+                                            )
+                                          : FirebaseServices.normalizePhoneToE164(
+                                              user.phone,
+                                              countryDialCode:
+                                                  _selectedCountry.dialCode,
+                                            );
+
+                                      if (newPhone != currentPhone) {
+                                        final hasReusableSession =
+                                            _pendingOtpTargetPhone ==
+                                                newPhone &&
+                                            (_pendingOtpVerificationId ?? '')
+                                                .isNotEmpty &&
+                                            _pendingOtpExpiresAt != null &&
+                                            DateTime.now().isBefore(
+                                              _pendingOtpExpiresAt!,
+                                            );
+
+                                        if (!mounted) return;
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              hasReusableSession
+                                                  ? 'Using previously sent OTP for $newPhone...'
+                                                  : 'Sending OTP to $newPhone...',
+                                            ),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+
+                                        final verification = hasReusableSession
+                                            ? _PhoneVerificationState(
+                                                verificationId:
+                                                    _pendingOtpVerificationId,
+                                              )
+                                            : await _requestOtpVerification(
+                                                newPhone,
+                                              );
+
+                                        PhoneAuthCredential? credential =
+                                            verification.autoCredential;
+
+                                        if (credential == null) {
+                                          final verificationId =
+                                              verification.verificationId;
+                                          if (verificationId == null ||
+                                              verificationId.isEmpty) {
+                                            throw FirebaseAuthException(
+                                              code:
+                                                  'otp-missing-verification-id',
+                                              message:
+                                                  'Failed to get OTP verification session',
+                                            );
+                                          }
+
+                                          String? otpDialogError;
+
+                                          while (true) {
+                                            final smsCode =
+                                                await _showOtpDialog(
+                                                  newPhone,
+                                                  errorText: otpDialogError,
+                                                );
+                                            if (smsCode == null) {
+                                              setModalState(() {
+                                                isSavingProfile = false;
+                                              });
+
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Phone update canceled',
+                                                    ),
+                                                    behavior: SnackBarBehavior
+                                                        .floating,
+                                                  ),
+                                                );
+                                              }
+                                              return;
+                                            }
+
+                                            final attemptCredential =
+                                                PhoneAuthProvider.credential(
+                                                  verificationId:
+                                                      verificationId,
+                                                  smsCode: smsCode,
+                                                );
+
+                                            try {
+                                              await FirebaseServices.updateCurrentUserPhoneWithCredential(
+                                                credential: attemptCredential,
+                                              );
+                                              credential = attemptCredential;
+                                              break;
+                                            } on FirebaseAuthException catch (
+                                              e
+                                            ) {
+                                              final code = e.code.toLowerCase();
+                                              if (code ==
+                                                      'invalid-verification-code' ||
+                                                  code == 'session-expired') {
+                                                otpDialogError =
+                                                    _friendlyPhoneUpdateError(
+                                                      e,
+                                                    );
+                                                continue;
+                                              }
+                                              rethrow;
+                                            }
+                                          }
+                                        }
+
+                                        _pendingOtpTargetPhone = null;
+                                        _pendingOtpVerificationId = null;
+                                        _pendingOtpExpiresAt = null;
+                                      }
+
+                                      await FirebaseServices.updateProfile(
+                                        name: newName,
+                                        phone: newPhone,
+                                        oldPhone: currentPhone,
+                                      ).timeout(_profileSaveTimeout);
+
+                                      final pref = PreferenceHandler();
+                                      await pref.init();
+                                      await pref.saveNamaUser(newName);
+
+                                      if (tempImageBytes != null) {
+                                        await FirebaseServices.updateProfileImageBytes(
+                                          tempImageBytes!,
+                                          fileName: tempImageName,
+                                        ).timeout(_profileSaveTimeout);
+                                      } else if (tempImage != null) {
+                                        await FirebaseServices.updateProfileImage(
+                                          tempImage!,
+                                        ).timeout(_profileSaveTimeout);
+                                      }
+
+                                      setState(() {
+                                        tempImage = null;
+                                        tempImageBytes = null;
+                                        tempImageName = null;
+                                      });
+
+                                      if (!mounted) return;
+
+                                      isSheetClosed = true;
+                                      Navigator.pop(context);
+                                    } on FirebaseAuthException catch (e) {
+                                      if (e.code == 'session-expired') {
+                                        _pendingOtpTargetPhone = null;
+                                        _pendingOtpVerificationId = null;
+                                        _pendingOtpExpiresAt = null;
+                                      }
+
+                                      if (e.code ==
+                                              'phone-already-registered' ||
+                                          e.code == 'email-already-in-use' ||
+                                          e.code ==
+                                              'credential-already-in-use' ||
+                                          e.code ==
+                                              'phone-number-already-exists') {
+                                        setModalState(() {
+                                          phoneError =
+                                              "Phone number is already used";
+                                        });
+                                        _formKey.currentState!.validate();
+                                        return;
+                                      }
 
                                       if (!mounted) return;
                                       ScaffoldMessenger.of(
@@ -783,184 +947,41 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ).showSnackBar(
                                         SnackBar(
                                           content: Text(
-                                            hasReusableSession
-                                                ? 'Using previously sent OTP for $newPhone...'
-                                                : 'Sending OTP to $newPhone...',
+                                            _friendlyPhoneUpdateError(e),
                                           ),
-                                          behavior: SnackBarBehavior.floating,
                                         ),
                                       );
-
-                                      final verification = hasReusableSession
-                                          ? _PhoneVerificationState(
-                                              verificationId:
-                                                  _pendingOtpVerificationId,
-                                            )
-                                          : await _requestOtpVerification(
-                                              newPhone,
-                                            );
-
-                                      PhoneAuthCredential? credential =
-                                          verification.autoCredential;
-
-                                      if (credential == null) {
-                                        final verificationId =
-                                            verification.verificationId;
-                                        if (verificationId == null ||
-                                            verificationId.isEmpty) {
-                                          throw FirebaseAuthException(
-                                            code: 'otp-missing-verification-id',
-                                            message:
-                                                'Failed to get OTP verification session',
-                                          );
-                                        }
-
-                                        String? otpDialogError;
-
-                                        while (true) {
-                                          final smsCode = await _showOtpDialog(
-                                            newPhone,
-                                            errorText: otpDialogError,
-                                          );
-                                          if (smsCode == null) {
-                                            setModalState(() {
-                                              isSavingProfile = false;
-                                            });
-
-                                            if (mounted) {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Phone update canceled',
-                                                  ),
-                                                  behavior:
-                                                      SnackBarBehavior.floating,
-                                                ),
-                                              );
-                                            }
-                                            return;
-                                          }
-
-                                          final attemptCredential =
-                                              PhoneAuthProvider.credential(
-                                                verificationId: verificationId,
-                                                smsCode: smsCode,
-                                              );
-
-                                          try {
-                                            await FirebaseServices.updateCurrentUserPhoneWithCredential(
-                                              credential: attemptCredential,
-                                            );
-                                            credential = attemptCredential;
-                                            break;
-                                          } on FirebaseAuthException catch (e) {
-                                            final code = e.code.toLowerCase();
-                                            if (code ==
-                                                    'invalid-verification-code' ||
-                                                code == 'session-expired') {
-                                              otpDialogError =
-                                                  _friendlyPhoneUpdateError(e);
-                                              continue;
-                                            }
-                                            rethrow;
-                                          }
-                                        }
+                                    } catch (_) {
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "Failed to update profile/photo. Please check your connection and Storage rules.",
+                                          ),
+                                        ),
+                                      );
+                                    } finally {
+                                      if (mounted && !isSheetClosed) {
+                                        setModalState(() {
+                                          isSavingProfile = false;
+                                        });
                                       }
-
-                                      _pendingOtpTargetPhone = null;
-                                      _pendingOtpVerificationId = null;
-                                      _pendingOtpExpiresAt = null;
                                     }
-
-                                    await FirebaseServices.updateProfile(
-                                      name: newName,
-                                      phone: newPhone,
-                                      oldPhone: currentPhone,
-                                    ).timeout(_profileSaveTimeout);
-
-                                    final pref = PreferenceHandler();
-                                    await pref.init();
-                                    await pref.saveNamaUser(newName);
-
-                                    if (tempImageBytes != null) {
-                                      await FirebaseServices.updateProfileImageBytes(
-                                        tempImageBytes!,
-                                        fileName: tempImageName,
-                                      ).timeout(_profileSaveTimeout);
-                                    } else if (tempImage != null) {
-                                      await FirebaseServices.updateProfileImage(
-                                        tempImage!,
-                                      ).timeout(_profileSaveTimeout);
-                                    }
-
-                                    setState(() {
-                                      tempImage = null;
-                                      tempImageBytes = null;
-                                      tempImageName = null;
-                                    });
-
-                                    if (!mounted) return;
-
-                                    isSheetClosed = true;
-                                    Navigator.pop(context);
-                                  } on FirebaseAuthException catch (e) {
-                                    if (e.code == 'session-expired') {
-                                      _pendingOtpTargetPhone = null;
-                                      _pendingOtpVerificationId = null;
-                                      _pendingOtpExpiresAt = null;
-                                    }
-
-                                    if (e.code == 'phone-already-registered' ||
-                                        e.code == 'email-already-in-use' ||
-                                        e.code == 'credential-already-in-use' ||
-                                        e.code ==
-                                            'phone-number-already-exists') {
-                                      setModalState(() {
-                                        phoneError =
-                                            "Phone number is already used";
-                                      });
-                                      _formKey.currentState!.validate();
-                                      return;
-                                    }
-
-                                    if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          _friendlyPhoneUpdateError(e),
-                                        ),
-                                      ),
-                                    );
-                                  } catch (_) {
-                                    if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          "Failed to update profile/photo. Please check your connection and Storage rules.",
-                                        ),
-                                      ),
-                                    );
-                                  } finally {
-                                    if (mounted && !isSheetClosed) {
-                                      setModalState(() {
-                                        isSavingProfile = false;
-                                      });
-                                    }
-                                  }
-                                },
-                              ),
-                            ],
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         );
       },
     ).then((_) {

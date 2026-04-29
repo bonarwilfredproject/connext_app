@@ -140,136 +140,138 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
       body: Stack(
         children: [
           EllipseBackground(),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-            child: Column(
-              children: [
-                Text(
-                  "Direct the attendee QR Code\ninside the box",
-                  textAlign: TextAlign.center,
-                  style: styleText(),
-                ),
-                const SizedBox(height: 20),
+          SafeArea(
+            top: false,
+            bottom: true,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  Text(
+                    "Direct the attendee QR Code\ninside the box",
+                    textAlign: TextAlign.center,
+                    style: styleText(),
+                  ),
+                  const SizedBox(height: 20),
+                  Center(
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          height: 270,
+                          width: 270,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(22),
+                            color: Colors.black,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(22),
+                            child: MobileScanner(
+                              controller: controller,
+                              onDetect: (capture) {
+                                if (isProcessing) return;
 
-                /// SCANNER
-                Center(
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        height: 270,
-                        width: 270,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(22),
-                          color: Colors.black,
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(22),
-                          child: MobileScanner(
-                            controller: controller,
-                            onDetect: (capture) {
-                              if (isProcessing) return;
+                                final Barcode barcode = capture.barcodes.first;
+                                final String code = barcode.rawValue ?? "";
 
-                              final Barcode barcode = capture.barcodes.first;
-                              final String code = barcode.rawValue ?? "";
-
-                              if (code.isNotEmpty) {
-                                _handleQrScan(code);
-                              }
-                            },
+                                if (code.isNotEmpty) {
+                                  _handleQrScan(code);
+                                }
+                              },
+                            ),
                           ),
                         ),
-                      ),
 
-                      /// FRAME
-                      Container(
-                        height: 270,
-                        width: 270,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(22),
-                          border: Border.all(
-                            color: AppTheme.secondary,
-                            width: 1.5,
+                        /// FRAME
+                        Container(
+                          height: 270,
+                          width: 270,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(
+                              color: AppTheme.secondary,
+                              width: 1.5,
+                            ),
                           ),
                         ),
-                      ),
 
-                      /// CORNERS
-                      SizedBox(
-                        height: 270,
-                        width: 270,
-                        child: Stack(
-                          children: [
-                            Positioned(top: 0, left: 0, child: buildCorner()),
-                            Positioned(
-                              top: 0,
-                              right: 0,
-                              child: Transform.rotate(
-                                angle: 90 * 3.1416 / 180,
-                                child: buildCorner(),
-                              ),
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              left: 0,
-                              child: Transform.rotate(
-                                angle: -90 * 3.1416 / 180,
-                                child: buildCorner(),
-                              ),
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: Transform.rotate(
-                                angle: 180 * 3.1416 / 180,
-                                child: buildCorner(),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      /// SCAN LASER
-                      AnimatedBuilder(
-                        animation: scanPosition,
-                        builder: (context, child) {
-                          return Transform.translate(
-                            offset: Offset(0, scanPosition.value),
-                            child: Container(
-                              width: 220,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.transparent,
-                                    AppTheme.secondary,
-                                    Colors.transparent,
-                                  ],
+                        /// CORNERS
+                        SizedBox(
+                          height: 270,
+                          width: 270,
+                          child: Stack(
+                            children: [
+                              Positioned(top: 0, left: 0, child: buildCorner()),
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: Transform.rotate(
+                                  angle: 90 * 3.1416 / 180,
+                                  child: buildCorner(),
                                 ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+                              Positioned(
+                                bottom: 0,
+                                left: 0,
+                                child: Transform.rotate(
+                                  angle: -90 * 3.1416 / 180,
+                                  child: buildCorner(),
+                                ),
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Transform.rotate(
+                                  angle: 180 * 3.1416 / 180,
+                                  child: buildCorner(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        /// SCAN LASER
+                        AnimatedBuilder(
+                          animation: scanPosition,
+                          builder: (context, child) {
+                            return Transform.translate(
+                              offset: Offset(0, scanPosition.value),
+                              child: Container(
+                                width: 220,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.transparent,
+                                      AppTheme.secondary,
+                                      Colors.transparent,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 20),
-                Text("QR will be read automatically", style: styleText()),
+                  const SizedBox(height: 20),
+                  Text("QR will be read automatically", style: styleText()),
 
-                const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-                TombolSementara(
-                  onPressed: isProcessing ? null : scanFromGallery,
-                  icon: Icons.photo_library,
-                  text: "Upload from Gallery",
-                  width: 220,
-                  height: 45,
-                  isLoading: isProcessing,
-                ),
-              ],
+                  TombolSementara(
+                    onPressed: isProcessing ? null : scanFromGallery,
+                    icon: Icons.photo_library,
+                    text: "Upload from Gallery",
+                    width: 220,
+                    height: 45,
+                    isLoading: isProcessing,
+                  ),
+                ],
+              ),
             ),
           ),
           if (isProcessing)

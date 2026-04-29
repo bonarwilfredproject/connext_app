@@ -913,115 +913,120 @@ class _DetailEventPageState extends State<DetailEventPage>
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) {
-        if (participants.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Lottie.asset(
-                  'assets/lottie/yawn_emoji_animation.json',
-                  height: 130,
-                  width: double.infinity,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'There is no attendee',
-                  style: styleText().copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Share this event so people can join',
-                  textAlign: TextAlign.center,
-                  style: styleText().copyWith(
-                    fontSize: 13,
-                    color: AppTheme.secondary,
+        return SafeArea(
+          top: false,
+          child: participants.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Lottie.asset(
+                        'assets/lottie/yawn_emoji_animation.json',
+                        height: 130,
+                        width: double.infinity,
+                        fit: BoxFit.contain,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'There is no attendee',
+                        style: styleText().copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Share this event so people can join',
+                        textAlign: TextAlign.center,
+                        style: styleText().copyWith(
+                          fontSize: 13,
+                          color: AppTheme.secondary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                )
+              : Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: participants.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, index) {
+                      final p = participants[index];
+                      final hadir = p['isCheckedIn'];
+
+                      return AppListCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                ProfileAvatar(
+                                  imagePath: p['profileImage']?.toString(),
+                                  radius: 20,
+                                  backgroundColor: AppTheme.third,
+                                  iconColor: AppTheme.primary,
+                                  iconSize: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          p['name'] ?? '',
+                                          style: styleText().copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: hadir
+                                              ? const Color(0xFF78D98B)
+                                              : AppTheme.fourth,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          hadir ? 'Present' : 'Absent',
+                                          style: const TextStyle(
+                                            color: AppTheme.primary,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.phone,
+                                  size: 18,
+                                  color: Color(0xFF00C2FF),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(p['phone'] ?? '', style: styleText()),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
-                const SizedBox(height: 12),
-              ],
-            ),
-          );
-        }
-
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: ListView.separated(
-            shrinkWrap: true,
-            itemCount: participants.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (_, index) {
-              final p = participants[index];
-              final hadir = p['isCheckedIn'];
-
-              return AppListCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        ProfileAvatar(
-                          imagePath: p['profileImage']?.toString(),
-                          radius: 20,
-                          backgroundColor: AppTheme.third,
-                          iconColor: AppTheme.primary,
-                          iconSize: 20,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  p['name'] ?? '',
-                                  style: styleText().copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: hadir
-                                      ? const Color(0xFF78D98B)
-                                      : AppTheme.fourth,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  hadir ? 'Present' : 'Absent',
-                                  style: const TextStyle(
-                                    color: AppTheme.primary,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.phone,
-                          size: 18,
-                          color: Color(0xFF00C2FF),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(p['phone'] ?? '', style: styleText()),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
         );
       },
     );
@@ -1588,34 +1593,38 @@ class _DetailEventPageState extends State<DetailEventPage>
       body: Stack(
         children: [
           EllipseBackground(),
-          CustomScrollView(
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-                sliver: SliverToBoxAdapter(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      heroBanner,
-                      const SizedBox(height: 20),
-                      eventInfoSection,
-                      const SizedBox(height: 20),
-                      scanButton,
-                      const SizedBox(height: 20),
-                    ],
+          SafeArea(
+            top: false,
+            bottom: true,
+            child: CustomScrollView(
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        heroBanner,
+                        const SizedBox(height: 20),
+                        eventInfoSection,
+                        const SizedBox(height: 20),
+                        scanButton,
+                        const SizedBox(height: 20),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                sliver: scannedPeserta.isEmpty
-                    ? SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: presentAttendeeEmptySection,
-                      )
-                    : SliverToBoxAdapter(child: presentAttendeeListSection),
-              ),
-            ],
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  sliver: scannedPeserta.isEmpty
+                      ? SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: presentAttendeeEmptySection,
+                        )
+                      : SliverToBoxAdapter(child: presentAttendeeListSection),
+                ),
+              ],
+            ),
           ),
         ],
       ),

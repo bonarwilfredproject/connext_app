@@ -390,385 +390,400 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
       body: Stack(
         children: [
           EllipseBackground(),
-          isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : event == null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Text(
-                      "Event details can not be loaded",
-                      textAlign: TextAlign.center,
-                      style: styleText(),
+          SafeArea(
+            top: false,
+            bottom: true,
+            child: isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : event == null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        "Event details can not be loaded",
+                        textAlign: TextAlign.center,
+                        style: styleText(),
+                      ),
                     ),
-                  ),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      /// =====================
-                      /// SECTION INFO EVENT
-                      /// =====================
-                      AppSectionCard(
-                        title: "Event",
-                        icon: Icons.event,
-                        child: AppListCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                event!.title,
-                                style: styleText().copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-
-                              const SizedBox(height: 8),
-
-                              /// LOCATION
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF1A1D3A),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: AppTheme.third.withOpacity(0.16),
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        /// =====================
+                        /// SECTION INFO EVENT
+                        /// =====================
+                        AppSectionCard(
+                          title: "Event",
+                          icon: Icons.event,
+                          child: AppListCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  event!.title,
+                                  style: styleText().copyWith(
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Icon(
-                                          Icons.location_pin,
-                                          size: 18,
-                                          color: Color(0xFF00C2FF),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              if ((event!.locationName
-                                                      ?.trim()
-                                                      .isNotEmpty ??
-                                                  false))
-                                                Text(
-                                                  event!.locationName!.trim(),
-                                                  style: styleText().copyWith(
-                                                    fontWeight: FontWeight.w700,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  maxLines: 2,
-                                                ),
-                                              if ((event!.locationName
-                                                          ?.trim()
-                                                          .isEmpty ??
-                                                      true) ||
-                                                  event!.locationName!.trim() !=
-                                                      event!.location.trim())
-                                                Text(
-                                                  event!.location,
-                                                  style: styleText().copyWith(
-                                                    decoration: TextDecoration
-                                                        .underline,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  maxLines: 2,
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
+
+                                const SizedBox(height: 8),
+
+                                /// LOCATION
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1A1D3A),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: AppTheme.third.withOpacity(0.16),
                                     ),
-                                    const SizedBox(height: 10),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton.icon(
-                                        onPressed: _openEventLocation,
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppTheme.third,
-                                          foregroundColor: AppTheme.primary,
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 12,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Icon(
+                                            Icons.location_pin,
+                                            size: 18,
+                                            color: Color(0xFF00C2FF),
                                           ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                if ((event!.locationName
+                                                        ?.trim()
+                                                        .isNotEmpty ??
+                                                    false))
+                                                  Text(
+                                                    event!.locationName!.trim(),
+                                                    style: styleText().copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    maxLines: 2,
+                                                  ),
+                                                if ((event!.locationName
+                                                            ?.trim()
+                                                            .isEmpty ??
+                                                        true) ||
+                                                    event!.locationName!
+                                                            .trim() !=
+                                                        event!.location.trim())
+                                                  Text(
+                                                    event!.location,
+                                                    style: styleText().copyWith(
+                                                      decoration: TextDecoration
+                                                          .underline,
+                                                    ),
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    maxLines: 2,
+                                                  ),
+                                              ],
                                             ),
                                           ),
-                                        ),
-                                        icon: const Icon(Icons.map_outlined),
-                                        label: const Text('Open Google Maps'),
+                                        ],
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(height: 10),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton.icon(
+                                          onPressed: _openEventLocation,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppTheme.third,
+                                            foregroundColor: AppTheme.primary,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                          icon: const Icon(Icons.map_outlined),
+                                          label: const Text('Open Google Maps'),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
 
-                              const SizedBox(height: 8),
+                                const SizedBox(height: 8),
 
-                              /// DESCRIPTION
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Icon(
-                                    Icons.description,
-                                    size: 18,
-                                    color: Color(0xFF73E8D7),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      event!.description.isEmpty
-                                          ? 'There is no description'
-                                          : event!.description,
-                                      style: styleText(),
-                                      maxLines: 4,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 8),
-
-                              /// TOTAL PESERTA
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.people,
-                                    size: 18,
-                                    color: Color(0xFF00C2FF),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    "$totalPeserta joined",
-                                    style: styleText(),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-
-                              /// TANGGAL & WAKTU EVENT
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.event_available,
-                                    size: 18,
-                                    color: Color(0xFF73E8D7),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      event!.eventDate != null
-                                          ? "${DateFormat('EEEE, d MMMM yyyy').format(DateTime.parse(event!.eventDate!))} • ${event!.eventTime ?? '-'}"
-                                          : "-",
-                                      style: styleText(),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-
-                              /// PANITIA PEMBUAT EVENT
-                              if (creator != null)
+                                /// DESCRIPTION
                                 Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    ProfileAvatar(
-                                      imagePath: creator!.profileImage,
-                                      radius: 12,
-                                      backgroundColor: AppTheme.third,
-                                      iconSize: 16,
+                                    const Icon(
+                                      Icons.description,
+                                      size: 18,
+                                      color: Color(0xFF73E8D7),
                                     ),
-
-                                    const SizedBox(width: 8),
-
+                                    const SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
-                                        "by ${creator!.nama}",
+                                        event!.description.isEmpty
+                                            ? 'There is no description'
+                                            : event!.description,
                                         style: styleText(),
+                                        maxLines: 4,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                   ],
                                 ),
-                            ],
+
+                                const SizedBox(height: 8),
+
+                                /// TOTAL PESERTA
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.people,
+                                      size: 18,
+                                      color: Color(0xFF00C2FF),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "$totalPeserta joined",
+                                      style: styleText(),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+
+                                /// TANGGAL & WAKTU EVENT
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.event_available,
+                                      size: 18,
+                                      color: Color(0xFF73E8D7),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        event!.eventDate != null
+                                            ? "${DateFormat('EEEE, d MMMM yyyy').format(DateTime.parse(event!.eventDate!))} • ${event!.eventTime ?? '-'}"
+                                            : "-",
+                                        style: styleText(),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+
+                                /// PANITIA PEMBUAT EVENT
+                                if (creator != null)
+                                  Row(
+                                    children: [
+                                      ProfileAvatar(
+                                        imagePath: creator!.profileImage,
+                                        radius: 12,
+                                        backgroundColor: AppTheme.third,
+                                        iconSize: 16,
+                                      ),
+
+                                      const SizedBox(width: 8),
+
+                                      Expanded(
+                                        child: Text(
+                                          "by ${creator!.nama}",
+                                          style: styleText(),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
 
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 24),
 
-                      /// =====================
-                      /// SECTION QR CHECKIN
-                      /// =====================
-                      AppSectionCard(
-                        title: "Check-In QR",
-                        icon: Icons.qr_code,
-                        child: Center(
-                          child: Column(
-                            children: [
-                              if (isCheckedIn)
-                                /// SUDAH CHECKIN
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    waktuCheckin != null
-                                        ? "You have checked-in on\n${formatTanggal(waktuCheckin!)}"
-                                        : "You have checked-in",
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
+                        /// =====================
+                        /// SECTION QR CHECKIN
+                        /// =====================
+                        AppSectionCard(
+                          title: "Check-In QR",
+                          icon: Icons.qr_code,
+                          child: Center(
+                            child: Column(
+                              children: [
+                                if (isCheckedIn)
+                                  /// SUDAH CHECKIN
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      waktuCheckin != null
+                                          ? "You have checked-in on\n${formatTanggal(waktuCheckin!)}"
+                                          : "You have checked-in",
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  )
+                                else if (qrToken != null && !isEventPassed())
+                                  /// QR CODE
+                                  QrImageView(
+                                    data: qrToken!,
+                                    version: QrVersions.auto,
+                                    size: 200,
+                                    backgroundColor: Colors.white,
+                                  )
+                                else if (isEventPassed())
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Text(
+                                      "QR is not available",
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ),
-                                )
-                              else if (qrToken != null && !isEventPassed())
-                                /// QR CODE
-                                QrImageView(
-                                  data: qrToken!,
-                                  version: QrVersions.auto,
-                                  size: 200,
-                                  backgroundColor: Colors.white,
-                                )
-                              else if (isEventPassed())
-                                Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Text(
-                                    "QR is not available",
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
+                                const SizedBox(height: 12),
+
+                                Text(
+                                  isCheckedIn
+                                      ? "Thank you for attending this event"
+                                      : isEventPassed()
+                                      ? "Event has passed"
+                                      : "Show this QR to the Committee at the event",
+                                  textAlign: TextAlign.center,
+                                  style: styleText(),
                                 ),
-                              const SizedBox(height: 12),
+                                const SizedBox(height: 24),
 
-                              Text(
-                                isCheckedIn
-                                    ? "Thank you for attending this event"
-                                    : isEventPassed()
-                                    ? "Event has passed"
-                                    : "Show this QR to the Committee at the event",
-                                textAlign: TextAlign.center,
-                                style: styleText(),
-                              ),
-                              const SizedBox(height: 24),
-
-                              /// CANCEL JOIN BUTTON
-                              if (!isCheckedIn && !isEventPassed()) ...[
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 14,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    icon: const Icon(
-                                      Icons.exit_to_app,
-                                      color: AppTheme.primary,
-                                    ),
-                                    label: const Text(
-                                      "Leave Event",
-                                      style: TextStyle(color: AppTheme.primary),
-                                    ),
-                                    onPressed: () async {
-                                      final confirm = await showDialog(
-                                        context: context,
-                                        builder: (_) => AlertDialog(
-                                          backgroundColor: const Color(
-                                            0xFF171A33,
+                                /// CANCEL JOIN BUTTON
+                                if (!isCheckedIn && !isEventPassed()) ...[
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
                                           ),
-                                          title: Text(
-                                            "Leave Event",
-                                            style: styleText(),
-                                          ),
-                                          content: Text.rich(
-                                            style: styleText(),
-                                            TextSpan(
-                                              children: [
-                                                TextSpan(
-                                                  text:
-                                                      "Are you sure want to leave ",
+                                        ),
+                                      ),
+                                      icon: const Icon(
+                                        Icons.exit_to_app,
+                                        color: AppTheme.primary,
+                                      ),
+                                      label: const Text(
+                                        "Leave Event",
+                                        style: TextStyle(
+                                          color: AppTheme.primary,
+                                        ),
+                                      ),
+                                      onPressed: () async {
+                                        final confirm = await showDialog(
+                                          context: context,
+                                          builder: (_) => AlertDialog(
+                                            backgroundColor: const Color(
+                                              0xFF171A33,
+                                            ),
+                                            title: Text(
+                                              "Leave Event",
+                                              style: styleText(),
+                                            ),
+                                            content: Text.rich(
+                                              style: styleText(),
+                                              TextSpan(
+                                                children: [
+                                                  TextSpan(
+                                                    text:
+                                                        "Are you sure want to leave ",
+                                                  ),
+                                                  TextSpan(
+                                                    text: event!.title,
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  TextSpan(text: "?"),
+                                                ],
+                                              ),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  false,
                                                 ),
-                                                TextSpan(
-                                                  text: event!.title,
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
+                                                child: Text(
+                                                  "Cancel",
+                                                  style: styleText(),
+                                                ),
+                                              ),
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                  context,
+                                                  true,
+                                                ),
+                                                child: Text(
+                                                  "Leave",
+                                                  style: styleText().copyWith(
+                                                    color: AppTheme.fourth,
                                                   ),
                                                 ),
-                                                TextSpan(text: "?"),
-                                              ],
-                                            ),
+                                              ),
+                                            ],
                                           ),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context, false),
-                                              child: Text(
-                                                "Cancel",
-                                                style: styleText(),
-                                              ),
-                                            ),
-                                            TextButton(
-                                              onPressed: () =>
-                                                  Navigator.pop(context, true),
-                                              child: Text(
-                                                "Leave",
-                                                style: styleText().copyWith(
-                                                  color: AppTheme.fourth,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-
-                                      if (confirm == true) {
-                                        await EventParticipantController.cancelJoin(
-                                          widget.userId,
-                                          widget.eventId,
                                         );
 
-                                        Navigator.pop(context, {
-                                          'leftEventId': widget.eventId,
-                                        });
-                                      }
-                                    },
+                                        if (confirm == true) {
+                                          await EventParticipantController.cancelJoin(
+                                            widget.userId,
+                                            widget.eventId,
+                                          );
+
+                                          Navigator.pop(context, {
+                                            'leftEventId': widget.eventId,
+                                          });
+                                        }
+                                      },
+                                    ),
                                   ),
-                                ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+          ),
         ],
       ),
     );

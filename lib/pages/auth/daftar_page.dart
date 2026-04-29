@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/style_text.dart';
+import 'package:connext_app/pages/auth/log_in_page.dart';
 import 'package:connext_app/pages/home_page/home_page.dart';
 import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
 import 'package:connext_app/pages/event_invite_page.dart';
@@ -896,6 +897,57 @@ class _DaftarPageState extends State<DaftarPage> {
         _pendingOtpExpiresAt = null;
       }
 
+      if (errorCode == 'phone-already-registered' ||
+          errorCode == 'credential-already-in-use' ||
+          errorCode == 'email-already-in-use') {
+        _pendingOtpTargetPhone = null;
+        _pendingOtpVerificationId = null;
+        _pendingOtpExpiresAt = null;
+
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: Text(
+              'Phone Number Already Registered',
+              style: styleText().copyWith(fontWeight: FontWeight.bold),
+            ),
+            content: Text(
+              friendlyMessage,
+              style: styleText().copyWith(fontSize: 14),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Clear form and return to login
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LogInPage()),
+                    (route) => false,
+                  );
+                },
+                child: Text(
+                  'Go to Login',
+                  style: styleText().copyWith(color: AppTheme.third),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Dismiss',
+                  style: styleText().copyWith(
+                    color: AppTheme.secondary.withOpacity(0.7),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -973,339 +1025,342 @@ class _DaftarPageState extends State<DaftarPage> {
         body: Stack(
           children: [
             EllipseBackground(),
-            Center(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                  child: AppSectionCard(
-                    child: IgnorePointer(
-                      ignoring: isLoadingSignUp,
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          children: [
-                            Center(
-                              child: Image.asset(
-                                "assets/images/logo.png",
-                                width: 80,
-                                height: 80,
+            SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: AppSectionCard(
+                      child: IgnorePointer(
+                        ignoring: isLoadingSignUp,
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            children: [
+                              Center(
+                                child: Image.asset(
+                                  "assets/images/logo.png",
+                                  width: 80,
+                                  height: 80,
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 20),
-                            SizedBox(height: 32),
-                            //nama field
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Icon(
-                                    Icons.person,
-                                    color: AppTheme.secondary,
-                                  ),
-                                ),
-
-                                Expanded(
-                                  flex: 8,
-                                  child: Text("Name", style: styleText()),
-                                ),
-                              ],
-                            ),
-                            TextFormField(
-                              controller: namaController,
-                              validator: (value) {
-                                if (value!.isEmpty) {
-                                  return "Name must be filled";
-                                }
-                                return null;
-                              },
-                              style: TextStyle(
-                                color: AppTheme.secondary,
-                                fontSize: 12,
-                              ),
-                              decoration: decorationConstant(
-                                hintText: "Please input your name",
-                              ),
-                            ),
-                            SizedBox(height: 12),
-                            //phone field
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Icon(
-                                    Icons.phone,
-                                    color: AppTheme.secondary,
-                                  ),
-                                ),
-
-                                Expanded(
-                                  flex: 8,
-                                  child: Text(
-                                    "Phone Number",
-                                    style: styleText(),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 4,
-                                  child:
-                                      DropdownButtonFormField<
-                                        _CountryDialOption
-                                      >(
-                                        value: _selectedCountry,
-                                        isExpanded: true,
-                                        decoration: decorationConstant(
-                                          hintText: 'Country',
-                                        ),
-                                        items: _countryOptions.map((option) {
-                                          return DropdownMenuItem<
-                                            _CountryDialOption
-                                          >(
-                                            value: option,
-                                            child: Text(
-                                              '${option.label} (${option.dialCode})',
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                color: AppTheme.secondary,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          );
-                                        }).toList(),
-                                        onChanged: (value) {
-                                          if (value == null) return;
-                                          setState(() {
-                                            _selectedCountry = value;
-                                            _pendingOtpTargetPhone = null;
-                                            _pendingOtpVerificationId = null;
-                                            _pendingOtpExpiresAt = null;
-                                          });
-                                        },
-                                      ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  flex: 6,
-                                  child: TextFormField(
-                                    keyboardType: TextInputType.number,
-                                    controller: phoneController,
-                                    onChanged: (_) {
-                                      _pendingOtpTargetPhone = null;
-                                      _pendingOtpVerificationId = null;
-                                      _pendingOtpExpiresAt = null;
-                                    },
-                                    validator: (value) {
-                                      final phone = (value ?? '').trim();
-                                      if (phone.isEmpty) {
-                                        return "Phone number can't be empty";
-                                      }
-                                      if (!RegExp(r'^\d+$').hasMatch(phone)) {
-                                        return "Phone number must contain digits only";
-                                      }
-                                      if (phone.length < 8) {
-                                        return "Phone number is too short";
-                                      }
-                                      if (phone.length > 15) {
-                                        return "Phone number is too long";
-                                      }
-                                      if (_selectedCountry.dialCode == '+62' &&
-                                          !phone.startsWith('8')) {
-                                        return "For Indonesia number, use local format starting with 8";
-                                      }
-                                      if (RegExp(
-                                        r'^(\d)\1+$',
-                                      ).hasMatch(phone)) {
-                                        return "Phone number seems invalid";
-                                      }
-                                      return null;
-                                    },
-                                    style: TextStyle(
+                              SizedBox(height: 20),
+                              SizedBox(height: 32),
+                              //nama field
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Icon(
+                                      Icons.person,
                                       color: AppTheme.secondary,
-                                      fontSize: 12,
-                                    ),
-                                    decoration: decorationConstant(
-                                      hintText: 'Local phone number',
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                'Enter your local number without country code. Example: 8123456789',
-                                style: TextStyle(
-                                  color: AppTheme.secondary.withOpacity(0.7),
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 12),
-                            //password field
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Icon(
-                                    Icons.password,
-                                    color: AppTheme.secondary,
-                                  ),
-                                ),
 
-                                Expanded(
-                                  flex: 8,
-                                  child: Text("Password", style: styleText()),
-                                ),
-                              ],
-                            ),
-                            TextFormField(
-                              validator: (value) {
-                                final password = value ?? '';
-                                final hasUppercase = RegExp(
-                                  r'[A-Z]',
-                                ).hasMatch(password);
-                                final hasLowercase = RegExp(
-                                  r'[a-z]',
-                                ).hasMatch(password);
-                                final hasNumber = RegExp(
-                                  r'\d',
-                                ).hasMatch(password);
-                                final hasSpecialChar = RegExp(
-                                  r'[!@#$%^&*(),.?":{}|<>_\-\\/\[\];\`~+=]',
-                                ).hasMatch(password);
-                                if (password.isEmpty) {
-                                  return "Password must be filled";
-                                }
-                                if (password.length < 8 ||
-                                    !hasUppercase ||
-                                    !hasLowercase ||
-                                    !hasNumber ||
-                                    !hasSpecialChar) {
-                                  return "Password must have at least 8 characters, an uppercase, a lowercase, a number, and a special character";
-                                }
-                                return null;
-                              },
-                              controller: passwordController,
-                              obscureText: isVisible ? true : false,
-                              obscuringCharacter: "*",
-                              style: TextStyle(
-                                color: AppTheme.secondary,
-                                fontSize: 12,
-                              ),
-                              decoration: decorationConstant(
-                                hintText: "Please input your password",
-                                suffixIcon: IconButton(
-                                  onPressed: () {
-                                    isVisible = !isVisible;
-                                    setState(() {});
-                                  },
-                                  icon: isVisible
-                                      ? Icon(
-                                          Icons.visibility_off,
-                                          color: AppTheme.secondary,
-                                        )
-                                      : Icon(
-                                          Icons.visibility,
-                                          color: AppTheme.secondary,
-                                        ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 12),
-                            //confirm password field
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Icon(
-                                    Icons.password,
-                                    color: AppTheme.secondary,
+                                  Expanded(
+                                    flex: 8,
+                                    child: Text("Name", style: styleText()),
                                   ),
-                                ),
-                                Expanded(
-                                  flex: 8,
-                                  child: Text(
-                                    "Confirm password",
-                                    style: styleText(),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            TextFormField(
-                              validator: (value) {
-                                final confirmPassword = value ?? '';
-                                if (confirmPassword.isEmpty) {
-                                  return "Please re-input your password";
-                                }
-                                if (passwordController.text !=
-                                    confirmPasswordController.text) {
-                                  return "Password is not match";
-                                }
-
-                                return null;
-                              },
-                              controller: confirmPasswordController,
-                              obscureText: isVisible ? true : false,
-                              obscuringCharacter: "*",
-                              style: TextStyle(
-                                color: AppTheme.secondary,
-                                fontSize: 12,
+                                ],
                               ),
-                              decoration: decorationConstant(
-                                hintText: "Please re-input your password",
-                                suffixIcon: IconButton(
-                                  onPressed: () {
-                                    isVisible = !isVisible;
-                                    setState(() {});
-                                  },
-                                  icon: isVisible
-                                      ? Icon(
-                                          Icons.visibility_off,
-                                          color: AppTheme.secondary,
-                                        )
-                                      : Icon(
-                                          Icons.visibility,
-                                          color: AppTheme.secondary,
-                                        ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 12),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text("Sign Up As", style: styleText()),
-                                const SizedBox(height: 10),
-                                RoleSelector(
-                                  role: role,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      role = value;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 28),
-                            TombolSementara(
-                              icon: Icons.app_registration,
-                              width: double.infinity,
-                              height: 54,
-                              isLoading: isLoadingSignUp,
-                              text: "Sign Up",
-                              onPressed: _registerWithOtp,
-                            ),
-                            if (isLoadingSignUp) ...[
-                              const SizedBox(height: 12),
-                              Text(
-                                'Please wait, registration is being processed...',
+                              TextFormField(
+                                controller: namaController,
+                                validator: (value) {
+                                  if (value!.isEmpty) {
+                                    return "Name must be filled";
+                                  }
+                                  return null;
+                                },
                                 style: TextStyle(
-                                  color: AppTheme.secondary.withOpacity(0.8),
-                                  fontSize: 11,
+                                  color: AppTheme.secondary,
+                                  fontSize: 12,
+                                ),
+                                decoration: decorationConstant(
+                                  hintText: "Please input your name",
                                 ),
                               ),
+                              SizedBox(height: 12),
+                              //phone field
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Icon(
+                                      Icons.phone,
+                                      color: AppTheme.secondary,
+                                    ),
+                                  ),
+
+                                  Expanded(
+                                    flex: 8,
+                                    child: Text(
+                                      "Phone Number",
+                                      style: styleText(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    flex: 4,
+                                    child:
+                                        DropdownButtonFormField<
+                                          _CountryDialOption
+                                        >(
+                                          value: _selectedCountry,
+                                          isExpanded: true,
+                                          decoration: decorationConstant(
+                                            hintText: 'Country',
+                                          ),
+                                          items: _countryOptions.map((option) {
+                                            return DropdownMenuItem<
+                                              _CountryDialOption
+                                            >(
+                                              value: option,
+                                              child: Text(
+                                                '${option.label} (${option.dialCode})',
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  color: AppTheme.secondary,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            );
+                                          }).toList(),
+                                          onChanged: (value) {
+                                            if (value == null) return;
+                                            setState(() {
+                                              _selectedCountry = value;
+                                              _pendingOtpTargetPhone = null;
+                                              _pendingOtpVerificationId = null;
+                                              _pendingOtpExpiresAt = null;
+                                            });
+                                          },
+                                        ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    flex: 6,
+                                    child: TextFormField(
+                                      keyboardType: TextInputType.number,
+                                      controller: phoneController,
+                                      onChanged: (_) {
+                                        _pendingOtpTargetPhone = null;
+                                        _pendingOtpVerificationId = null;
+                                        _pendingOtpExpiresAt = null;
+                                      },
+                                      validator: (value) {
+                                        final phone = (value ?? '').trim();
+                                        if (phone.isEmpty) {
+                                          return "Phone number can't be empty";
+                                        }
+                                        if (!RegExp(r'^\d+$').hasMatch(phone)) {
+                                          return "Phone number must contain digits only";
+                                        }
+                                        if (phone.length < 8) {
+                                          return "Phone number is too short";
+                                        }
+                                        if (phone.length > 15) {
+                                          return "Phone number is too long";
+                                        }
+                                        if (_selectedCountry.dialCode ==
+                                                '+62' &&
+                                            !phone.startsWith('8')) {
+                                          return "For Indonesia number, use local format starting with 8";
+                                        }
+                                        if (RegExp(
+                                          r'^(\d)\1+$',
+                                        ).hasMatch(phone)) {
+                                          return "Phone number seems invalid";
+                                        }
+                                        return null;
+                                      },
+                                      style: TextStyle(
+                                        color: AppTheme.secondary,
+                                        fontSize: 12,
+                                      ),
+                                      decoration: decorationConstant(
+                                        hintText: 'Local phone number',
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Enter your local number without country code. Example: 8123456789',
+                                  style: TextStyle(
+                                    color: AppTheme.secondary.withOpacity(0.7),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              //password field
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Icon(
+                                      Icons.password,
+                                      color: AppTheme.secondary,
+                                    ),
+                                  ),
+
+                                  Expanded(
+                                    flex: 8,
+                                    child: Text("Password", style: styleText()),
+                                  ),
+                                ],
+                              ),
+                              TextFormField(
+                                validator: (value) {
+                                  final password = value ?? '';
+                                  final hasUppercase = RegExp(
+                                    r'[A-Z]',
+                                  ).hasMatch(password);
+                                  final hasLowercase = RegExp(
+                                    r'[a-z]',
+                                  ).hasMatch(password);
+                                  final hasNumber = RegExp(
+                                    r'\d',
+                                  ).hasMatch(password);
+                                  final hasSpecialChar = RegExp(
+                                    r'[!@#$%^&*(),.?":{}|<>_\-\\/\[\];\`~+=]',
+                                  ).hasMatch(password);
+                                  if (password.isEmpty) {
+                                    return "Password must be filled";
+                                  }
+                                  if (password.length < 8 ||
+                                      !hasUppercase ||
+                                      !hasLowercase ||
+                                      !hasNumber ||
+                                      !hasSpecialChar) {
+                                    return "Password must have at least 8 characters, an uppercase, a lowercase, a number, and a special character";
+                                  }
+                                  return null;
+                                },
+                                controller: passwordController,
+                                obscureText: isVisible ? true : false,
+                                obscuringCharacter: "*",
+                                style: TextStyle(
+                                  color: AppTheme.secondary,
+                                  fontSize: 12,
+                                ),
+                                decoration: decorationConstant(
+                                  hintText: "Please input your password",
+                                  suffixIcon: IconButton(
+                                    onPressed: () {
+                                      isVisible = !isVisible;
+                                      setState(() {});
+                                    },
+                                    icon: isVisible
+                                        ? Icon(
+                                            Icons.visibility_off,
+                                            color: AppTheme.secondary,
+                                          )
+                                        : Icon(
+                                            Icons.visibility,
+                                            color: AppTheme.secondary,
+                                          ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              //confirm password field
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Icon(
+                                      Icons.password,
+                                      color: AppTheme.secondary,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 8,
+                                    child: Text(
+                                      "Confirm password",
+                                      style: styleText(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              TextFormField(
+                                validator: (value) {
+                                  final confirmPassword = value ?? '';
+                                  if (confirmPassword.isEmpty) {
+                                    return "Please re-input your password";
+                                  }
+                                  if (passwordController.text !=
+                                      confirmPasswordController.text) {
+                                    return "Password is not match";
+                                  }
+
+                                  return null;
+                                },
+                                controller: confirmPasswordController,
+                                obscureText: isVisible ? true : false,
+                                obscuringCharacter: "*",
+                                style: TextStyle(
+                                  color: AppTheme.secondary,
+                                  fontSize: 12,
+                                ),
+                                decoration: decorationConstant(
+                                  hintText: "Please re-input your password",
+                                  suffixIcon: IconButton(
+                                    onPressed: () {
+                                      isVisible = !isVisible;
+                                      setState(() {});
+                                    },
+                                    icon: isVisible
+                                        ? Icon(
+                                            Icons.visibility_off,
+                                            color: AppTheme.secondary,
+                                          )
+                                        : Icon(
+                                            Icons.visibility,
+                                            color: AppTheme.secondary,
+                                          ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text("Sign Up As", style: styleText()),
+                                  const SizedBox(height: 10),
+                                  RoleSelector(
+                                    role: role,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        role = value;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 28),
+                              TombolSementara(
+                                icon: Icons.app_registration,
+                                width: double.infinity,
+                                height: 54,
+                                isLoading: isLoadingSignUp,
+                                text: "Sign Up",
+                                onPressed: _registerWithOtp,
+                              ),
+                              if (isLoadingSignUp) ...[
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Please wait, registration is being processed...',
+                                  style: TextStyle(
+                                    color: AppTheme.secondary.withOpacity(0.8),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ),
