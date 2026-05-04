@@ -88,6 +88,14 @@ class PreferenceHandler {
 
   /// LOGOUT
   Future<void> logout() async {
+    // Preserve install referrer marker so hydratePendingJoinEventId()
+    // does not re-create a pending invite after a user explicitly logs out.
+    final String? lastConsumed = _preferences.getString(
+      _lastConsumedInstallReferrer,
+    );
     await _preferences.clear();
+    if (lastConsumed != null && lastConsumed.isNotEmpty) {
+      await _preferences.setString(_lastConsumedInstallReferrer, lastConsumed);
+    }
   }
 }
