@@ -6,6 +6,7 @@ import 'package:connext_app/firebase_options.dart';
 import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
 import 'package:connext_app/pages/event_invite_page.dart';
 import 'package:connext_app/pages/splash_screen.dart';
+import 'package:connext_app/services/app_update_guard_service.dart';
 import 'package:connext_app/services/event_invite_link_service.dart';
 import 'package:connext_app/services/install_referrer_service.dart';
 import 'package:connext_app/services/pending_join_route_service.dart';
@@ -49,6 +50,10 @@ Future<void> _initializeDeepLinks() async {
     await pref.init();
     await pref.savePendingJoinEventId(eventId);
 
+    final shouldBlockInviteNavigation =
+        await AppUpdateGuardService.blockInviteNavigationIfUpdateRequired();
+    if (shouldBlockInviteNavigation) return;
+
     if (!pref.getIsLogin()) return;
 
     final userId = pref.getUserId();
@@ -62,7 +67,9 @@ Future<void> _initializeDeepLinks() async {
     final navigator = rootNavigatorKey.currentState;
     if (navigator == null) return;
 
-    await pref.clearPendingJoinEventId();
+    if (routeDecision.openAttendee) {
+      await pref.clearPendingJoinEventId();
+    }
 
     navigator.pushAndRemoveUntil(
       MaterialPageRoute(

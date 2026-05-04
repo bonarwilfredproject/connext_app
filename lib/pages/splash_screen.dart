@@ -3,6 +3,7 @@ import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
 import 'package:connext_app/pages/event_invite_page.dart';
 import 'package:connext_app/pages/home_page/home_page.dart';
 import 'package:connext_app/pages/landing_page/landing_page.dart';
+import 'package:connext_app/services/app_update_guard_service.dart';
 import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/services/pending_join_route_service.dart';
 import 'package:connext_app/services/preferences_services.dart';
@@ -238,6 +239,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
     final pendingJoinEventId = pref.getPendingJoinEventId();
     if (pendingJoinEventId > 0) {
+      final shouldBlockInviteNavigation =
+          await AppUpdateGuardService.blockInviteNavigationIfUpdateRequired();
+      if (shouldBlockInviteNavigation) return;
+
       final userId = pref.getUserId();
       final userRole = pref.getRole() ?? 'Attendee';
       final routeDecision = await PendingJoinRouteService.resolve(
@@ -246,7 +251,9 @@ class _SplashScreenState extends State<SplashScreen> {
         eventId: pendingJoinEventId,
       );
 
-      await pref.clearPendingJoinEventId();
+      if (routeDecision.openAttendee) {
+        await pref.clearPendingJoinEventId();
+      }
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(

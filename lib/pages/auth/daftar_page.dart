@@ -6,6 +6,7 @@ import 'package:connext_app/pages/auth/log_in_page.dart';
 import 'package:connext_app/pages/home_page/home_page.dart';
 import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
 import 'package:connext_app/pages/event_invite_page.dart';
+import 'package:connext_app/services/app_update_guard_service.dart';
 import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/models/user_model.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
@@ -826,13 +827,19 @@ class _DaftarPageState extends State<DaftarPage> {
       if (!mounted) return;
 
       if (pendingJoinEventId > 0) {
+        final shouldBlockInviteNavigation =
+            await AppUpdateGuardService.blockInviteNavigationIfUpdateRequired();
+        if (shouldBlockInviteNavigation) return;
+
         final routeDecision = await PendingJoinRouteService.resolve(
           userId: resolvedUserId,
           userRole: loggedInUser.role,
           eventId: pendingJoinEventId,
         );
 
-        await pref.clearPendingJoinEventId();
+        if (routeDecision.openAttendee) {
+          await pref.clearPendingJoinEventId();
+        }
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(

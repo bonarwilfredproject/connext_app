@@ -2,6 +2,7 @@ import 'package:connext_app/constants/app_theme.dart';
 import 'package:connext_app/constants/decoration_constant.dart';
 import 'package:connext_app/constants/style_text.dart';
 import 'package:connext_app/pages/auth/daftar_page.dart';
+import 'package:connext_app/services/app_update_guard_service.dart';
 import 'package:connext_app/services/firebase_services.dart';
 import 'package:connext_app/pages/attendee_event_page/attendee_event_page.dart';
 import 'package:connext_app/services/pending_join_route_service.dart';
@@ -152,13 +153,19 @@ class _LogInPageState extends State<LogInPage> {
 
     final pendingJoinEventId = pref.getPendingJoinEventId();
     if (pendingJoinEventId > 0) {
+      final shouldBlockInviteNavigation =
+          await AppUpdateGuardService.blockInviteNavigationIfUpdateRequired();
+      if (shouldBlockInviteNavigation) return;
+
       final routeDecision = await PendingJoinRouteService.resolve(
         userId: resolvedUserId,
         userRole: login.role,
         eventId: pendingJoinEventId,
       );
 
-      await pref.clearPendingJoinEventId();
+      if (routeDecision.openAttendee) {
+        await pref.clearPendingJoinEventId();
+      }
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(

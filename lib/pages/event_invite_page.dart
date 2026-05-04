@@ -283,8 +283,8 @@ class _EventInvitePageState extends State<EventInvitePage> {
     final pref = PreferenceHandler();
     await pref.init();
 
-    // Clear any pending join marker when user explicitly navigates away
-    // from the invitation screen so it does not persist across app restarts.
+    // User explicitly leaves invitation flow, so pending invite should be
+    // consumed and must not reopen after app restart or re-login.
     await pref.clearPendingJoinEventId();
 
     if (!mounted) return;
