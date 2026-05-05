@@ -65,7 +65,10 @@ class _DaftarPageState extends State<DaftarPage> {
   String? _lastOtpAttemptPhone;
   bool _mustChangePhoneBeforeRetry = false;
   DateTime? _otpServerBlockedUntil;
+  String? _asyncPhoneValidationError;
   late _CountryDialOption _selectedCountry;
+  Timer? _phoneValidationDebounce;
+  String? _lastCheckedPhone;
   final GlobalKey<FormState> _formKey = GlobalKey();
   TextEditingController namaController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
@@ -86,11 +89,90 @@ class _DaftarPageState extends State<DaftarPage> {
 
   @override
   void dispose() {
+    _phoneValidationDebounce?.cancel();
     namaController.dispose();
     phoneController.dispose();
     passwordController.dispose();
     confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  void _schedulePhoneValidation(String localPhone) {
+    _phoneValidationDebounce?.cancel();
+
+    // Debounce to avoid spamming network on each keystroke
+    _phoneValidationDebounce = Timer(const Duration(milliseconds: 700), () async {
+      final phone = localPhone.trim();
+
+      // Quick client-side checks before network call
+      if (phone.isEmpty || !RegExp(r'^\d+$').hasMatch(phone)) {
+        if (_asyncPhoneValidationError != null) {
+          setState(() {
+            _asyncPhoneValidationError = null;
+          });
+          _formKey.currentState?.validate();
+        }
+        return;
+      }
+      if (phone.length < 8 || phone.length > 15) {
+        if (_asyncPhoneValidationError != null) {
+          setState(() {
+            _asyncPhoneValidationError = null;
+          });
+          _formKey.currentState?.validate();
+        }
+        return;
+      }
+      if (_selectedCountry.dialCode == '+62' && !phone.startsWith('8')) {
+        if (_asyncPhoneValidationError != null) {
+          setState(() {
+            _asyncPhoneValidationError = null;
+          });
+          _formKey.currentState?.validate();
+        }
+        return;
+      }
+      if (RegExp(r'^(\d)\1+$').hasMatch(phone)) {
+        if (_asyncPhoneValidationError != null) {
+          setState(() {
+            _asyncPhoneValidationError = null;
+          });
+          _formKey.currentState?.validate();
+        }
+        return;
+      }
+
+      // Normalize and avoid repeat checking same phone repeatedly
+      final e164 = FirebaseServices.normalizePhoneToE164(
+        phone,
+        countryDialCode: _selectedCountry.dialCode,
+      );
+      if (_lastCheckedPhone == e164) return;
+      _lastCheckedPhone = e164;
+
+      try {
+        final exists = await FirebaseServices.isPhoneExists(e164);
+        if (!mounted) return;
+        if (exists) {
+          setState(() {
+            _asyncPhoneValidationError = 'Phone number is already used';
+          });
+        } else if (_asyncPhoneValidationError != null) {
+          setState(() {
+            _asyncPhoneValidationError = null;
+          });
+        }
+        _formKey.currentState?.validate();
+      } catch (_) {
+        // On network failure, do not block user; clear async error so form validator remains based on sync checks
+        if (_asyncPhoneValidationError != null) {
+          setState(() {
+            _asyncPhoneValidationError = null;
+          });
+          _formKey.currentState?.validate();
+        }
+      }
+    });
   }
 
   String _friendlyAuthError(FirebaseAuthException e) {
@@ -516,6 +598,24 @@ class _DaftarPageState extends State<DaftarPage> {
         rawPhone,
         countryDialCode: _selectedCountry.dialCode,
       );
+
+      final isPhoneAlreadyRegistered = await FirebaseServices.isPhoneExists(
+        e164Phone,
+      );
+      if (isPhoneAlreadyRegistered) {
+        if (!mounted) return;
+        setState(() {
+          _asyncPhoneValidationError = 'Phone number is already used';
+        });
+        _formKey.currentState!.validate();
+        return;
+      }
+
+      if (_asyncPhoneValidationError != null) {
+        setState(() {
+          _asyncPhoneValidationError = null;
+        });
+      }
 
       final now = DateTime.now();
       if (_otpServerBlockedUntil != null &&
@@ -1159,6 +1259,7 @@ class _DaftarPageState extends State<DaftarPage> {
                                             if (value == null) return;
                                             setState(() {
                                               _selectedCountry = value;
+                                              _asyncPhoneValidationError = null;
                                               _pendingOtpTargetPhone = null;
                                               _pendingOtpVerificationId = null;
                                               _pendingOtpExpiresAt = null;
@@ -1173,9 +1274,13 @@ class _DaftarPageState extends State<DaftarPage> {
                                       keyboardType: TextInputType.number,
                                       controller: phoneController,
                                       onChanged: (_) {
+                                        _asyncPhoneValidationError = null;
                                         _pendingOtpTargetPhone = null;
                                         _pendingOtpVerificationId = null;
                                         _pendingOtpExpiresAt = null;
+                                        _schedulePhoneValidation(
+                                          phoneController.text,
+                                        );
                                       },
                                       validator: (value) {
                                         final phone = (value ?? '').trim();
@@ -1200,6 +1305,10 @@ class _DaftarPageState extends State<DaftarPage> {
                                           r'^(\d)\1+$',
                                         ).hasMatch(phone)) {
                                           return "Phone number seems invalid";
+                                        }
+                                        if (_asyncPhoneValidationError !=
+                                            null) {
+                                          return _asyncPhoneValidationError;
                                         }
                                         return null;
                                       },

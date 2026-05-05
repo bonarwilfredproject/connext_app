@@ -367,6 +367,21 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
     }
   }
 
+  void _navigateAfterLeaveEvent() {
+    final payload = {'leftEventId': widget.eventId};
+    final navigator = Navigator.of(context);
+
+    if (navigator.canPop()) {
+      navigator.pop(payload);
+      return;
+    }
+
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const HomePage()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -767,10 +782,8 @@ class _AttendeeEventPageState extends State<AttendeeEventPage>
                                             widget.userId,
                                             widget.eventId,
                                           );
-
-                                          Navigator.pop(context, {
-                                            'leftEventId': widget.eventId,
-                                          });
+                                          if (!mounted) return;
+                                          _navigateAfterLeaveEvent();
                                         }
                                       },
                                     ),

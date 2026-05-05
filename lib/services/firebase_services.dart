@@ -579,7 +579,7 @@ class FirebaseServices {
 
     final effectiveExcludeUid = (excludeUid != null && excludeUid.isNotEmpty)
         ? excludeUid
-        : _auth.currentUser?.uid;
+        : null;
 
     final seenPaths = <String>{};
     for (final doc in [...phoneMatches.docs, ...e164Matches.docs]) {

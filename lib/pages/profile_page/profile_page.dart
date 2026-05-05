@@ -74,6 +74,8 @@ class _ProfilePageState extends State<ProfilePage> {
   DateTime? _pendingOtpExpiresAt;
   String? _lastOtpRequestedPhone;
   DateTime? _lastOtpRequestedAt;
+  Timer? _phoneValidationDebounce;
+  String? _lastCheckedPhoneE164;
 
   @override
   void initState() {
@@ -467,9 +469,89 @@ class _ProfilePageState extends State<ProfilePage> {
 
   @override
   void dispose() {
+    _phoneValidationDebounce?.cancel();
     nameController.dispose();
     phoneController.dispose();
     super.dispose();
+  }
+
+  void _schedulePhoneValidation(
+    String localPhone, {
+    Function(void Function())? sheetSetState,
+    String? excludeUid,
+  }) {
+    _phoneValidationDebounce?.cancel();
+
+    _phoneValidationDebounce = Timer(
+      const Duration(milliseconds: 700),
+      () async {
+        final phone = localPhone.trim();
+
+        // quick sync validation using existing validator
+        final syncError = _validatePhoneNumber(
+          phone,
+          countryDialCode: _selectedCountry.dialCode,
+        );
+        if (syncError != null) {
+          // clear any async error and validate form
+          if (phoneError != null) {
+            if (sheetSetState != null) {
+              sheetSetState(() {
+                phoneError = null;
+              });
+            } else {
+              setState(() {
+                phoneError = null;
+              });
+            }
+          }
+          _formKey.currentState?.validate();
+          return;
+        }
+
+        final e164 = FirebaseServices.normalizePhoneToE164(
+          phone,
+          countryDialCode: _selectedCountry.dialCode,
+        );
+
+        if (_lastCheckedPhoneE164 == e164) return;
+        _lastCheckedPhoneE164 = e164;
+
+        try {
+          final exists = await FirebaseServices.isPhoneExists(
+            e164,
+            excludeUid: excludeUid,
+          );
+          if (!mounted) return;
+          if (exists) {
+            if (sheetSetState != null) {
+              sheetSetState(() {
+                phoneError = 'Phone number is already used';
+              });
+            } else {
+              setState(() {
+                phoneError = 'Phone number is already used';
+              });
+            }
+          } else {
+            if (phoneError != null) {
+              if (sheetSetState != null) {
+                sheetSetState(() {
+                  phoneError = null;
+                });
+              } else {
+                setState(() {
+                  phoneError = null;
+                });
+              }
+            }
+          }
+          _formKey.currentState?.validate();
+        } catch (_) {
+          // ignore network errors for async validation; do not block user
+        }
+      },
+    );
   }
 
   Future<void> pickImageSource(Function(void Function()) setModalState) async {
@@ -686,6 +768,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                               _pendingOtpVerificationId = null;
                                               _pendingOtpExpiresAt = null;
                                             });
+                                            _schedulePhoneValidation(
+                                              phoneController.text,
+                                              sheetSetState: setModalState,
+                                              excludeUid:
+                                                  FirebaseServices.currentUid,
+                                            );
                                           },
                                         );
 
@@ -750,6 +838,12 @@ class _ProfilePageState extends State<ProfilePage> {
                                         _pendingOtpTargetPhone = null;
                                         _pendingOtpVerificationId = null;
                                         _pendingOtpExpiresAt = null;
+                                        _schedulePhoneValidation(
+                                          value,
+                                          sheetSetState: setModalState,
+                                          excludeUid:
+                                              FirebaseServices.currentUid,
+                                        );
                                       },
                                     );
 
@@ -838,6 +932,22 @@ class _ProfilePageState extends State<ProfilePage> {
                                             countryDialCode:
                                                 _selectedCountry.dialCode,
                                           );
+
+                                      final isPhoneAlreadyRegistered =
+                                          await FirebaseServices.isPhoneExists(
+                                            newPhone,
+                                            excludeUid:
+                                                FirebaseServices.currentUid,
+                                          );
+                                      if (isPhoneAlreadyRegistered) {
+                                        setModalState(() {
+                                          phoneError =
+                                              'Phone number is already used';
+                                          isSavingProfile = false;
+                                        });
+                                        _formKey.currentState!.validate();
+                                        return;
+                                      }
 
                                       final authPhone = FirebaseAuth
                                           .instance
