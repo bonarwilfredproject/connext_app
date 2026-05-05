@@ -15,7 +15,6 @@ import 'package:connext_app/services/preferences_services.dart';
 import 'package:connext_app/widgets/app_section_card.dart';
 import 'package:connext_app/widgets/custom_appbar.dart';
 import 'package:connext_app/widgets/ellipse_background.dart';
-import 'package:connext_app/widgets/role_selector.dart';
 import 'package:connext_app/widgets/tombol_sementara.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -57,7 +56,7 @@ class _DaftarPageState extends State<DaftarPage> {
     _CountryDialOption(label: 'India', dialCode: '+91'),
   ];
 
-  String role = "Committee";
+  String role = "Attendee";
   bool isVisible = true;
   bool isLoadingSignUp = false;
   String? _pendingOtpTargetPhone;
@@ -418,20 +417,34 @@ class _DaftarPageState extends State<DaftarPage> {
                             color: AppTheme.secondary.withOpacity(0.8),
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        Divider(
+                          height: 0,
+                          color: AppTheme.secondary.withOpacity(0.12),
+                        ),
+                        const SizedBox(height: 12),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(context, '__CHANGE_PHONE__');
+                          },
+                          child: Text(
+                            'Change Number',
+                            style: styleText().copyWith(
+                              color: AppTheme.secondary.withOpacity(0.65),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w400,
+                              decoration: TextDecoration.underline,
+                              decorationColor: AppTheme.secondary.withOpacity(
+                                0.35,
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
                 actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context, '__CHANGE_PHONE__');
-                    },
-                    child: Text(
-                      'Change Number',
-                      style: styleText().copyWith(color: AppTheme.secondary),
-                    ),
-                  ),
                   TextButton(
                     onPressed:
                         (resendCountdown == 0 &&
@@ -823,7 +836,16 @@ class _DaftarPageState extends State<DaftarPage> {
 
       await pref.saveUser(resolvedUserId, loggedInUser.nama, loggedInUser.role);
 
-      final pendingJoinEventId = pref.getPendingJoinEventId();
+      final shouldHonorPendingJoinRoute =
+          PendingJoinRouteService.hasActiveLaunchPendingJoin;
+      final pendingJoinEventId = shouldHonorPendingJoinRoute
+          ? pref.getPendingJoinEventId()
+          : 0;
+
+      if (!shouldHonorPendingJoinRoute) {
+        await pref.clearPendingJoinEventId();
+      }
+
       if (!mounted) return;
 
       if (pendingJoinEventId > 0) {
@@ -1332,20 +1354,13 @@ class _DaftarPageState extends State<DaftarPage> {
                                 ),
                               ),
                               SizedBox(height: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text("Sign Up As", style: styleText()),
-                                  const SizedBox(height: 10),
-                                  RoleSelector(
-                                    role: role,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        role = value;
-                                      });
-                                    },
-                                  ),
-                                ],
+                              Text(
+                                'New accounts start as attendee. Committee access can be requested later from Profile.',
+                                style: TextStyle(
+                                  color: AppTheme.secondary.withOpacity(0.72),
+                                  fontSize: 11,
+                                  height: 1.35,
+                                ),
                               ),
                               SizedBox(height: 28),
                               TombolSementara(

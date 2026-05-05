@@ -237,7 +237,15 @@ class _SplashScreenState extends State<SplashScreen> {
     // Sync local session cache with latest remote profile.
     await pref.saveUser(profileId, profileName, profileRole);
 
-    final pendingJoinEventId = pref.getPendingJoinEventId();
+    final shouldHonorPendingJoinRoute =
+        PendingJoinRouteService.hasActiveLaunchPendingJoin;
+    final pendingJoinEventId = shouldHonorPendingJoinRoute
+        ? pref.getPendingJoinEventId()
+        : 0;
+    if (!shouldHonorPendingJoinRoute) {
+      await pref.clearPendingJoinEventId();
+    }
+
     if (pendingJoinEventId > 0) {
       final shouldBlockInviteNavigation =
           await AppUpdateGuardService.blockInviteNavigationIfUpdateRequired();

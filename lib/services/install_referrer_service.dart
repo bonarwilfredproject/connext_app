@@ -9,24 +9,27 @@ class InstallReferrerService {
     'connext/install_referrer',
   );
 
-  static Future<void> hydratePendingJoinEventId() async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+  static Future<bool> hydratePendingJoinEventId() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return false;
 
     final pref = PreferenceHandler();
     await pref.init();
 
     final rawReferrer = await _readRawInstallReferrer();
-    if (rawReferrer == null || rawReferrer.isEmpty) return;
+    if (rawReferrer == null || rawReferrer.isEmpty) return false;
 
     final lastConsumed = pref.getLastConsumedInstallReferrer();
-    if (lastConsumed == rawReferrer) return;
+    if (lastConsumed == rawReferrer) return false;
 
     final eventId = _parseEventId(rawReferrer);
     if (eventId != null && eventId > 0) {
       await pref.savePendingJoinEventId(eventId);
+      await pref.saveLastConsumedInstallReferrer(rawReferrer);
+      return true;
     }
 
     await pref.saveLastConsumedInstallReferrer(rawReferrer);
+    return false;
   }
 
   static Future<String?> _readRawInstallReferrer() async {

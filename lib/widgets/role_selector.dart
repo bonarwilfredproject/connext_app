@@ -45,8 +45,8 @@ class RoleSelector extends StatelessWidget {
       ),
       child: Row(
         children: [
-          buildItem("Committee", "Committee"),
           buildItem("Attendee", "Attendee"),
+          buildItem("Committee", "Committee"),
         ],
       ),
     );

@@ -151,7 +151,15 @@ class _LogInPageState extends State<LogInPage> {
 
     await pref.saveUser(resolvedUserId, login.nama, login.role);
 
-    final pendingJoinEventId = pref.getPendingJoinEventId();
+    final shouldHonorPendingJoinRoute =
+        PendingJoinRouteService.hasActiveLaunchPendingJoin;
+    final pendingJoinEventId = shouldHonorPendingJoinRoute
+        ? pref.getPendingJoinEventId()
+        : 0;
+    if (!shouldHonorPendingJoinRoute) {
+      await pref.clearPendingJoinEventId();
+    }
+
     if (pendingJoinEventId > 0) {
       final shouldBlockInviteNavigation =
           await AppUpdateGuardService.blockInviteNavigationIfUpdateRequired();

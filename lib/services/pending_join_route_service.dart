@@ -13,6 +13,14 @@ class PendingJoinRouteDecision {
 }
 
 class PendingJoinRouteService {
+  static bool _hasActiveLaunchPendingJoin = false;
+
+  static bool get hasActiveLaunchPendingJoin => _hasActiveLaunchPendingJoin;
+
+  static void markActiveLaunchPendingJoin() {
+    _hasActiveLaunchPendingJoin = true;
+  }
+
   static Future<PendingJoinRouteDecision> resolve({
     required int userId,
     required String userRole,

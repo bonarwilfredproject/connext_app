@@ -25,7 +25,11 @@ void main() async {
   await initializeDateFormatting('id', null);
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  await InstallReferrerService.hydratePendingJoinEventId();
+  final hasLaunchPendingJoin =
+      await InstallReferrerService.hydratePendingJoinEventId();
+  if (hasLaunchPendingJoin) {
+    PendingJoinRouteService.markActiveLaunchPendingJoin();
+  }
 
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
     // Keep Play Integrity as default. Force reCAPTCHA only when explicitly enabled.
@@ -45,6 +49,8 @@ Future<void> _initializeDeepLinks() async {
 
     final eventId = EventInviteLinkService.parseEventId(uri);
     if (eventId == null) return;
+
+    PendingJoinRouteService.markActiveLaunchPendingJoin();
 
     final pref = PreferenceHandler();
     await pref.init();

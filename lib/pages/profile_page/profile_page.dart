@@ -380,8 +380,30 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                   ],
+                  const SizedBox(height: 12),
+                  Divider(
+                    height: 0,
+                    color: AppTheme.secondary.withOpacity(0.12),
+                  ),
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context, '__CHANGE_PHONE__');
+                    },
+                    child: Text(
+                      'Change Number',
+                      style: styleText().copyWith(
+                        color: AppTheme.secondary.withOpacity(0.65),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                        decoration: TextDecoration.underline,
+                        decorationColor: AppTheme.secondary.withOpacity(0.35),
+                      ),
+                    ),
+                  ),
                 ],
               ),
+              contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -1366,7 +1388,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                                       child: Text(
                                                         role == 'Committee'
                                                             ? 'Switch to Attendee'
-                                                            : 'Switch to Committee',
+                                                            : 'Apply for Committee',
                                                         maxLines: 1,
                                                         softWrap: false,
                                                         style: styleText()
@@ -1389,6 +1411,14 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Committee access can be requested from this profile menu.',
+                            style: styleText().copyWith(
+                              fontSize: 11,
+                              color: AppTheme.secondary.withOpacity(0.7),
+                            ),
                           ),
                         ],
                       ),
