@@ -112,6 +112,31 @@ class _ProfilePageState extends State<ProfilePage> {
     phoneController.text = digits;
   }
 
+  String? _validatePhoneNumber(String phone, {String? countryDialCode}) {
+    if (!RegExp(r'^\d+$').hasMatch(phone)) {
+      return 'Phone number must contain digits only';
+    }
+
+    if (phone.length < 8) {
+      return 'Phone number is too short';
+    }
+
+    if (phone.length > 15) {
+      return 'Phone number is too long';
+    }
+
+    // Validasi khusus untuk Indonesia: harus dimulai dengan 8
+    if (countryDialCode == '+62' && !phone.startsWith('8')) {
+      return 'For Indonesia number, use local format starting with 8';
+    }
+
+    if (RegExp(r'^(\d)\1+$').hasMatch(phone)) {
+      return 'Phone number seems invalid (repeating digits)';
+    }
+
+    return null;
+  }
+
   String _friendlyPhoneUpdateError(FirebaseAuthException e) {
     final code = e.code.toLowerCase();
     final message = (e.message ?? '').toLowerCase();
@@ -123,7 +148,14 @@ class _ProfilePageState extends State<ProfilePage> {
     if (code == 'otp-timeout' ||
         message.contains('timed out') ||
         message.contains('timeout')) {
-      return 'OTP request timed out. Please tap Save again.';
+      return 'OTP request timed out. Please check your internet connection and tap Save again.';
+    }
+
+    if (code == 'invalid-phone-number' ||
+        message.contains('invalid phone') ||
+        message.contains('missing or invalid') ||
+        message.contains('phone number format')) {
+      return 'Phone number format is invalid. Please use an active real number with the correct country code.';
     }
 
     if (code == 'phone-already-registered' ||
@@ -681,12 +713,25 @@ class _ProfilePageState extends State<ProfilePage> {
                                           return "Phone number must contain digits only";
                                         }
 
-                                        if (phone.length < 4) {
+                                        if (phone.length < 8) {
                                           return "Phone number is too short";
                                         }
 
                                         if (phone.length > 15) {
                                           return "Phone number is too long";
+                                        }
+
+                                        // Validasi khusus untuk Indonesia: harus dimulai dengan 8
+                                        if (_selectedCountry.dialCode ==
+                                                '+62' &&
+                                            !phone.startsWith('8')) {
+                                          return "For Indonesia number, use local format starting with 8";
+                                        }
+
+                                        if (RegExp(
+                                          r'^(\d)\1+$',
+                                        ).hasMatch(phone)) {
+                                          return "Phone number seems invalid (repeating digits)";
                                         }
 
                                         if (phoneError != null) {
@@ -771,6 +816,21 @@ class _ProfilePageState extends State<ProfilePage> {
                                           .trim();
                                       final localPhone = phoneController.text
                                           .trim();
+
+                                      // Validate phone number before OTP
+                                      final phoneValidationError =
+                                          _validatePhoneNumber(
+                                            localPhone,
+                                            countryDialCode:
+                                                _selectedCountry.dialCode,
+                                          );
+                                      if (phoneValidationError != null) {
+                                        setModalState(() {
+                                          phoneError = phoneValidationError;
+                                          isSavingProfile = false;
+                                        });
+                                        return;
+                                      }
 
                                       final newPhone =
                                           FirebaseServices.normalizePhoneToE164(
@@ -992,6 +1052,25 @@ class _ProfilePageState extends State<ProfilePage> {
                                       }
                                     }
                                   },
+                                ),
+
+                                const SizedBox(height: 12),
+
+                                /// RESET PASSWORD BUTTON
+                                TombolSementara(
+                                  icon: Icons.lock,
+                                  height: 50,
+                                  width: double.infinity,
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const ResetPasswordPage(),
+                                      ),
+                                    );
+                                  },
+                                  text: "Reset Password",
                                 ),
                               ],
                             ),
@@ -1425,24 +1504,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
 
                     const SizedBox(height: 40),
-
-                    /// RESET PASSWORD BUTTON
-                    TombolSementara(
-                      icon: Icons.lock,
-                      height: 54,
-                      width: double.infinity,
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ResetPasswordPage(),
-                          ),
-                        );
-                      },
-                      text: "Reset Password",
-                    ),
-
-                    const SizedBox(height: 12),
 
                     /// LOGOUT BUTTON
                     TombolSementara(
