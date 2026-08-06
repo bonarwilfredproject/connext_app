@@ -104,20 +104,27 @@ class _ScanPesertaPageState extends State<ScanPesertaPage>
     controller.stop();
 
     try {
-      bool success = await controller.analyzeImage(image.path);
+      final BarcodeCapture? capture = await controller.analyzeImage(image.path);
+
+      final String code =
+          capture?.barcodes
+              .map((barcode) => barcode.rawValue ?? "")
+              .firstWhere((value) => value.isNotEmpty, orElse: () => "") ??
+          "";
 
       /// jika tidak ada QR di gambar
-      if (!success) {
+      if (code.isEmpty) {
         showErrorDialog("QR Code can't be found in picture");
         restartScanner();
         await _safeVibrate();
         Future.delayed(const Duration(seconds: 1), () {
           Navigator.pop(context, "error");
         });
+        return;
       }
 
-      /// jika success → onDetect() akan terpanggil otomatis
-      /// dan _handleQrScan() akan berjalan
+      /// analyzeImage tidak memicu onDetect, jadi proses hasilnya di sini
+      await _handleQrScan(code);
     } catch (e) {
       showErrorDialog("QR Code can't be read");
       restartScanner();
